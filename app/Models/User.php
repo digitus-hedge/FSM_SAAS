@@ -6,6 +6,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class User extends Authenticatable
 {
@@ -43,6 +44,26 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_platform_admin'  => 'boolean',
         ];
     }
+
+    public function tenants(): BelongsToMany
+{
+    return $this->belongsToMany(Tenant::class, 'tenant_memberships')
+        ->withPivot(['role', 'status', 'joined_at'])
+        ->withTimestamps();
+}
+
+public function hasAccessToTenant(Tenant $tenant): bool
+{
+    if ($this->is_platform_admin) {
+        return true;
+    }
+
+    return $this->tenants()
+        ->where('tenants.id', $tenant->id)
+        ->wherePivot('status', 'active')
+        ->exists();
+}
 }
