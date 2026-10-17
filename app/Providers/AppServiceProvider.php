@@ -5,6 +5,10 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
+use App\Listeners\RecordLoginHistory;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Support\Facades\Event;
+
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -30,5 +34,6 @@ class AppServiceProvider extends ServiceProvider
                 ->cascadeOnDelete();
             $this->index('tenant_id');
         });
+        Event::listen(Login::class, RecordLoginHistory::class);
     }
 }

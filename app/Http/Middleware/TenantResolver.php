@@ -44,6 +44,9 @@ class TenantResolver
         app()->instance(Tenant::class, $tenant);
         $request->attributes->set('tenant', $tenant);
 
+        // Scope all Spatie role/permission checks to this tenant.
+        app(\Spatie\Permission\PermissionRegistrar::class)->setPermissionsTeamId($tenant->id);
+
         return $next($request);
     }
 }

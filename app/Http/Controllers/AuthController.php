@@ -15,29 +15,37 @@ class AuthController extends Controller
         return view('auth.login');
     }
 
-    public function login(Request $request)
-    {
-        $data = $request->validate([
-            'email'    => ['required', 'email'],
-            'password' => ['required'],
-        ]);
+public function login(Request $request)
+{
+    $data = $request->validate([
+        'email'    => ['required', 'email'],
+        'password' => ['required'],
+    ]);
 
-        if (! Auth::attempt($data, $request->boolean('remember'))) {
-            return back()
-                ->withErrors(['email' => 'Those credentials do not match any account.'])
-                ->onlyInput('email');
-        }
+    if (! Auth::attempt($data, $request->boolean('remember'))) {
+        return back()->withErrors(['email' => 'Those credentials do not match any account.'])->onlyInput('email');
+    }
 
-        $request->session()->regenerate();
+    $request->session()->regenerate();
+    $user = Auth::user();
 
-        // Only platform admins can reach /admin — otherwise log out and refuse.
-        if (! Auth::user()->is_platform_admin) {
+    // On a tenant subdomain → tenant dashboard (if the user has access).
+    if ($tenant = \App\Models\Tenant::current()) {
+        if (! $user->hasAccessToTenant($tenant)) {
             Auth::logout();
-            return back()->withErrors(['email' => 'This account cannot access the platform console.']);
+            return back()->withErrors(['email' => 'This account does not belong to this workspace.']);
         }
+        return redirect()->intended(route('tenant.dashboard'));
+    }
 
+    // On the platform host → platform admin.
+    if ($user->is_platform_admin) {
         return redirect()->intended(route('admin.dashboard'));
     }
+
+    Auth::logout();
+    return back()->withErrors(['email' => 'This account cannot access the platform console.']);
+}
 
     public function logout(Request $request)
     {

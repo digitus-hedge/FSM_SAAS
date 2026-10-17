@@ -7,6 +7,9 @@
 h1{font-family:'Figtree';font-size:30px;font-weight:700;letter-spacing:-.6px;margin-bottom:4px}
 .lede{color:var(--muted);margin-bottom:28px;font-size:14.5px}
 .card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:28px;max-width:620px}
+.section-title{font-family:'Figtree';font-size:15px;font-weight:700;margin:22px 0 4px;color:var(--ink)}
+.section-sub{color:var(--muted);font-size:13px;margin-bottom:16px}
+.divider{height:1px;background:var(--line);margin:22px 0}
 .field{display:flex;flex-direction:column;gap:6px;margin-bottom:18px;font-size:13px;font-weight:700}
 .field .opt{font-weight:400;color:var(--muted);font-size:12px}
 .field input{height:46px;padding:0 14px;border:1px solid var(--line);border-radius:10px;font:inherit;font-weight:400;font-size:14px;background:#fff}
@@ -28,6 +31,10 @@ h1{font-family:'Figtree';font-size:30px;font-weight:700;letter-spacing:-.6px;mar
 
 <form method="POST" action="{{ route('admin.tenants.store') }}" class="card">
     @csrf
+
+    {{-- ─── WORKSPACE ────────────────────────────────────────── --}}
+    <div class="section-title">Workspace</div>
+    <div class="section-sub">Where this company's data lives.</div>
 
     <div class="field">
         <label>Company name</label>
@@ -55,6 +62,31 @@ h1{font-family:'Figtree';font-size:30px;font-weight:700;letter-spacing:-.6px;mar
             <span class="code" id="colorCode">{{ old('primary_color', '#FFC61A') }}</span>
         </div>
         @error('primary_color') <span class="err">{{ $message }}</span> @enderror
+    </div>
+
+    <div class="divider"></div>
+
+    {{-- ─── FIRST COMPANY ADMIN ──────────────────────────────── --}}
+    <div class="section-title">First Company Admin</div>
+    <div class="section-sub">The initial login for this workspace. They can invite more members after signing in.</div>
+
+    <div class="field">
+        <label>Admin name</label>
+        <input name="admin_name" value="{{ old('admin_name') }}" placeholder="Jane Smith" required>
+        @error('admin_name') <span class="err">{{ $message }}</span> @enderror
+    </div>
+
+    <div class="field">
+        <label>Admin email</label>
+        <input type="email" name="admin_email" value="{{ old('admin_email') }}" placeholder="jane@acme.com" required>
+        @error('admin_email') <span class="err">{{ $message }}</span> @enderror
+    </div>
+
+    <div class="field">
+        <label>Admin password</label>
+        <input type="text" name="admin_password" value="{{ old('admin_password') }}" minlength="8" placeholder="At least 8 characters" required>
+        <span class="hint">Share this with the admin — they can change it after signing in.</span>
+        @error('admin_password') <span class="err">{{ $message }}</span> @enderror
     </div>
 
     <div class="actions">
