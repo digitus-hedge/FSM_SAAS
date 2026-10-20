@@ -84,34 +84,29 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
 <div class="shell">
 
 <nav class="side">
+
     <a href="{{ route('admin.dashboard') }}" class="brand">
         <span class="logo">A</span>
         <span>AIYWAH FSM<small>Platform console</small></span>
     </a>
 
-    {{-- Dashboard --}}
-    <a href="{{ route('admin.dashboard') }}" class="nav-item {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-        Workspaces
-    </a>
-
-    <a href="{{ route('admin.tenants.create') }}" class="nav-item {{ request()->routeIs('admin.tenants.create') ? 'active' : '' }}">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-        New workspace
-    </a>
-
-    {{-- MASTER DATA — collapsible parent with children --}}
-    @php
+    {{-- Platform-only items (owner / support / finance) --}}
+    @if (auth()->user()?->canDo('tenants.view'))
+        <a href="{{ route('admin.dashboard') }}" class="nav-item {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            Workspaces
+        </a>
+    @endif
+    {{-- Tenant-only items (company_admin / operations_manager / etc.) --}}
+ @php
         $masterOpen = request()->routeIs('admin.clients.*')
                    || request()->routeIs('admin.sites.*')
                    || request()->routeIs('admin.service-categories.*')
                    || request()->routeIs('admin.sla-policies.*')
-                   || request()->routeIs('admin.tax-rates.*')
-                   || request()->routeIs('admin.expense-categories.*')
-                   || request()->routeIs('admin.hold-reasons.*')
-                   || request()->routeIs('admin.vendors.*');
+                   || request()->routeIs('admin.tax-rates.*');
     @endphp
 
+    @if (auth()->user()?->canDo('client.manage') || auth()->user()?->canDo('site.manage') || auth()->user()?->canDo('category.manage') || auth()->user()?->canDo('settings.manage'))
     <details class="nav-group {{ $masterOpen ? 'has-active' : '' }}" {{ $masterOpen ? 'open' : '' }}>
         <summary>
             <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -124,77 +119,43 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
         </summary>
 
         <div class="nav-children">
-            <a href="{{ route('admin.clients.index') }}"
-               class="nav-item {{ request()->routeIs('admin.clients.*') ? 'active' : '' }}">
-                Clients
-            </a>
-
-              <a href="{{ route('admin.sites.index') }}"
-           class="nav-item {{ request()->routeIs('admin.sites.*') ? 'active' : '' }}">
-            Project Sites
-        </a>
-            <a href="{{ route('admin.service-categories.index') }}"
-   class="nav-item {{ request()->routeIs('admin.service-categories.*') ? 'active' : '' }}">
-    Service Categories
-</a>
-
-          <a href="{{ route('admin.sla-policies.index') }}"
-   class="nav-item {{ request()->routeIs('admin.sla-policies.*') ? 'active' : '' }}">
-    SLA Policies
-</a>
-
-           <a href="{{ route('admin.tax-rates.index') }}"
-   class="nav-item {{ request()->routeIs('admin.tax-rates.*') ? 'active' : '' }}">
-    Tax Rates
-</a>
-
-            <a href="#" class="nav-item disabled">
-                Expense Categories <span class="count">soon</span>
-            </a>
-
-            <a href="#" class="nav-item disabled">
-                Hold Reasons <span class="count">soon</span>
-            </a>
-
-            <a href="#" class="nav-item disabled">
-                Vendors <span class="count">soon</span>
-            </a>
+            @if (auth()->user()?->canDo('client.manage'))
+                <a href="{{ route('admin.clients.index') }}"
+                   class="nav-item {{ request()->routeIs('admin.clients.*') ? 'active' : '' }}">
+                    Clients
+                </a>
+            @endif
+            @if (auth()->user()?->canDo('site.manage'))
+                <a href="{{ route('admin.sites.index') }}"
+                   class="nav-item {{ request()->routeIs('admin.sites.*') ? 'active' : '' }}">
+                    Project Sites
+                </a>
+            @endif
+            @if (auth()->user()?->canDo('category.manage'))
+                <a href="{{ route('admin.service-categories.index') }}"
+                   class="nav-item {{ request()->routeIs('admin.service-categories.*') ? 'active' : '' }}">
+                    Service Categories
+                </a>
+            @endif
+            @if (auth()->user()?->canDo('settings.manage'))
+                <a href="{{ route('admin.sla-policies.index') }}"
+                   class="nav-item {{ request()->routeIs('admin.sla-policies.*') ? 'active' : '' }}">
+                    SLA Policies
+                </a>
+                <a href="{{ route('admin.tax-rates.index') }}"
+                   class="nav-item {{ request()->routeIs('admin.tax-rates.*') ? 'active' : '' }}">
+                    Tax Rates
+                </a>
+            @endif
         </div>
     </details>
-
-    {{-- SETTINGS — another collapsible parent --}}
-    @php
-        $settingsOpen = request()->routeIs('admin.business-hours.*')
-                     || request()->routeIs('admin.holidays.*');
-    @endphp
-
-    <details class="nav-group {{ $settingsOpen ? 'has-active' : '' }}" {{ $settingsOpen ? 'open' : '' }}>
-        <summary>
-            <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="3"/>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-            </svg>
-            Settings
-            <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="9 18 15 12 9 6"/>
-            </svg>
-        </summary>
-
-        <div class="nav-children">
-            <a href="#" class="nav-item disabled">
-                Business Hours <span class="count">soon</span>
-            </a>
-            <a href="#" class="nav-item disabled">
-                Holidays <span class="count">soon</span>
-            </a>
-        </div>
-    </details>
+    @endif
 
     <div class="foot">
         <span class="avatar">{{ strtoupper(substr(auth()->user()->name, 0, 2)) }}</span>
         <div style="flex-grow:1">
             <b>{{ auth()->user()->name }}</b>
-            <form method="POST" action="{{ route('logout') }}" style="margin:0">
+            <form method="POST" action="{{ Auth::guard('platform')->check() ? route('platform.logout') : route('logout') }}" style="margin:0">
                 @csrf
                 <button type="submit" class="logout-btn">Sign out</button>
             </form>

@@ -1,0 +1,43 @@
+permission_key,group,description,company_admin,operations_manager,team_lead,field_technician,front_desk,finance,client_user,scope_note
+sr.view,Service requests,See requests and their history,full,full,record_level,record_level,full,view_only,record_level,Team lead: own team. Technician: jobs assigned to them. Client: own company's sites.
+sr.create,Service requests,Raise a new request,full,full,full,record_level,full,none,record_level,"Technician: from a QR scan, for the site of the current job. Client: own sites."
+sr.approve,Service requests,Approve or reject pending requests,full,full,record_level,none,none,none,none,Team lead: own team. The admin can switch it off for a person.
+sr.assign,Service requests,"Assign or reassign technicians, set the ETA, tick the geofence and waiver boxes",full,full,record_level,none,record_level,none,none,Team lead: own team. Front desk: urgent and emergency requests only.
+sr.qc,Service requests,Pass or fail the quality check,full,full,none,none,none,none,none,"Team lead: off by default. The admin can switch it on for a person, for their own team."
+sr.cancel,Service requests,Cancel a request with a reason,full,full,none,none,record_level,none,record_level,"Front desk and client: only requests they raised, and only while Pending."
+sr.reopen,Service requests,Reopen a completed job inside the company's window,full,full,none,none,none,none,none,
+sr.override_geofence,Service requests,Approve a technician's geofence override,full,full,record_level,none,none,none,none,Team lead: own team.
+field.punch,Field work,"Punch in and out, hold, resume, capture proof",none,none,edit_own,edit_own,none,none,none,Only on jobs assigned to the person.
+expense.log,Field work,Log expenses on a job,none,none,edit_own,edit_own,none,none,none,Vendor technicians: off by default. The admin can switch it on for a person. Reports show vendor expenses separately.
+expense.approve,Field work,Approve or reject logged expenses,full,full,none,none,none,full,none,"Team lead: off by default. The admin can switch it on for a person, for their own team."
+quote.manage,Commercial,"Create, revise and send quotes",full,view_only,none,none,none,full,view_own,Client: only quotes sent to them.
+quote.respond,Commercial,Accept or reject a quote,none,none,none,none,none,none,record_level,"Client Admin only, for their own company."
+invoice.manage,Commercial,"Create, edit, send and void invoices",full,view_only,none,none,none,full,view_own,Client: only their own invoices.
+invoice.approve,Commercial,Approve an invoice,full,full,none,none,none,none,none,
+payment.record,Commercial,Record and reverse payments,full,none,none,none,none,full,none,
+asset.view,Assets and contracts,See assets and their history,full,full,record_level,record_level,full,view_only,record_level,Technician: assets on their jobs and scans. Client: only if asset visibility is on for them.
+asset.manage,Assets and contracts,"Create, edit and decommission assets",full,full,none,none,none,none,none,
+asset.import,Assets and contracts,Bulk import assets,full,full,none,none,none,none,none,
+contract.view,Assets and contracts,See contracts,full,full,none,none,view_only,view_only,view_own,Client: own contracts.
+contract.manage,Assets and contracts,"Create, edit and renew contracts",full,full,none,none,none,none,none,
+contract.choose,Assets and contracts,Choose the contract when several match,full,full,none,none,none,none,none,
+pm.view,Assets and contracts,See maintenance schedules and the calendar,full,full,record_level,none,none,none,view_own,Client: only if asset visibility is on.
+pm.manage,Assets and contracts,Create and edit maintenance schedules,full,full,none,none,none,none,none,
+form.manage,Configuration,Build and publish form templates,full,full,none,none,none,none,none,
+workflow.manage,Configuration,"Manage approval rules, if-then rules and custom statuses",full,view_only,none,none,none,none,none,
+settings.manage,Configuration,"Company settings: SLA policies, business hours, currency, reopen window",full,full,none,none,none,none,none,
+vocabulary.manage,Configuration,Rename terms such as Technician or Work Order,full,none,none,none,none,none,none,
+category.manage,Configuration,"Service categories, proof rules, invoice-mandatory setting",full,full,none,none,none,none,none,
+user.manage,"People and master data","Create and deactivate users, reset access",grantable,none,none,none,record_level,none,record_level,"Only the Company Admin adds staff and technicians. Client Admin: users of their own company. Front desk: client users only, when a client has no Client Admin."
+role.manage,"People and master data",Edit roles and give one-off permissions,grantable,none,none,none,none,none,none,
+client.manage,"People and master data","Create and edit clients, contacts and WhatsApp consent",full,full,none,none,full,view_only,none,
+site.manage,"People and master data","Create and edit sites, coordinates and radius",full,full,none,none,full,none,none,Wrong coordinates can block technicians when a job enforces the geofence. The map picker helps.
+vendor.manage,"People and master data",Create and edit vendors,full,full,none,none,none,none,none,
+dashboard.company,Insight,Company-wide dashboard,full,full,none,none,none,view_only,view_own,Client: own company's figures only. Finance: money figures.
+dashboard.team,Insight,Team and personal dashboards,full,full,record_level,view_own,view_own,none,none,Team lead: own team. Technician and front desk: their own figures.
+report.view,Insight,View reports and certificates,full,full,record_level,none,none,view_only,view_own,Client: own reports and certificates.
+report.export,Insight,Download and schedule reports,full,full,none,none,none,full,view_own,Finance: financial reports. Client: download their own.
+audit.view,Insight,Read the audit trail,full,none,none,none,none,none,none,
+notification.manage,Integration,"Notification settings, WhatsApp connection, message log and retries",full,view_only,none,none,none,none,none,
+webhook.manage,Integration,Webhook endpoints,full,none,none,none,none,none,none,
+api.manage,Integration,API tokens,full,none,none,none,none,none,none,

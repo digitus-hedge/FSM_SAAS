@@ -1,32 +1,18 @@
-@extends('layouts.app')
-
-@section('title', 'AIYWAH FSM — Platform')
-
-@section('content')
-    <div class="row">
-        <div>
-            <h1>Workspaces</h1>
-            <p class="lede">All tenants on this platform. Visit a workspace by clicking its subdomain.</p>
-        </div>
-        <a href="{{ route('tenants.create') }}" class="btn">+ New workspace</a>
-    </div>
-
-    <div class="card">
-        @forelse ($tenants as $tenant)
-            @php
-                $host  = parse_url(config('app.url'), PHP_URL_HOST);
-                $port  = parse_url(config('app.url'), PHP_URL_PORT);
-                $url   = 'http://' . $tenant->slug . '.' . $host . ($port ? ':' . $port : '') . '/dashboard';
-            @endphp
-            <div class="tenant-row">
-                <div>
-                    <a href="{{ $url }}">{{ $tenant->name }}</a><br>
-                    <small>{{ $url }}</small>
-                </div>
-                <span class="pill {{ $tenant->status !== 'active' ? 'suspended' : '' }}">{{ $tenant->status }}</span>
-            </div>
-        @empty
-            <p style="color:#5F5D6E">No workspaces yet. Create your first one.</p>
-        @endforelse
-    </div>
-@endsection
+<!doctype html>
+<title>Platform admin</title>
+<style>body{font:14px/1.5 system-ui;padding:40px;max-width:720px;margin:0 auto}</style>
+<h1>Platform admin</h1>
+<p>Signed in as <strong>{{ auth('platform')->user()->email }}</strong>.</p>
+<p>Role: <code>{{ auth('platform')->user()->platform_role }}</code>.</p>
+<form method="POST" action="{{ route('platform.logout') }}">
+    @csrf
+    <button type="submit">Sign out</button>
+</form>
+<h2>Tenants ({{ $tenants->count() }})</h2>
+<ul>
+    @forelse ($tenants as $t)
+        <li>{{ $t->name }} ({{ $t->slug }}) — {{ $t->status }}</li>
+    @empty
+        <li>No tenants yet.</li>
+    @endforelse
+</ul>

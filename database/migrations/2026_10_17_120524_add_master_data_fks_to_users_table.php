@@ -9,7 +9,7 @@ return new class extends Migration {
         Schema::table('users', function (Blueprint $table) {
             // Add the columns first (if they don't exist yet)
             if (!Schema::hasColumn('users', 'client_id')) {
-                $table->unsignedBigInteger('client_id')->nullable()->after('is_platform_admin');
+                $table->unsignedBigInteger('client_id')->nullable()->after('password');
             }
             if (!Schema::hasColumn('users', 'vendor_id')) {
                 $table->unsignedBigInteger('vendor_id')->nullable()->after('client_id');

@@ -8,15 +8,17 @@ use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        $this->call([
-            PermissionSeeder::class,
-            TenantSeeder::class,
-            RoleSeeder::class,
-        ]);
+        // Always
+        $this->call(PermissionCatalogSeeder::class);
+        $this->call(PlanSeeder::class);
+        $this->call(PlatformUserSeeder::class);
+
+        // Local and staging only — never prod
+        if (app()->environment('local', 'staging', 'testing')) {
+            // $this->call(DemoTenantsSeeder::class);
+        }
     }
 }
+

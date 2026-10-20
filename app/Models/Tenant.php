@@ -1,10 +1,9 @@
 <?php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\{BelongsTo, HasMany};
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Tenant extends Model
@@ -14,36 +13,38 @@ class Tenant extends Model
     protected $guarded = [];
 
     protected $casts = [
-        'activated_at' => 'datetime',
-        'suspended_at' => 'datetime',
+        'activated_at'  => 'datetime',
+        'suspended_at'  => 'datetime',
+        'trial_ends_on' => 'date',   // SCH-05 / D10
     ];
 
-    /** Members = users with a membership in this tenant. */
-    public function members(): BelongsToMany
+    /** Users belong to one tenant (AT-22). Was a BelongsToMany via tenant_memberships. */
+    public function users(): HasMany
     {
-        return $this->belongsToMany(User::class, 'tenant_memberships')
-            ->withPivot(['role', 'status', 'joined_at'])
-            ->withTimestamps();
+        return $this->hasMany(User::class);
+    }
+
+    public function plan(): BelongsTo
+    {
+        return $this->belongsTo(Plan::class);
+    }
+
+    public function roles(): HasMany
+    {
+        return $this->hasMany(Role::class);
     }
 
     public function isActive(): bool
     {
-        return $this->status === 'active';
+        return in_array($this->status, ['active', 'trial'], true);
     }
 
     /* ────────────────────────────────────────
-       Current-tenant context (set by TenantResolver middleware)
-       Any BelongsToTenant model reads from here.
+       Current-tenant context (set by TenantResolver middleware).
+       Any tenant-scoped model reads from here.
     ─────────────────────────────────────── */
     protected static ?Tenant $current = null;
 
-    public static function current(): ?Tenant
-    {
-        return static::$current;
-    }
-
-    public static function setCurrent(?Tenant $tenant): void
-    {
-        static::$current = $tenant;
-    }
+    public static function current(): ?Tenant { return static::$current; }
+    public static function setCurrent(?Tenant $tenant): void { static::$current = $tenant; }
 }

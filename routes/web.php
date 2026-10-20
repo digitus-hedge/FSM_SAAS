@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Admin\TenantController;
-
 use App\Http\Controllers\Admin\ClientsController;
 use App\Http\Controllers\Admin\ClientContactsController;
 use App\Http\Controllers\Admin\ProjectSitesController;
@@ -9,13 +8,24 @@ use App\Http\Controllers\Admin\SlaPoliciesController;
 use App\Http\Controllers\Admin\TaxRatesController;
 use App\Http\Controllers\Admin\ServiceCategoriesController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Web\PlatformAuthView;
 use App\Http\Controllers\Tenant\MembersController;
 use App\Models\Tenant;
 use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Auth (public)
+| Platform admin sign-in (platform_users table — owner@aiywah.app, etc.)
+|--------------------------------------------------------------------------
+*/
+Route::get('/admin/login',   [PlatformAuthView::class, 'login'])->name('platform.login');
+Route::post('/admin/login',  [PlatformAuthView::class, 'loginStub'])->name('platform.login.attempt');
+Route::post('/admin/logout', [PlatformAuthView::class, 'logout'])
+    ->middleware('auth:platform')->name('platform.logout');
+
+/*
+|--------------------------------------------------------------------------
+| Company user sign-in (staff + clients on a tenant subdomain)
 |--------------------------------------------------------------------------
 */
 Route::get('/login',   [AuthController::class, 'showLogin'])->name('login');
@@ -24,35 +34,27 @@ Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->n
 
 /*
 |--------------------------------------------------------------------------
-| Root — redirect to login OR the right dashboard
+| Root — redirect to the right dashboard or login
 |--------------------------------------------------------------------------
 */
 Route::get('/', function () {
-    if (! auth()->check()) {
-        return redirect()->route('login');
-    }
-
-    // Signed in on a tenant subdomain → tenant dashboard
-    if (Tenant::current()) {
-        return redirect()->route('tenant.dashboard');
-    }
-
-    // Signed in on the platform host → platform console (if admin)
-    if (auth()->user()->is_platform_admin) {
+    if (auth('platform')->check()) {
         return redirect()->route('admin.dashboard');
     }
-
-    // Signed in but has nowhere to go — log out
-    auth()->logout();
+    if (auth('web')->check()) {
+        return Tenant::current()
+            ? redirect()->route('tenant.dashboard')
+            : redirect()->route('login');
+    }
     return redirect()->route('login');
 })->name('home');
 
 /*
 |--------------------------------------------------------------------------
-| Platform admin area  (/admin/* on the root host, platform admins only)
+| Platform admin area  (/admin/*, platform admins only)
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'platform.admin'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth:platform'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/',                              [TenantController::class, 'index'])->name('dashboard');
     Route::get('/tenants/create',                [TenantController::class, 'create'])->name('tenants.create');
     Route::post('/tenants',                      [TenantController::class, 'store'])->name('tenants.store');
@@ -62,7 +64,7 @@ Route::middleware(['auth', 'platform.admin'])->prefix('admin')->name('admin.')->
 
 /*
 |--------------------------------------------------------------------------
-| Tenant workspace  (on a tenant subdomain, authenticated members)
+| Tenant workspace  (authenticated company users)
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth'])->group(function () {
@@ -73,22 +75,17 @@ Route::middleware(['auth'])->group(function () {
         return view('tenant.dashboard', compact('tenant'));
     })->name('tenant.dashboard');
 
-    // Members — Company Admins only
-    Route::middleware(['tenant.role:company_admin'])
-        ->prefix('members')
-        ->name('tenant.members.')
-        ->group(function () {
-            Route::get('/',                   [MembersController::class, 'index'])->name('index');
-            Route::get('/create',             [MembersController::class, 'create'])->name('create');
-            Route::post('/',                  [MembersController::class, 'store'])->name('store');
-            Route::post('/{user}/suspend',    [MembersController::class, 'suspend'])->name('suspend');
-            Route::post('/{user}/reactivate', [MembersController::class, 'reactivate'])->name('reactivate');
-        });
+    // Members
+    Route::prefix('members')->name('tenant.members.')->group(function () {
+        Route::get('/',                   [MembersController::class, 'index'])->name('index');
+        Route::get('/create',             [MembersController::class, 'create'])->name('create');
+        Route::post('/',                  [MembersController::class, 'store'])->name('store');
+        Route::post('/{user}/suspend',    [MembersController::class, 'suspend'])->name('suspend');
+        Route::post('/{user}/reactivate', [MembersController::class, 'reactivate'])->name('reactivate');
+    });
 
-    Route::middleware(['auth', 'tenant.role:company_admin'])
-    ->prefix('admin/clients')
-    ->name('admin.clients.')
-    ->group(function () {
+    // Clients + contacts
+    Route::prefix('admin/clients')->name('admin.clients.')->group(function () {
         Route::get('/',                      [ClientsController::class, 'index'])->name('index');
         Route::get('/create',                [ClientsController::class, 'create'])->name('create');
         Route::post('/',                     [ClientsController::class, 'store'])->name('store');
@@ -98,7 +95,6 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{client}/reactivate',  [ClientsController::class, 'reactivate'])->name('reactivate');
         Route::delete('/{client}',           [ClientsController::class, 'destroy'])->name('destroy');
 
-        // NESTED — contacts under a client
         Route::prefix('{client}/contacts')->name('contacts.')->group(function () {
             Route::post('/',             [ClientContactsController::class, 'store'])->name('store');
             Route::put('/{contact}',     [ClientContactsController::class, 'update'])->name('update');
@@ -106,63 +102,50 @@ Route::middleware(['auth'])->group(function () {
         });
     });
 
-    // Sites  ← NEW
-    Route::middleware(['auth', 'tenant.role:company_admin'])
-        ->prefix('admin/sites')
-        ->name('admin.sites.')
-        ->group(function () {
-            Route::get('/',                      [ProjectSitesController::class, 'index'])->name('index');
-            Route::get('/create',                [ProjectSitesController::class, 'create'])->name('create');
-            Route::post('/',                     [ProjectSitesController::class, 'store'])->name('store');
-            Route::get('/{site}/edit',           [ProjectSitesController::class, 'edit'])->name('edit');
-            Route::put('/{site}',                [ProjectSitesController::class, 'update'])->name('update');
-            Route::post('/{site}/suspend',       [ProjectSitesController::class, 'suspend'])->name('suspend');
-            Route::post('/{site}/reactivate',    [ProjectSitesController::class, 'reactivate'])->name('reactivate');
-            Route::delete('/{site}',             [ProjectSitesController::class, 'destroy'])->name('destroy');
-        });
+    // Sites
+    Route::prefix('admin/sites')->name('admin.sites.')->group(function () {
+        Route::get('/',                      [ProjectSitesController::class, 'index'])->name('index');
+        Route::get('/create',                [ProjectSitesController::class, 'create'])->name('create');
+        Route::post('/',                     [ProjectSitesController::class, 'store'])->name('store');
+        Route::get('/{site}/edit',           [ProjectSitesController::class, 'edit'])->name('edit');
+        Route::put('/{site}',                [ProjectSitesController::class, 'update'])->name('update');
+        Route::post('/{site}/suspend',       [ProjectSitesController::class, 'suspend'])->name('suspend');
+        Route::post('/{site}/reactivate',    [ProjectSitesController::class, 'reactivate'])->name('reactivate');
+        Route::delete('/{site}',             [ProjectSitesController::class, 'destroy'])->name('destroy');
+    });
 
-        // Service Categories — Company Admins only
-    Route::middleware(['auth', 'tenant.role:company_admin'])
-        ->prefix('admin/service-categories')
-        ->name('admin.service-categories.')
-        ->group(function () {
-            Route::get('/',                        [ServiceCategoriesController::class, 'index'])->name('index');
-            Route::get('/create',                  [ServiceCategoriesController::class, 'create'])->name('create');
-            Route::post('/',                       [ServiceCategoriesController::class, 'store'])->name('store');
-            Route::get('/{category}/edit',         [ServiceCategoriesController::class, 'edit'])->name('edit');
-            Route::put('/{category}',              [ServiceCategoriesController::class, 'update'])->name('update');
-            Route::post('/{category}/suspend',     [ServiceCategoriesController::class, 'suspend'])->name('suspend');
-            Route::post('/{category}/reactivate',  [ServiceCategoriesController::class, 'reactivate'])->name('reactivate');
-            Route::delete('/{category}',           [ServiceCategoriesController::class, 'destroy'])->name('destroy');
-     });
+    // Service Categories
+    Route::prefix('admin/service-categories')->name('admin.service-categories.')->group(function () {
+        Route::get('/',                        [ServiceCategoriesController::class, 'index'])->name('index');
+        Route::get('/create',                  [ServiceCategoriesController::class, 'create'])->name('create');
+        Route::post('/',                       [ServiceCategoriesController::class, 'store'])->name('store');
+        Route::get('/{category}/edit',         [ServiceCategoriesController::class, 'edit'])->name('edit');
+        Route::put('/{category}',              [ServiceCategoriesController::class, 'update'])->name('update');
+        Route::post('/{category}/suspend',     [ServiceCategoriesController::class, 'suspend'])->name('suspend');
+        Route::post('/{category}/reactivate',  [ServiceCategoriesController::class, 'reactivate'])->name('reactivate');
+        Route::delete('/{category}',           [ServiceCategoriesController::class, 'destroy'])->name('destroy');
+    });
 
-        // SLA Policies — Company Admins only
-    Route::middleware(['auth', 'tenant.role:company_admin'])
-        ->prefix('admin/sla-policies')
-        ->name('admin.sla-policies.')
-        ->group(function () {
-            Route::get('/',                   [SlaPoliciesController::class, 'index'])->name('index');
-            Route::get('/create',             [SlaPoliciesController::class, 'create'])->name('create');
-            Route::post('/',                  [SlaPoliciesController::class, 'store'])->name('store');
-            Route::get('/{policy}/edit',      [SlaPoliciesController::class, 'edit'])->name('edit');
-            Route::put('/{policy}',           [SlaPoliciesController::class, 'update'])->name('update');
-            Route::delete('/{policy}',        [SlaPoliciesController::class, 'destroy'])->name('destroy');
-        });
+    // SLA Policies
+    Route::prefix('admin/sla-policies')->name('admin.sla-policies.')->group(function () {
+        Route::get('/',                   [SlaPoliciesController::class, 'index'])->name('index');
+        Route::get('/create',             [SlaPoliciesController::class, 'create'])->name('create');
+        Route::post('/',                  [SlaPoliciesController::class, 'store'])->name('store');
+        Route::get('/{policy}/edit',      [SlaPoliciesController::class, 'edit'])->name('edit');
+        Route::put('/{policy}',           [SlaPoliciesController::class, 'update'])->name('update');
+        Route::delete('/{policy}',        [SlaPoliciesController::class, 'destroy'])->name('destroy');
+    });
 
-            // Tax Rates — Company Admins only
-    Route::middleware(['auth', 'tenant.role:company_admin'])
-        ->prefix('admin/tax-rates')
-        ->name('admin.tax-rates.')
-        ->group(function () {
-            Route::get('/',                       [TaxRatesController::class, 'index'])->name('index');
-            Route::get('/create',                 [TaxRatesController::class, 'create'])->name('create');
-            Route::post('/',                      [TaxRatesController::class, 'store'])->name('store');
-            Route::get('/{rate}/edit',            [TaxRatesController::class, 'edit'])->name('edit');
-            Route::put('/{rate}',                 [TaxRatesController::class, 'update'])->name('update');
-            Route::delete('/{rate}',              [TaxRatesController::class, 'destroy'])->name('destroy');
-            Route::post('/{rate}/suspend',        [TaxRatesController::class, 'suspend'])->name('suspend');
-            Route::post('/{rate}/reactivate',     [TaxRatesController::class, 'reactivate'])->name('reactivate');
-            Route::post('/{rate}/set-default',    [TaxRatesController::class, 'setDefault'])->name('set-default');
-        });
-    
+    // Tax Rates
+    Route::prefix('admin/tax-rates')->name('admin.tax-rates.')->group(function () {
+        Route::get('/',                       [TaxRatesController::class, 'index'])->name('index');
+        Route::get('/create',                 [TaxRatesController::class, 'create'])->name('create');
+        Route::post('/',                      [TaxRatesController::class, 'store'])->name('store');
+        Route::get('/{rate}/edit',            [TaxRatesController::class, 'edit'])->name('edit');
+        Route::put('/{rate}',                 [TaxRatesController::class, 'update'])->name('update');
+        Route::delete('/{rate}',              [TaxRatesController::class, 'destroy'])->name('destroy');
+        Route::post('/{rate}/suspend',        [TaxRatesController::class, 'suspend'])->name('suspend');
+        Route::post('/{rate}/reactivate',     [TaxRatesController::class, 'reactivate'])->name('reactivate');
+        Route::post('/{rate}/set-default',    [TaxRatesController::class, 'setDefault'])->name('set-default');
+    });
 });

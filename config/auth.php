@@ -36,11 +36,17 @@ return [
     */
 
     'guards' => [
-        'web' => [
-            'driver' => 'session',
-            'provider' => 'users',
-        ],
+    'web' => [
+        'driver' => 'session',
+        'provider' => 'users',
     ],
+
+    // Platform admin sign-in (platform_users table).
+    'platform' => [
+        'driver' => 'session',
+        'provider' => 'platform_users',
+    ],
+],
 
     /*
     |--------------------------------------------------------------------------
@@ -57,19 +63,19 @@ return [
     |
     | Supported: "database", "eloquent"
     |
-    */
-
+        */
     'providers' => [
-        'users' => [
-            'driver' => 'eloquent',
-            'model' => env('AUTH_MODEL', App\Models\User::class),
-        ],
-
-        // 'users' => [
-        //     'driver' => 'database',
-        //     'table' => 'users',
-        // ],
+    'users' => [
+        'driver' => 'eloquent',
+        'model' => App\Models\User::class,
     ],
+
+    // Platform admin provider — separate table.
+    'platform_users' => [
+        'driver' => 'eloquent',
+        'model' => App\Models\PlatformUser::class,
+    ],
+],
 
     /*
     |--------------------------------------------------------------------------
