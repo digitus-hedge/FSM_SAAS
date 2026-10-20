@@ -18,15 +18,37 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
 .shell{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
 
 /* SIDEBAR */
-.side{background:#fff;border-right:1px solid var(--line);padding:22px 14px;display:flex;flex-direction:column;gap:4px}
+.side{background:#fff;border-right:1px solid var(--line);padding:22px 14px;display:flex;flex-direction:column;gap:2px}
 .brand{display:flex;align-items:center;gap:10px;padding:0 10px 20px;color:var(--ink);font-family:'Figtree';font-size:18px;font-weight:700;letter-spacing:-.3px;text-decoration:none}
 .brand .logo{width:34px;height:34px;border-radius:9px;background:var(--ink);color:var(--yellow);display:flex;align-items:center;justify-content:center;font-weight:700}
 .brand small{display:block;font-family:'DM Sans';font-size:11px;font-weight:400;color:var(--muted);letter-spacing:0;margin-top:1px}
+
 .nav-item{display:flex;align-items:center;gap:10px;font-size:14px;padding:10px 12px;border-radius:999px;color:var(--ink);text-decoration:none}
 .nav-item:hover{background:var(--soft)}
 .nav-item.active{background:var(--yellow-soft);color:var(--amber);font-weight:600}
 .nav-item svg{flex-shrink:0;color:var(--muted)}
 .nav-item.active svg{color:var(--amber)}
+
+/* Collapsible parent menu */
+.nav-group{list-style:none}
+.nav-group > summary{
+  display:flex;align-items:center;gap:10px;font-size:14px;padding:10px 12px;border-radius:999px;
+  color:var(--ink);cursor:pointer;user-select:none;list-style:none;position:relative;
+}
+.nav-group > summary::-webkit-details-marker{display:none}
+.nav-group > summary:hover{background:var(--soft)}
+.nav-group > summary svg.chev{margin-left:auto;transition:transform .18s ease;color:var(--muted)}
+.nav-group[open] > summary svg.chev{transform:rotate(90deg)}
+.nav-group.has-active > summary{background:var(--yellow-soft);color:var(--amber);font-weight:600}
+.nav-group.has-active > summary svg.icon{color:var(--amber)}
+
+/* Children inside parent */
+.nav-children{display:flex;flex-direction:column;gap:2px;padding:4px 0 6px 32px;margin-top:2px}
+.nav-children .nav-item{padding:8px 12px;font-size:13px;border-radius:8px}
+.nav-children .nav-item.active{background:var(--yellow-soft);color:var(--amber)}
+.nav-children .nav-item.disabled{color:var(--subtle);cursor:not-allowed;pointer-events:none}
+.nav-children .nav-item .count{margin-left:auto;font-size:10px;color:var(--subtle);background:transparent;padding:0}
+
 .side .foot{margin-top:auto;display:flex;align-items:center;gap:10px;padding:12px 10px;border-top:1px solid var(--line)}
 .avatar{width:34px;height:34px;border-radius:50%;background:var(--yellow-soft);color:var(--amber);font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .side .foot b{color:var(--ink);font-size:13px;display:block;line-height:1.2}
@@ -35,8 +57,27 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
 
 /* CONTENT */
 .content{padding:28px 44px 48px;overflow:hidden}
-.flash{background:var(--green-soft);color:var(--green);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-weight:600;font-size:14px}
-.err-flash{background:var(--red-soft);color:var(--red);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-weight:600;font-size:14px}
+
+/* SweetAlert2 — brand-matched */
+.swal2-popup{font-family:'DM Sans',system-ui,sans-serif!important;border-radius:16px!important;padding:28px!important}
+.swal2-title{font-family:'Figtree'!important;font-size:20px!important;font-weight:700!important;color:var(--ink)!important}
+.swal2-html-container{font-size:13px!important;color:var(--muted)!important;margin-top:6px!important}
+.swal2-confirm.swal2-styled{background:var(--yellow)!important;color:var(--ink)!important;font-family:'DM Sans'!important;font-weight:600!important;font-size:13px!important;border-radius:999px!important;padding:10px 20px!important;box-shadow:none!important}
+.swal2-confirm.swal2-styled:hover{background:#F0B700!important}
+.swal2-cancel.swal2-styled{background:#fff!important;color:var(--ink)!important;border:1px solid var(--line)!important;font-family:'DM Sans'!important;font-weight:600!important;font-size:13px!important;border-radius:999px!important;padding:10px 20px!important}
+.swal2-icon.swal2-error{border-color:var(--red)!important;color:var(--red)!important}
+.swal2-icon.swal2-success{border-color:var(--green)!important;color:var(--green)!important}
+.swal2-icon.swal2-warning{border-color:var(--yellow)!important;color:var(--amber)!important}
+.swal2-icon.swal2-error [class^='swal2-x-mark-line']{background-color:var(--red)!important}
+.swal2-icon.swal2-success [class^='swal2-success-line']{background-color:var(--green)!important}
+.swal2-toast{font-family:'DM Sans'!important;border-radius:12px!important;box-shadow:0 8px 24px rgba(0,0,0,.08)!important;border:1px solid var(--line)!important}
+.swal2-toast .swal2-title{font-size:13px!important;color:var(--ink)!important}
+
+.swal-btn-red.swal2-confirm.swal2-styled{background:var(--red)!important;color:#fff!important}
+.swal-btn-red.swal2-confirm.swal2-styled:hover{background:#A52E15!important}
+.swal-btn-amber.swal2-confirm.swal2-styled{background:var(--yellow)!important;color:var(--ink)!important}
+.swal-btn-green.swal2-confirm.swal2-styled{background:var(--green)!important;color:#fff!important}
+.swal-btn-green.swal2-confirm.swal2-styled:hover{background:#006756!important}
 </style>
 </head>
 <body>
@@ -48,6 +89,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
         <span>AIYWAH FSM<small>Platform console</small></span>
     </a>
 
+    {{-- Dashboard --}}
     <a href="{{ route('admin.dashboard') }}" class="nav-item {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
         Workspaces
@@ -57,6 +99,96 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
         New workspace
     </a>
+
+    {{-- MASTER DATA — collapsible parent with children --}}
+    @php
+        $masterOpen = request()->routeIs('admin.clients.*')
+                   || request()->routeIs('admin.sites.*')
+                   || request()->routeIs('admin.service-categories.*')
+                   || request()->routeIs('admin.sla-policies.*')
+                   || request()->routeIs('admin.tax-rates.*')
+                   || request()->routeIs('admin.expense-categories.*')
+                   || request()->routeIs('admin.hold-reasons.*')
+                   || request()->routeIs('admin.vendors.*');
+    @endphp
+
+    <details class="nav-group {{ $masterOpen ? 'has-active' : '' }}" {{ $masterOpen ? 'open' : '' }}>
+        <summary>
+            <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/>
+            </svg>
+            Master Data
+            <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"/>
+            </svg>
+        </summary>
+
+        <div class="nav-children">
+            <a href="{{ route('admin.clients.index') }}"
+               class="nav-item {{ request()->routeIs('admin.clients.*') ? 'active' : '' }}">
+                Clients
+            </a>
+
+              <a href="{{ route('admin.sites.index') }}"
+           class="nav-item {{ request()->routeIs('admin.sites.*') ? 'active' : '' }}">
+            Project Sites
+        </a>
+            <a href="{{ route('admin.service-categories.index') }}"
+   class="nav-item {{ request()->routeIs('admin.service-categories.*') ? 'active' : '' }}">
+    Service Categories
+</a>
+
+          <a href="{{ route('admin.sla-policies.index') }}"
+   class="nav-item {{ request()->routeIs('admin.sla-policies.*') ? 'active' : '' }}">
+    SLA Policies
+</a>
+
+           <a href="{{ route('admin.tax-rates.index') }}"
+   class="nav-item {{ request()->routeIs('admin.tax-rates.*') ? 'active' : '' }}">
+    Tax Rates
+</a>
+
+            <a href="#" class="nav-item disabled">
+                Expense Categories <span class="count">soon</span>
+            </a>
+
+            <a href="#" class="nav-item disabled">
+                Hold Reasons <span class="count">soon</span>
+            </a>
+
+            <a href="#" class="nav-item disabled">
+                Vendors <span class="count">soon</span>
+            </a>
+        </div>
+    </details>
+
+    {{-- SETTINGS — another collapsible parent --}}
+    @php
+        $settingsOpen = request()->routeIs('admin.business-hours.*')
+                     || request()->routeIs('admin.holidays.*');
+    @endphp
+
+    <details class="nav-group {{ $settingsOpen ? 'has-active' : '' }}" {{ $settingsOpen ? 'open' : '' }}>
+        <summary>
+            <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+            Settings
+            <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"/>
+            </svg>
+        </summary>
+
+        <div class="nav-children">
+            <a href="#" class="nav-item disabled">
+                Business Hours <span class="count">soon</span>
+            </a>
+            <a href="#" class="nav-item disabled">
+                Holidays <span class="count">soon</span>
+            </a>
+        </div>
+    </details>
 
     <div class="foot">
         <span class="avatar">{{ strtoupper(substr(auth()->user()->name, 0, 2)) }}</span>
@@ -71,16 +203,76 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
 </nav>
 
 <main class="content">
-    @if (session('success'))
-        <div class="flash">{{ session('success') }}</div>
-    @endif
-    @if ($errors->any() && ! $errors->has('email'))
-        <div class="err-flash">{{ $errors->first() }}</div>
-    @endif
-
     @yield('content')
 </main>
 
 </div>
+
+{{-- SweetAlert2 — loaded globally so any page can call Swal.fire() --}}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.all.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    // Success toast — fires whenever session('success') is set
+    @if (session('success'))
+    Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'success',
+        title: @json(session('success')),
+        showConfirmButton: false,
+        timer: 3500,
+        timerProgressBar: true
+    });
+    @endif
+
+    // Error popup — fires whenever validation errors exist
+    @if ($errors->any() && ! $errors->has('email'))
+    Swal.fire({
+        icon: 'error',
+        title: 'Please check your form',
+        html: @json(
+            $errors->count() . ' field' . ($errors->count() === 1 ? '' : 's')
+            . ' need' . ($errors->count() === 1 ? 's' : '') . ' attention. '
+            . 'Scroll down to see what to fix.'
+        ),
+        confirmButtonText: 'Got it'
+    }).then(() => {
+        const firstBad = document.querySelector('.input.has-error, .has-error');
+        if (firstBad) {
+            firstBad.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            firstBad.focus({ preventScroll: true });
+        }
+    });
+    @endif
+
+    // Global confirm — any form with class="needs-confirm" shows SweetAlert instead of browser confirm
+    document.querySelectorAll('form.needs-confirm').forEach(function (form) {
+        form.addEventListener('submit', function (e) {
+            if (form.dataset.confirmed === '1') return;   // already confirmed, let it submit
+            e.preventDefault();
+
+            Swal.fire({
+                icon: 'warning',
+                title: form.dataset.confirmTitle || 'Are you sure?',
+                text:  form.dataset.confirmText  || '',
+                showCancelButton: true,
+                confirmButtonText: form.dataset.confirmOk || 'Yes, continue',
+                cancelButtonText: 'Cancel',
+                reverseButtons: true,
+                focusCancel: true,
+                customClass: { confirmButton: 'swal-btn-' + (form.dataset.confirmOkColor || 'amber') }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    form.dataset.confirmed = '1';
+                    form.submit();
+                }
+            });
+        });
+    });
+
+});
+</script>
+
 </body>
 </html>
