@@ -103,7 +103,14 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
                    || request()->routeIs('admin.sites.*')
                    || request()->routeIs('admin.service-categories.*')
                    || request()->routeIs('admin.sla-policies.*')
-                   || request()->routeIs('admin.tax-rates.*');
+                   || request()->routeIs('admin.tax-rates.*')
+                   || request()->routeIs('admin.hold-reasons.*')
+                   || request()->routeIs('admin.expense-categories.*')
+                   || request()->routeIs('admin.tenant-holidays.*')
+                   || request()->routeIs('admin.vendors.*')
+                   || request()->routeIs('admin.tenant-business-hours.*');
+                   
+
     @endphp
 
     @if (auth()->user()?->canDo('client.manage') || auth()->user()?->canDo('site.manage') || auth()->user()?->canDo('category.manage') || auth()->user()?->canDo('settings.manage'))
@@ -146,6 +153,33 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
                    class="nav-item {{ request()->routeIs('admin.tax-rates.*') ? 'active' : '' }}">
                     Tax Rates
                 </a>
+
+                <a href="{{ route('admin.hold-reasons.index') }}"
+                class="nav-item {{ request()->routeIs('admin.hold-reasons.*') ? 'active' : '' }}">
+                Hold Reasons
+                </a>
+
+                  <a href="{{ route('admin.expense-categories.index') }}"
+                class="nav-item {{ request()->routeIs('admin.expense-categories.*') ? 'active' : '' }}">
+                Expense Categories
+                </a>
+
+                <a href="{{ route('admin.tenant-holidays.index') }}"
+   class="nav-item {{ request()->routeIs('admin.tenant-holidays.*') ? 'active' : '' }}">
+    Holidays
+</a>
+
+<a href="{{ route('admin.vendors.index') }}"
+   class="nav-item {{ request()->routeIs('admin.vendors.*') ? 'active' : '' }}">
+    Vendors
+</a>
+
+<a href="{{ route('admin.tenant-business-hours.index') }}"
+   class="nav-item {{ request()->routeIs('admin.tenant-business-hours.*') ? 'active' : '' }}">
+    Business Hours
+</a>
+
+
             @endif
         </div>
     </details>
