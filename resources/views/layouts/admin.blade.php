@@ -53,11 +53,6 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
         Workspaces
     </a>
 
-    <a href="{{ route('admin.tenants.create') }}" class="nav-item {{ request()->routeIs('admin.tenants.create') ? 'active' : '' }}">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-        New workspace
-    </a>
-
     <div class="foot">
         <span class="avatar">{{ strtoupper(substr(auth()->user()->name, 0, 2)) }}</span>
         <div style="flex-grow:1">
