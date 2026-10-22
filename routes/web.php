@@ -251,5 +251,3 @@ Route::post('/two-factor/challenge', [\App\Http\Controllers\TwoFactorController:
         Route::put('/',  [TenantBusinessHourController::class, 'update'])->name('update');
     });
 
-    
-});

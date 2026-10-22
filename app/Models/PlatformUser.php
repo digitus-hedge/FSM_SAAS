@@ -36,20 +36,26 @@ class PlatformUser extends Authenticatable
      *  - finance → read only (plans + companies)
      */
     public function canDo(string $ability): bool
-{
-    // Platform admins only hold platform-scoped abilities.
-    // Tenant keys (client.manage, site.manage, etc.) are never true here —
-    // platform admins don't belong to a tenant, so tenant-scoped work doesn't apply.
-    $platformAbilities = match ($this->platform_role) {
-        'owner'   => ['tenants.view', 'tenants.create', 'tenants.suspend',
-                      'tenants.reactivate', 'tenants.resend_invitation',
-                      'tenants.reset_two_factor', 'plans.view', 'plans.manage'],
-        'support' => ['tenants.view', 'tenants.resend_invitation',
-                      'tenants.reset_two_factor', 'plans.view'],
-        'finance' => ['tenants.view', 'plans.view'],
-        default   => [],
-    };
+    {
+        // Platform admins only hold platform-scoped abilities.
+        // Tenant keys (client.manage, site.manage, etc.) are never true here —
+        // platform admins don't belong to a tenant, so tenant-scoped work doesn't apply.
+        $platformAbilities = match ($this->platform_role) {
+            'owner'   => ['tenants.view', 'tenants.create', 'tenants.suspend',
+                        'tenants.reactivate', 'tenants.resend_invitation',
+                        'tenants.reset_two_factor', 'plans.view', 'plans.manage'],
+            'support' => ['tenants.view', 'tenants.resend_invitation',
+                        'tenants.reset_two_factor', 'plans.view'],
+            'finance' => ['tenants.view', 'plans.view'],
+            default   => [],
+        };
 
-    return in_array($ability, $platformAbilities, true);
-}
+        return in_array($ability, $platformAbilities, true);
+    }
+
+    public function hasAccessToTenant($tenant): bool
+    {
+        // Platform admins can access every tenant by design.
+        return true;
+    }
 }
