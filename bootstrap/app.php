@@ -11,20 +11,20 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
-
     ->withMiddleware(function (Middleware $middleware) {
+        // All global web middleware in ONE call — Laravel 12 only honours the last.
         $middleware->web(append: [
             \App\Http\Middleware\TenantResolver::class,
+            \App\Http\Middleware\ForcePasswordChange::class,
+            \App\Http\Middleware\TouchDevice::class,
         ]);
 
         $middleware->alias([
-            'platform.admin' => \App\Http\Middleware\EnsurePlatformAdmin::class,
-            'tenant.role'    => \App\Http\Middleware\EnsureTenantRole::class,
+            'platform.admin'      => \App\Http\Middleware\EnsurePlatformAdmin::class,
+            'tenant.role'         => \App\Http\Middleware\EnsureTenantRole::class,
+            'platform.2fa'        => \App\Http\Middleware\EnsurePlatformTwoFactor::class,   // ← added
         ]);
     })
-    
     ->withExceptions(function (Exceptions $exceptions) {
         //
     })->create();
-
-    

@@ -10,38 +10,36 @@ class PlatformUserSeeder extends Seeder
 {
     public function run(): void
     {
+        $defaults = [
+            // 2FA is set up on first sign-in via the EnsurePlatformTwoFactor middleware.
+            'two_factor_secret'       => null,
+            'two_factor_confirmed_at' => null,
+        ];
+
         PlatformUser::updateOrCreate(
             ['email' => 'owner@aiywah.app'],
-            [
+            $defaults + [
                 'name'          => 'Platform Owner',
-                'password'      => Hash::make('Aiywah#2026'),   // matches demo-creds doc
+                'password'      => Hash::make('Aiywah#2026'),
                 'platform_role' => 'owner',
-                // Mandatory 2FA per D8. The demo authenticator code is 123456
-                // (fake TOTP in local/dev, real secret in prod).
-                'two_factor_secret' => encrypt('DEMO123456FAKESECRET'),
-                'two_factor_confirmed_at' => now(),
             ],
         );
 
         PlatformUser::updateOrCreate(
             ['email' => 'support@aiywah.app'],
-            [
+            $defaults + [
                 'name'          => 'Platform Support',
                 'password'      => Hash::make('Aiywah#2026'),
                 'platform_role' => 'support',
-                'two_factor_secret' => encrypt('DEMO123456FAKESECRET'),
-                'two_factor_confirmed_at' => now(),
             ],
         );
 
         PlatformUser::updateOrCreate(
             ['email' => 'finance@aiywah.app'],
-            [
+            $defaults + [
                 'name'          => 'Platform Finance',
                 'password'      => Hash::make('Aiywah#2026'),
                 'platform_role' => 'finance',
-                'two_factor_secret' => encrypt('DEMO123456FAKESECRET'),
-                'two_factor_confirmed_at' => now(),
             ],
         );
     }

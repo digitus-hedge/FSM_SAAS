@@ -10,12 +10,9 @@ class EnsurePlatformAdmin
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $user = $request->user();
-
-        if (! $user || ! $user->is_platform_admin) {
+        if (! \Illuminate\Support\Facades\Auth::guard('platform')->check()) {
             abort(403, 'Platform admin access required.');
         }
-
         return $next($request);
     }
 }

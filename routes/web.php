@@ -54,7 +54,7 @@ Route::get('/', function () {
 | Platform admin area  (/admin/*, platform admins only)
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth:platform'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth:platform', 'platform.2fa'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/',                              [TenantController::class, 'index'])->name('dashboard');
     Route::get('/tenants/create',                [TenantController::class, 'create'])->name('tenants.create');
     Route::post('/tenants',                      [TenantController::class, 'store'])->name('tenants.store');
@@ -67,6 +67,10 @@ Route::middleware(['auth:platform'])->prefix('admin')->name('admin.')->group(fun
 | Tenant workspace  (authenticated company users)
 |--------------------------------------------------------------------------
 */
+// Invitation accept — public, token-gated.
+Route::get('/invitation/{token}',  [AuthController::class, 'showAcceptInvitation'])->name('invitation.accept');
+Route::post('/invitation/{token}', [AuthController::class, 'acceptInvitation'])->name('invitation.accept.submit');
+
 Route::middleware(['auth'])->group(function () {
 
     Route::get('/dashboard', function () {
@@ -75,13 +79,18 @@ Route::middleware(['auth'])->group(function () {
         return view('tenant.dashboard', compact('tenant'));
     })->name('tenant.dashboard');
 
-    // Members
-    Route::prefix('members')->name('tenant.members.')->group(function () {
-        Route::get('/',                   [MembersController::class, 'index'])->name('index');
-        Route::get('/create',             [MembersController::class, 'create'])->name('create');
-        Route::post('/',                  [MembersController::class, 'store'])->name('store');
-        Route::post('/{user}/suspend',    [MembersController::class, 'suspend'])->name('suspend');
-        Route::post('/{user}/reactivate', [MembersController::class, 'reactivate'])->name('reactivate');
+        // Users (was Members) — Company Admins only
+    Route::prefix('manage/users')->name('tenant.users.')->group(function () {
+        Route::get('/',                        [MembersController::class, 'index'])->name('index');
+        Route::get('/create',                  [MembersController::class, 'create'])->name('create');
+        Route::post('/',                       [MembersController::class, 'store'])->name('store');
+        Route::get('/{user}/edit',             [MembersController::class, 'edit'])->name('edit');
+        Route::put('/{user}',                  [MembersController::class, 'update'])->name('update');
+        Route::post('/{user}/deactivate',      [MembersController::class, 'deactivate'])->name('deactivate');
+        Route::post('/{user}/reactivate',      [MembersController::class, 'reactivate'])->name('reactivate');
+        Route::post('/{user}/temporary-password', [MembersController::class, 'temporaryPassword'])->name('temp-password');
+        Route::post('/{user}/unlock',          [MembersController::class, 'unlock'])->name('unlock');
+        Route::get('/{user}/devices', [MembersController::class, 'devices'])->name('devices');
     });
 
     // Clients + contacts
@@ -148,4 +157,37 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{rate}/reactivate',     [TaxRatesController::class, 'reactivate'])->name('reactivate');
         Route::post('/{rate}/set-default',    [TaxRatesController::class, 'setDefault'])->name('set-default');
     });
+    // Forced password change — must stay accessible even when must_change_password=true.
+    Route::get('/change-password',  [AuthController::class, 'showChangePassword'])->name('password.change');
+    Route::post('/change-password', [AuthController::class, 'changePassword'])->name('password.change.submit');
+
+    Route::prefix('manage/roles')->name('tenant.roles.')->group(function () {
+        Route::get('/',                       [\App\Http\Controllers\Tenant\RolesController::class, 'index'])->name('index');
+        Route::get('/create',                 [\App\Http\Controllers\Tenant\RolesController::class, 'create'])->name('create');
+        Route::post('/',                      [\App\Http\Controllers\Tenant\RolesController::class, 'store'])->name('store');
+        Route::get('/{role}/edit',            [\App\Http\Controllers\Tenant\RolesController::class, 'edit'])->name('edit');
+        Route::put('/{role}',                 [\App\Http\Controllers\Tenant\RolesController::class, 'update'])->name('update');
+        Route::post('/{role}/reset-defaults', [\App\Http\Controllers\Tenant\RolesController::class, 'resetDefaults'])->name('reset-defaults');
+        Route::delete('/{role}',              [\App\Http\Controllers\Tenant\RolesController::class, 'destroy'])->name('destroy');
+    });
+    Route::prefix('manage/audit')->name('tenant.audit.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Tenant\AuditLogsController::class, 'index'])->name('index');
+    });
 });
+
+// Profile — platform admins AND tenant users.
+Route::middleware('auth:platform,web')->prefix('profile')->name('profile.')->group(function () {
+    Route::get('/devices',                [\App\Http\Controllers\ProfileDevicesController::class, 'index'])->name('devices.index');
+    Route::delete('/devices/{device}',    [\App\Http\Controllers\ProfileDevicesController::class, 'revoke'])->name('devices.revoke');
+    Route::post('/devices/revoke-others', [\App\Http\Controllers\ProfileDevicesController::class, 'revokeOthers'])->name('devices.revoke-others');
+});
+// Two-factor — works for both the platform guard and the web guard.
+Route::middleware('auth:platform,web')->group(function () {
+    Route::get('/two-factor/setup',    [\App\Http\Controllers\TwoFactorController::class, 'setup'])->name('two-factor.setup');
+    Route::post('/two-factor/setup',   [\App\Http\Controllers\TwoFactorController::class, 'confirm'])->name('two-factor.confirm');
+    Route::post('/two-factor/disable', [\App\Http\Controllers\TwoFactorController::class, 'disable'])->name('two-factor.disable');
+});
+
+// Challenge after password — session-protected, not guard-protected.
+Route::get('/two-factor/challenge',  [\App\Http\Controllers\TwoFactorController::class, 'challenge'])->name('two-factor.challenge');
+Route::post('/two-factor/challenge', [\App\Http\Controllers\TwoFactorController::class, 'verifyChallenge'])->name('two-factor.verify');

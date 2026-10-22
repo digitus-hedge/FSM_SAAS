@@ -54,7 +54,7 @@ h1{font-family:'Figtree';font-size:32px;font-weight:700;letter-spacing:-.6px}
     <div class="panel-head">
         <h2>All workspaces</h2>
     </div>
-
+    
     @if ($tenants->isEmpty())
         <div class="empty">
             <h3>No workspaces yet</h3>

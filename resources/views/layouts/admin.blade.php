@@ -15,45 +15,55 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-serif;font-size:14px;line-height:1.5}
-.shell{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+.shell{display:grid;grid-template-columns:244px 1fr;min-height:100vh}
 
 /* SIDEBAR */
-.side{background:#fff;border-right:1px solid var(--line);padding:22px 14px;display:flex;flex-direction:column;gap:2px}
-.brand{display:flex;align-items:center;gap:10px;padding:0 10px 20px;color:var(--ink);font-family:'Figtree';font-size:18px;font-weight:700;letter-spacing:-.3px;text-decoration:none}
-.brand .logo{width:34px;height:34px;border-radius:9px;background:var(--ink);color:var(--yellow);display:flex;align-items:center;justify-content:center;font-weight:700}
-.brand small{display:block;font-family:'DM Sans';font-size:11px;font-weight:400;color:var(--muted);letter-spacing:0;margin-top:1px}
+.side{background:#fff;border-right:1px solid var(--line);padding:18px 12px;display:flex;flex-direction:column;gap:2px;min-height:100vh}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 10px 18px;color:var(--ink);font-family:'Figtree';font-size:17px;font-weight:700;letter-spacing:-.3px;text-decoration:none}
+.brand .logo{width:32px;height:32px;border-radius:9px;background:var(--ink);color:var(--yellow);display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
+.brand small{display:block;font-family:'DM Sans';font-size:10.5px;font-weight:400;color:var(--muted);letter-spacing:0;margin-top:1px}
 
-.nav-item{display:flex;align-items:center;gap:10px;font-size:14px;padding:10px 12px;border-radius:999px;color:var(--ink);text-decoration:none}
+/* Section labels */
+.nav-label{font-size:10.5px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.08em;padding:14px 14px 6px}
+
+/* Nav items */
+.nav-item{display:flex;align-items:center;gap:11px;font-size:13.5px;padding:9px 12px;border-radius:10px;color:var(--ink);text-decoration:none;transition:background .12s}
 .nav-item:hover{background:var(--soft)}
 .nav-item.active{background:var(--yellow-soft);color:var(--amber);font-weight:600}
-.nav-item svg{flex-shrink:0;color:var(--muted)}
+.nav-item svg{flex-shrink:0;color:var(--muted);width:17px;height:17px}
 .nav-item.active svg{color:var(--amber)}
 
 /* Collapsible parent menu */
 .nav-group{list-style:none}
 .nav-group > summary{
-  display:flex;align-items:center;gap:10px;font-size:14px;padding:10px 12px;border-radius:999px;
+  display:flex;align-items:center;gap:11px;font-size:13.5px;padding:9px 12px;border-radius:10px;
   color:var(--ink);cursor:pointer;user-select:none;list-style:none;position:relative;
 }
 .nav-group > summary::-webkit-details-marker{display:none}
 .nav-group > summary:hover{background:var(--soft)}
-.nav-group > summary svg.chev{margin-left:auto;transition:transform .18s ease;color:var(--muted)}
+.nav-group > summary svg.icon{color:var(--muted);width:17px;height:17px;flex-shrink:0}
+.nav-group > summary svg.chev{margin-left:auto;transition:transform .18s ease;color:var(--muted);width:12px;height:12px}
 .nav-group[open] > summary svg.chev{transform:rotate(90deg)}
 .nav-group.has-active > summary{background:var(--yellow-soft);color:var(--amber);font-weight:600}
 .nav-group.has-active > summary svg.icon{color:var(--amber)}
 
-/* Children inside parent */
-.nav-children{display:flex;flex-direction:column;gap:2px;padding:4px 0 6px 32px;margin-top:2px}
-.nav-children .nav-item{padding:8px 12px;font-size:13px;border-radius:8px}
-.nav-children .nav-item.active{background:var(--yellow-soft);color:var(--amber)}
+.nav-children{display:flex;flex-direction:column;gap:2px;padding:4px 0 6px 36px;margin-top:2px}
+.nav-children .nav-item{padding:7px 10px;font-size:13px;border-radius:8px;gap:9px}
+.nav-children .nav-item svg{width:14px;height:14px}
 .nav-children .nav-item.disabled{color:var(--subtle);cursor:not-allowed;pointer-events:none}
-.nav-children .nav-item .count{margin-left:auto;font-size:10px;color:var(--subtle);background:transparent;padding:0}
 
-.side .foot{margin-top:auto;display:flex;align-items:center;gap:10px;padding:12px 10px;border-top:1px solid var(--line)}
-.avatar{width:34px;height:34px;border-radius:50%;background:var(--yellow-soft);color:var(--amber);font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.side .foot b{color:var(--ink);font-size:13px;display:block;line-height:1.2}
-.side .foot span{font-size:11px;color:var(--muted)}
-.logout-btn{background:none;border:0;color:var(--muted);font-size:12px;cursor:pointer;padding:0;margin-top:3px;text-decoration:underline;font-family:inherit}
+/* Footer / account block */
+.side .foot{margin-top:auto;padding-top:14px;border-top:1px solid var(--line)}
+.account{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;text-decoration:none;color:var(--ink)}
+.account:hover{background:var(--soft)}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--yellow-soft);color:var(--amber);font-weight:700;font-size:12.5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'Figtree'}
+.account .meta{min-width:0;flex:1}
+.account .name{color:var(--ink);font-size:13px;font-weight:600;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.account .sub{color:var(--muted);font-size:11px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.foot-links{display:flex;gap:14px;padding:10px 12px 2px;font-size:12px}
+.foot-links a,.foot-links button{background:none;border:0;color:var(--muted);cursor:pointer;padding:0;font:inherit;text-decoration:none}
+.foot-links a:hover,.foot-links button:hover{color:var(--ink);text-decoration:underline}
+.foot-links .tfa-on{color:var(--green);font-weight:600}
 
 /* CONTENT */
 .content{padding:28px 44px 48px;overflow:hidden}
@@ -72,7 +82,6 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
 .swal2-icon.swal2-success [class^='swal2-success-line']{background-color:var(--green)!important}
 .swal2-toast{font-family:'DM Sans'!important;border-radius:12px!important;box-shadow:0 8px 24px rgba(0,0,0,.08)!important;border:1px solid var(--line)!important}
 .swal2-toast .swal2-title{font-size:13px!important;color:var(--ink)!important}
-
 .swal-btn-red.swal2-confirm.swal2-styled{background:var(--red)!important;color:#fff!important}
 .swal-btn-red.swal2-confirm.swal2-styled:hover{background:#A52E15!important}
 .swal-btn-amber.swal2-confirm.swal2-styled{background:var(--yellow)!important;color:var(--ink)!important}
@@ -81,83 +90,133 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
 </style>
 </head>
 <body>
+@php
+    $u             = auth()->user();
+    $isPlatform    = \Illuminate\Support\Facades\Auth::guard('platform')->check();
+    $hasOps        = $u?->canDo('client.manage') || $u?->canDo('site.manage') || $u?->canDo('category.manage');
+    $hasSetup      = $u?->canDo('settings.manage');
+    $hasPeople     = $u?->canDo('user.manage') || $u?->canDo('role.manage') || $u?->canDo('audit.view');
+    $opsOpen       = request()->routeIs('admin.clients.*')
+                  || request()->routeIs('admin.sites.*')
+                  || request()->routeIs('admin.service-categories.*');
+    $setupOpen     = request()->routeIs('admin.sla-policies.*')
+                  || request()->routeIs('admin.tax-rates.*');
+    $peopleOpen    = request()->routeIs('tenant.users.*')
+                  || request()->routeIs('tenant.roles.*')
+                  || request()->routeIs('tenant.audit.*');
+    $brandSub      = $isPlatform ? 'Platform console' : ($u?->tenant?->name ?? 'Workspace');
+    $brandHome     = $isPlatform ? route('admin.dashboard') : route('tenant.dashboard');
+@endphp
+
 <div class="shell">
 
 <nav class="side">
-
-    <a href="{{ route('admin.dashboard') }}" class="brand">
+    <a href="{{ $brandHome }}" class="brand">
         <span class="logo">A</span>
-        <span>AIYWAH FSM<small>Platform console</small></span>
+        <span>AIYWAH FSM<small>{{ $brandSub }}</small></span>
     </a>
 
-    {{-- Platform-only items (owner / support / finance) --}}
-    @if (auth()->user()?->canDo('tenants.view'))
+    {{-- ─────────────── PLATFORM ─────────────── --}}
+    @if ($isPlatform && $u?->canDo('tenants.view'))
+        <div class="nav-label">Platform</div>
         <a href="{{ route('admin.dashboard') }}" class="nav-item {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
             Workspaces
         </a>
     @endif
-    {{-- Tenant-only items (company_admin / operations_manager / etc.) --}}
- @php
-        $masterOpen = request()->routeIs('admin.clients.*')
-                   || request()->routeIs('admin.sites.*')
-                   || request()->routeIs('admin.service-categories.*')
-                   || request()->routeIs('admin.sla-policies.*')
-                   || request()->routeIs('admin.tax-rates.*');
-    @endphp
 
-    @if (auth()->user()?->canDo('client.manage') || auth()->user()?->canDo('site.manage') || auth()->user()?->canDo('category.manage') || auth()->user()?->canDo('settings.manage'))
-    <details class="nav-group {{ $masterOpen ? 'has-active' : '' }}" {{ $masterOpen ? 'open' : '' }}>
-        <summary>
-            <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/>
-            </svg>
-            Master Data
-            <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="9 18 15 12 9 6"/>
-            </svg>
-        </summary>
+    {{-- ─────────────── TENANT: OPERATIONS ─────────────── --}}
+    @if (! $isPlatform)
+        <a href="{{ route('tenant.dashboard') }}" class="nav-item {{ request()->routeIs('tenant.dashboard') ? 'active' : '' }}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10h14V10"/></svg>
+            Dashboard
+        </a>
 
-        <div class="nav-children">
-            @if (auth()->user()?->canDo('client.manage'))
-                <a href="{{ route('admin.clients.index') }}"
-                   class="nav-item {{ request()->routeIs('admin.clients.*') ? 'active' : '' }}">
-                    Clients
+        @if ($hasOps)
+            <div class="nav-label">Operations</div>
+            <details class="nav-group {{ $opsOpen ? 'has-active' : '' }}" {{ $opsOpen ? 'open' : '' }}>
+                <summary>
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    Master data
+                    <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </summary>
+                <div class="nav-children">
+                    @if ($u->canDo('client.manage'))
+                        <a href="{{ route('admin.clients.index') }}" class="nav-item {{ request()->routeIs('admin.clients.*') ? 'active' : '' }}">Clients</a>
+                    @endif
+                    @if ($u->canDo('site.manage'))
+                        <a href="{{ route('admin.sites.index') }}" class="nav-item {{ request()->routeIs('admin.sites.*') ? 'active' : '' }}">Project sites</a>
+                    @endif
+                    @if ($u->canDo('category.manage'))
+                        <a href="{{ route('admin.service-categories.index') }}" class="nav-item {{ request()->routeIs('admin.service-categories.*') ? 'active' : '' }}">Service categories</a>
+                    @endif
+                </div>
+            </details>
+        @endif
+
+        {{-- ─────────────── TENANT: PEOPLE & ACCESS ─────────────── --}}
+        @if ($hasPeople)
+            <div class="nav-label">People &amp; access</div>
+            @if ($u->canDo('user.manage'))
+                <a href="{{ route('tenant.users.index') }}" class="nav-item {{ request()->routeIs('tenant.users.*') ? 'active' : '' }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    Users
                 </a>
             @endif
-            @if (auth()->user()?->canDo('site.manage'))
-                <a href="{{ route('admin.sites.index') }}"
-                   class="nav-item {{ request()->routeIs('admin.sites.*') ? 'active' : '' }}">
-                    Project Sites
+            @if ($u->canDo('role.manage'))
+                <a href="{{ route('tenant.roles.index') }}" class="nav-item {{ request()->routeIs('tenant.roles.*') ? 'active' : '' }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                    Roles &amp; permissions
                 </a>
             @endif
-            @if (auth()->user()?->canDo('category.manage'))
-                <a href="{{ route('admin.service-categories.index') }}"
-                   class="nav-item {{ request()->routeIs('admin.service-categories.*') ? 'active' : '' }}">
-                    Service Categories
+            @if ($u->canDo('audit.view'))
+                <a href="{{ route('tenant.audit.index') }}" class="nav-item {{ request()->routeIs('tenant.audit.*') ? 'active' : '' }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
+                    Audit trail
                 </a>
             @endif
-            @if (auth()->user()?->canDo('settings.manage'))
-                <a href="{{ route('admin.sla-policies.index') }}"
-                   class="nav-item {{ request()->routeIs('admin.sla-policies.*') ? 'active' : '' }}">
-                    SLA Policies
-                </a>
-                <a href="{{ route('admin.tax-rates.index') }}"
-                   class="nav-item {{ request()->routeIs('admin.tax-rates.*') ? 'active' : '' }}">
-                    Tax Rates
-                </a>
-            @endif
-        </div>
-    </details>
+        @endif
+
+        {{-- ─────────────── TENANT: SETUP ─────────────── --}}
+        @if ($hasSetup)
+            <div class="nav-label">Setup</div>
+            <details class="nav-group {{ $setupOpen ? 'has-active' : '' }}" {{ $setupOpen ? 'open' : '' }}>
+                <summary>
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.47.38.9 1.51 1H21a2 2 0 1 1 0 4h-.09c-.6 0-1.17.24-1.51 1Z"/></svg>
+                    Company settings
+                    <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </summary>
+                <div class="nav-children">
+                    <a href="{{ route('admin.sla-policies.index') }}" class="nav-item {{ request()->routeIs('admin.sla-policies.*') ? 'active' : '' }}">SLA policies</a>
+                    <a href="{{ route('admin.tax-rates.index') }}" class="nav-item {{ request()->routeIs('admin.tax-rates.*') ? 'active' : '' }}">Tax rates</a>
+                </div>
+            </details>
+        @endif
     @endif
 
+    {{-- ─────────────── FOOTER ─────────────── --}}
     <div class="foot">
-        <span class="avatar">{{ strtoupper(substr(auth()->user()->name, 0, 2)) }}</span>
-        <div style="flex-grow:1">
-            <b>{{ auth()->user()->name }}</b>
-            <form method="POST" action="{{ Auth::guard('platform')->check() ? route('platform.logout') : route('logout') }}" style="margin:0">
+        <div class="account">
+            <span class="avatar">{{ strtoupper(substr($u->name, 0, 2)) }}</span>
+            <div class="meta">
+                <div class="name">{{ $u->name }}</div>
+                <div class="sub">
+                    {{ $isPlatform ? ucfirst($u->platform_role ?? 'Admin') : ($u->role?->name ?? 'User') }}
+                </div>
+            </div>
+        </div>
+        <div class="foot-links">
+            <a href="{{ route('two-factor.setup') }}">
+                @if ($u->two_factor_confirmed_at ?? false)
+                    <span class="tfa-on">● 2FA on</span>
+                @else
+                    Turn on 2FA
+                @endif
+            </a>
+            <a href="{{ route('profile.devices.index') }}">Devices</a>
+            <form method="POST" action="{{ $isPlatform ? route('platform.logout') : route('logout') }}" style="margin-left:auto;display:inline">
                 @csrf
-                <button type="submit" class="logout-btn">Sign out</button>
+                <button type="submit">Sign out</button>
             </form>
         </div>
     </div>
@@ -169,25 +228,18 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
 
 </div>
 
-{{-- SweetAlert2 — loaded globally so any page can call Swal.fire() --}}
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.all.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 
-    // Success toast — fires whenever session('success') is set
     @if (session('success'))
     Swal.fire({
-        toast: true,
-        position: 'top-end',
-        icon: 'success',
+        toast: true, position: 'top-end', icon: 'success',
         title: @json(session('success')),
-        showConfirmButton: false,
-        timer: 3500,
-        timerProgressBar: true
+        showConfirmButton: false, timer: 3500, timerProgressBar: true
     });
     @endif
 
-    // Error popup — fires whenever validation errors exist
     @if ($errors->any() && ! $errors->has('email'))
     Swal.fire({
         icon: 'error',
@@ -207,12 +259,10 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     @endif
 
-    // Global confirm — any form with class="needs-confirm" shows SweetAlert instead of browser confirm
     document.querySelectorAll('form.needs-confirm').forEach(function (form) {
         form.addEventListener('submit', function (e) {
-            if (form.dataset.confirmed === '1') return;   // already confirmed, let it submit
+            if (form.dataset.confirmed === '1') return;
             e.preventDefault();
-
             Swal.fire({
                 icon: 'warning',
                 title: form.dataset.confirmTitle || 'Are you sure?',
@@ -220,8 +270,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 showCancelButton: true,
                 confirmButtonText: form.dataset.confirmOk || 'Yes, continue',
                 cancelButtonText: 'Cancel',
-                reverseButtons: true,
-                focusCancel: true,
+                reverseButtons: true, focusCancel: true,
                 customClass: { confirmButton: 'swal-btn-' + (form.dataset.confirmOkColor || 'amber') }
             }).then((result) => {
                 if (result.isConfirmed) {
