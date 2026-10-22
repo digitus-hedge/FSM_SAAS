@@ -7,6 +7,11 @@ use App\Http\Controllers\Admin\ProjectSitesController;
 use App\Http\Controllers\Admin\SlaPoliciesController;
 use App\Http\Controllers\Admin\TaxRatesController;
 use App\Http\Controllers\Admin\ServiceCategoriesController;
+use App\Http\Controllers\Admin\HoldReasonController;
+use App\Http\Controllers\Admin\VendorController;
+use App\Http\Controllers\Admin\ExpenseCategoryController;
+use App\Http\Controllers\Admin\TenantHolidayController;
+use App\Http\Controllers\Admin\TenantBusinessHourController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Web\PlatformAuthView;
 use App\Http\Controllers\Tenant\MembersController;
@@ -191,3 +196,60 @@ Route::middleware('auth:platform,web')->group(function () {
 // Challenge after password — session-protected, not guard-protected.
 Route::get('/two-factor/challenge',  [\App\Http\Controllers\TwoFactorController::class, 'challenge'])->name('two-factor.challenge');
 Route::post('/two-factor/challenge', [\App\Http\Controllers\TwoFactorController::class, 'verifyChallenge'])->name('two-factor.verify');
+
+
+    Route::prefix('admin/hold-reasons')->name('admin.hold-reasons.')->group(function () {
+        Route::get('/',                               [HoldReasonController::class, 'index'])->name('index');
+        Route::get('/create',                         [HoldReasonController::class, 'create'])->name('create');
+        Route::post('/',                              [HoldReasonController::class, 'store'])->name('store');
+        Route::get('/{hold_reason}/edit',             [HoldReasonController::class, 'edit'])->name('edit');
+        Route::put('/{hold_reason}',                  [HoldReasonController::class, 'update'])->name('update');
+        Route::delete('/{hold_reason}',               [HoldReasonController::class, 'destroy'])->name('destroy');
+        Route::post('/{hold_reason}/suspend',         [HoldReasonController::class, 'suspend'])->name('suspend');
+        Route::post('/{hold_reason}/reactivate',      [HoldReasonController::class, 'reactivate'])->name('reactivate');
+    });
+
+
+    // Expense Categories
+    Route::prefix('admin/expense-categories')->name('admin.expense-categories.')->group(function () {
+        Route::get('/',                              [ExpenseCategoryController::class, 'index'])->name('index');
+        Route::get('/create',                        [ExpenseCategoryController::class, 'create'])->name('create');
+        Route::post('/',                             [ExpenseCategoryController::class, 'store'])->name('store');
+        Route::get('/{expense_category}/edit',       [ExpenseCategoryController::class, 'edit'])->name('edit');
+        Route::put('/{expense_category}',            [ExpenseCategoryController::class, 'update'])->name('update');
+        Route::delete('/{expense_category}',         [ExpenseCategoryController::class, 'destroy'])->name('destroy');
+        Route::post('/{expense_category}/suspend',   [ExpenseCategoryController::class, 'suspend'])->name('suspend');
+        Route::post('/{expense_category}/reactivate',[ExpenseCategoryController::class, 'reactivate'])->name('reactivate');
+    });
+
+
+    // Tenant Holidays
+    Route::prefix('admin/tenant-holidays')->name('admin.tenant-holidays.')->group(function () {
+    Route::get('/',                            [TenantHolidayController::class, 'index'])->name('index');
+    Route::get('/create',                      [TenantHolidayController::class, 'create'])->name('create');
+    Route::post('/',                           [TenantHolidayController::class, 'store'])->name('store');
+    Route::get('/{tenant_holiday}/edit',       [TenantHolidayController::class, 'edit'])->name('edit');
+    Route::put('/{tenant_holiday}',            [TenantHolidayController::class, 'update'])->name('update');
+    Route::delete('/{tenant_holiday}',         [TenantHolidayController::class, 'destroy'])->name('destroy');
+    });
+
+    // Vendors
+    Route::prefix('admin/vendors')->name('admin.vendors.')->group(function () {
+    Route::get('/',                      [VendorController::class, 'index'])->name('index');
+    Route::get('/create',                [VendorController::class, 'create'])->name('create');
+    Route::post('/',                     [VendorController::class, 'store'])->name('store');
+    Route::get('/{vendor}/edit',         [VendorController::class, 'edit'])->name('edit');
+    Route::put('/{vendor}',              [VendorController::class, 'update'])->name('update');
+    Route::delete('/{vendor}',           [VendorController::class, 'destroy'])->name('destroy');
+    Route::post('/{vendor}/suspend',     [VendorController::class, 'suspend'])->name('suspend');
+    Route::post('/{vendor}/reactivate',  [VendorController::class, 'reactivate'])->name('reactivate');
+    });
+
+    // Business Hours
+    Route::prefix('admin/business-hours')->name('admin.tenant-business-hours.')->group(function () {
+        Route::get('/',  [TenantBusinessHourController::class, 'index'])->name('index');
+        Route::put('/',  [TenantBusinessHourController::class, 'update'])->name('update');
+    });
+
+    
+});

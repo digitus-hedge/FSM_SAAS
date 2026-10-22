@@ -13,7 +13,7 @@
   .btn-ghost{background:#fff;color:var(--ink);border-color:var(--line)}
   .btn-ghost:hover{background:var(--soft)}
 
-  .form-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px;max-width:820px;margin:0 auto}
+  .form-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px;margin:0 auto}
 
   .section{padding-bottom:22px;margin-bottom:22px;border-bottom:1px solid var(--line)}
   .section:last-of-type{border-bottom:0;padding-bottom:0;margin-bottom:0}
