@@ -83,31 +83,62 @@
   </a>
 </div>
 
-<form method="GET" class="toolbar">
-  <input type="text" name="q" value="{{ request('q') }}" placeholder="Search by name, code or city…" class="input input-grow" />
 
-  <select name="type" class="input input-select" style="width:170px">
+@php
+  $hasFilter = request()->filled('q')
+            || request()->filled('type')
+            || request()->filled('client_id')
+            || request()->filled('status');
+@endphp
+
+<form method="GET" class="toolbar" id="site-filter">
+  <div style="position:relative;flex:1;min-width:200px">
+    <input type="text" name="q" value="{{ request('q') }}"
+           placeholder="Search by name, code or city…"
+           class="input" style="width:100%;padding-right:36px"
+           autocomplete="off" id="site-search">
+    <svg id="site-search-ico"
+         style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--subtle);pointer-events:none"
+         width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+    <span id="site-search-spin"
+          style="position:absolute;right:14px;top:50%;transform:translateY(-50%);width:12px;height:12px;border:2px solid var(--line);border-top-color:var(--amber);border-radius:50%;display:none;animation:sitespin .8s linear infinite"></span>
+  </div>
+
+  <select name="type" class="input input-select auto-submit" style="width:170px">
     <option value="">All types</option>
     <option value="client_site"     @selected(request('type')==='client_site')>Client site</option>
     <option value="tenant_workshop" @selected(request('type')==='tenant_workshop')>Workshop</option>
   </select>
 
-  <select name="client_id" class="input input-select" style="width:220px">
+  <select name="client_id" class="input input-select auto-submit" style="width:220px">
     <option value="">All clients</option>
     @foreach ($clients as $c)
       <option value="{{ $c->id }}" @selected((string) request('client_id') === (string) $c->id)>{{ $c->name }}</option>
     @endforeach
   </select>
 
-  <select name="status" class="input input-select" style="width:170px">
+  <select name="status" class="input input-select auto-submit" style="width:170px">
     <option value="">All status</option>
     <option value="active"   @selected(request('status')==='active')>Active only</option>
     <option value="inactive" @selected(request('status')==='inactive')>Inactive only</option>
   </select>
 
   <input type="hidden" name="per_page" value="{{ $perPage }}" />
-  <button class="btn btn-ghost">Filter</button>
+
+  @if ($hasFilter)
+    <a href="{{ route('admin.sites.index') }}"
+       style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--muted);text-decoration:none;padding:9px 14px;border-radius:999px;border:1px dashed var(--line);transition:all .12s"
+       onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)';this.style.background='var(--red-soft)'"
+       onmouseout="this.style.borderColor='var(--line)';this.style.color='var(--muted)';this.style.background='transparent'">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      Clear
+    </a>
+  @endif
 </form>
+
+
 
 <div class="card">
   <table>
@@ -271,4 +302,44 @@
     @endif
   </div>
 </div>
+
+
+<style>
+  @keyframes sitespin { to { transform: translateY(-50%) rotate(360deg); } }
+</style>
+
+
+<script>
+(function () {
+  const form   = document.getElementById('site-filter');
+  const search = document.getElementById('site-search');
+  const ico    = document.getElementById('site-search-ico');
+  const spin   = document.getElementById('site-search-spin');
+  let timer = null;
+
+  // Debounced search (400ms after last keystroke)
+  search.addEventListener('input', function () {
+    clearTimeout(timer);
+    ico.style.display = 'none';
+    spin.style.display = 'block';
+    timer = setTimeout(() => form.submit(), 400);
+  });
+
+  // Enter submits immediately
+  search.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      clearTimeout(timer);
+      form.submit();
+    }
+  });
+
+  // Auto-submit when any dropdown changes
+  document.querySelectorAll('.auto-submit').forEach(sel => {
+    sel.addEventListener('change', () => form.submit());
+  });
+})();
+</script>
+
+
 @endsection

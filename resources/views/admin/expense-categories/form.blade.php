@@ -99,7 +99,7 @@
     <div class="section-sub">Give the category a short, recognizable name.</div>
 
     <div class="field {{ $errors->has('name') ? 'has-error' : '' }}">
-      <label for="name" class="lbl">Category name <span class="req">*</span></label>
+      <label for="name" class="lbl">Expense Category name <span class="req">*</span></label>
       <input type="text" id="name" name="name" maxlength="100" required
              value="{{ old('name', $category->name) }}" class="input"
              placeholder="e.g. Travel, Food, Hotel, Taxi, Materials">

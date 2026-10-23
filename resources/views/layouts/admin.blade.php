@@ -23,17 +23,14 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
 .brand .logo{width:32px;height:32px;border-radius:9px;background:var(--ink);color:var(--yellow);display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
 .brand small{display:block;font-family:'DM Sans';font-size:10.5px;font-weight:400;color:var(--muted);letter-spacing:0;margin-top:1px}
 
-/* Section labels */
 .nav-label{font-size:10.5px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.08em;padding:14px 14px 6px}
 
-/* Nav items */
 .nav-item{display:flex;align-items:center;gap:11px;font-size:13.5px;padding:9px 12px;border-radius:10px;color:var(--ink);text-decoration:none;transition:background .12s}
 .nav-item:hover{background:var(--soft)}
 .nav-item.active{background:var(--yellow-soft);color:var(--amber);font-weight:600}
 .nav-item svg{flex-shrink:0;color:var(--muted);width:17px;height:17px}
 .nav-item.active svg{color:var(--amber)}
 
-/* Collapsible parent menu */
 .nav-group{list-style:none}
 .nav-group > summary{
   display:flex;align-items:center;gap:11px;font-size:13.5px;padding:9px 12px;border-radius:10px;
@@ -52,7 +49,6 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
 .nav-children .nav-item svg{width:14px;height:14px}
 .nav-children .nav-item.disabled{color:var(--subtle);cursor:not-allowed;pointer-events:none}
 
-/* Footer / account block */
 .side .foot{margin-top:auto;padding-top:14px;border-top:1px solid var(--line)}
 .account{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;text-decoration:none;color:var(--ink)}
 .account:hover{background:var(--soft)}
@@ -65,10 +61,9 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
 .foot-links a:hover,.foot-links button:hover{color:var(--ink);text-decoration:underline}
 .foot-links .tfa-on{color:var(--green);font-weight:600}
 
-/* CONTENT */
 .content{padding:28px 44px 48px;overflow:hidden}
 
-/* SweetAlert2 — brand-matched */
+/* SweetAlert2 */
 .swal2-popup{font-family:'DM Sans',system-ui,sans-serif!important;border-radius:16px!important;padding:28px!important}
 .swal2-title{font-family:'Figtree'!important;font-size:20px!important;font-weight:700!important;color:var(--ink)!important}
 .swal2-html-container{font-size:13px!important;color:var(--muted)!important;margin-top:6px!important}
@@ -91,25 +86,26 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
 </head>
 <body>
 @php
-    $isPlatform    = \Illuminate\Support\Facades\Auth::guard('platform')->check()
-                     && ! \App\Models\Tenant::current();
-    $u             = $isPlatform
-                     ? \Illuminate\Support\Facades\Auth::guard('platform')->user()
-                     : auth()->user();
+    $u          = auth()->user();
+    $isPlatform = \Illuminate\Support\Facades\Auth::guard('platform')->check();
+    $hasOps     = $u?->canDo('client.manage') || $u?->canDo('site.manage') || $u?->canDo('category.manage');
+    $hasSetup   = $u?->canDo('settings.manage');
+    $hasPeople  = $u?->canDo('user.manage') || $u?->canDo('role.manage') || $u?->canDo('audit.view');
 
-    $hasOps        = $u?->canDo('client.manage') || $u?->canDo('site.manage') || $u?->canDo('category.manage');
-    $hasSetup      = $u?->canDo('settings.manage');
-    $hasPeople     = $u?->canDo('user.manage') || $u?->canDo('role.manage') || $u?->canDo('audit.view');
-    $opsOpen       = request()->routeIs('admin.clients.*')
-                  || request()->routeIs('admin.sites.*')
-                  || request()->routeIs('admin.service-categories.*');
-    $setupOpen     = request()->routeIs('admin.sla-policies.*')
-                  || request()->routeIs('admin.tax-rates.*');
-    $peopleOpen    = request()->routeIs('tenant.users.*')
-                  || request()->routeIs('tenant.roles.*')
-                  || request()->routeIs('tenant.audit.*');
-    $brandSub      = $isPlatform ? 'Platform console' : ($u?->tenant?->name ?? 'Workspace');
-    $brandHome     = $isPlatform ? route('admin.dashboard') : route('tenant.dashboard');
+    $opsOpen    = request()->routeIs('admin.clients.*')
+               || request()->routeIs('admin.sites.*')
+               || request()->routeIs('admin.service-categories.*');
+
+    $setupOpen  = request()->routeIs('admin.sla-policies.*')
+               || request()->routeIs('admin.tax-rates.*')
+               || request()->routeIs('admin.hold-reasons.*')
+               || request()->routeIs('admin.expense-categories.*')
+               || request()->routeIs('admin.tenant-holidays.*')
+               || request()->routeIs('admin.vendors.*')
+               || request()->routeIs('admin.tenant-business-hours.*');
+
+    $brandSub   = $isPlatform ? 'Platform console' : ($u?->tenant?->name ?? 'Workspace');
+    $brandHome  = $isPlatform ? route('admin.dashboard') : route('tenant.dashboard');
 @endphp
 
 <div class="shell">
@@ -128,29 +124,15 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
             Workspaces
         </a>
     @endif
-    {{-- Tenant-only items (company_admin / operations_manager / etc.) --}}
- @php
-        $masterOpen = request()->routeIs('admin.clients.*')
-                   || request()->routeIs('admin.sites.*')
-                   || request()->routeIs('admin.service-categories.*')
-                   || request()->routeIs('admin.sla-policies.*')
-                   || request()->routeIs('admin.tax-rates.*')
-                   || request()->routeIs('admin.hold-reasons.*')
-                   || request()->routeIs('admin.expense-categories.*')
-                   || request()->routeIs('admin.tenant-holidays.*')
-                   || request()->routeIs('admin.vendors.*')
-                   || request()->routeIs('admin.tenant-business-hours.*');
-                   
 
-    @endphp
-
-    {{-- ─────────────── TENANT: OPERATIONS ─────────────── --}}
+    {{-- ─────────────── TENANT ─────────────── --}}
     @if (! $isPlatform)
         <a href="{{ route('tenant.dashboard') }}" class="nav-item {{ request()->routeIs('tenant.dashboard') ? 'active' : '' }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10h14V10"/></svg>
             Dashboard
         </a>
 
+        {{-- OPERATIONS --}}
         @if ($hasOps)
             <div class="nav-label">Operations</div>
             <details class="nav-group {{ $opsOpen ? 'has-active' : '' }}" {{ $opsOpen ? 'open' : '' }}>
@@ -173,7 +155,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
             </details>
         @endif
 
-        {{-- ─────────────── TENANT: PEOPLE & ACCESS ─────────────── --}}
+        {{-- PEOPLE & ACCESS --}}
         @if ($hasPeople)
             <div class="nav-label">People &amp; access</div>
             @if ($u->canDo('user.manage'))
@@ -196,7 +178,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
             @endif
         @endif
 
-        {{-- ─────────────── TENANT: SETUP ─────────────── --}}
+        {{-- SETUP --}}
         @if ($hasSetup)
             <div class="nav-label">Setup</div>
             <details class="nav-group {{ $setupOpen ? 'has-active' : '' }}" {{ $setupOpen ? 'open' : '' }}>
@@ -208,49 +190,31 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
                 <div class="nav-children">
                     <a href="{{ route('admin.sla-policies.index') }}" class="nav-item {{ request()->routeIs('admin.sla-policies.*') ? 'active' : '' }}">SLA policies</a>
                     <a href="{{ route('admin.tax-rates.index') }}" class="nav-item {{ request()->routeIs('admin.tax-rates.*') ? 'active' : '' }}">Tax rates</a>
+                    <a href="{{ route('admin.hold-reasons.index') }}" class="nav-item {{ request()->routeIs('admin.hold-reasons.*') ? 'active' : '' }}">Hold reasons</a>
+                    <a href="{{ route('admin.expense-categories.index') }}" class="nav-item {{ request()->routeIs('admin.expense-categories.*') ? 'active' : '' }}">Expense categories</a>
+                    <a href="{{ route('admin.tenant-holidays.index') }}" class="nav-item {{ request()->routeIs('admin.tenant-holidays.*') ? 'active' : '' }}">Holidays</a>
+                    <a href="{{ route('admin.vendors.index') }}" class="nav-item {{ request()->routeIs('admin.vendors.*') ? 'active' : '' }}">Vendors</a>
+                    <a href="{{ route('admin.tenant-business-hours.index') }}" class="nav-item {{ request()->routeIs('admin.tenant-business-hours.*') ? 'active' : '' }}">Business hours</a>
                 </div>
             </details>
         @endif
-            @if (auth()->user()?->canDo('settings.manage'))
-                <a href="{{ route('admin.sla-policies.index') }}"
-                   class="nav-item {{ request()->routeIs('admin.sla-policies.*') ? 'active' : '' }}">
-                    SLA Policies
-                </a>
-                <a href="{{ route('admin.tax-rates.index') }}"
-                   class="nav-item {{ request()->routeIs('admin.tax-rates.*') ? 'active' : '' }}">
-                    Tax Rates
-                </a>
 
-                <a href="{{ route('admin.hold-reasons.index') }}"
-                class="nav-item {{ request()->routeIs('admin.hold-reasons.*') ? 'active' : '' }}">
-                Hold Reasons
-                </a>
-
-                  <a href="{{ route('admin.expense-categories.index') }}"
-                class="nav-item {{ request()->routeIs('admin.expense-categories.*') ? 'active' : '' }}">
-                Expense Categories
-                </a>
-
-                <a href="{{ route('admin.tenant-holidays.index') }}"
-   class="nav-item {{ request()->routeIs('admin.tenant-holidays.*') ? 'active' : '' }}">
-    Holidays
-</a>
-
-<a href="{{ route('admin.vendors.index') }}"
-   class="nav-item {{ request()->routeIs('admin.vendors.*') ? 'active' : '' }}">
-    Vendors
-</a>
-
-<a href="{{ route('admin.tenant-business-hours.index') }}"
-   class="nav-item {{ request()->routeIs('admin.tenant-business-hours.*') ? 'active' : '' }}">
-    Business Hours
-</a>
-
-
-            @endif
+        {{-- REQUESTS --}}
+        @if ($u?->canDo('sr.view'))
+            <a href="{{ route('service-requests.index') }}" class="nav-item {{ request()->routeIs('service-requests.*') ? 'active' : '' }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <polyline points="10 9 9 9 8 9"/>
+                </svg>
+                Requests
+            </a>
+        @endif
     @endif
 
-    {{-- ─────────────── FOOTER ─────────────── --}}
+    {{-- FOOT --}}
     <div class="foot">
         <div class="account">
             <span class="avatar">{{ strtoupper(substr($u->name, 0, 2)) }}</span>

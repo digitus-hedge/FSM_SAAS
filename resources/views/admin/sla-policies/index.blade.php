@@ -5,7 +5,7 @@
 <style>
   .page-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:22px}
   .page-head h1{font-family:'Figtree';font-size:26px;font-weight:700;letter-spacing:-.3px}
-  .page-head p{color:var(--muted);font-size:13px;margin-top:3px;max-width:620px}
+  .page-head p{color:var(--muted);font-size:13px;margin-top:3px;}
 
   .btn{display:inline-flex;align-items:center;gap:6px;font-family:'DM Sans';font-size:13px;font-weight:600;padding:9px 16px;border-radius:999px;border:1px solid transparent;text-decoration:none;cursor:pointer;transition:background .15s}
   .btn-primary{background:var(--yellow);color:var(--ink)}
@@ -85,10 +85,15 @@
   </a>
 </div>
 
-<form method="GET" class="toolbar">
-  <select name="category_id" class="input input-select" style="width:260px">
+
+@php
+  $hasFilter = request()->filled('category_id') || request()->filled('priority');
+@endphp
+
+<form method="GET" class="toolbar" id="sla-filter">
+  <select name="category_id" class="input input-select auto-submit" style="width:260px">
     <option value="">All categories</option>
-    <option value="default" @selected(request('category_id')==='default')>— Tenant default (no category) —</option>
+    <!-- <option value="default" @selected(request('category_id')==='default')>— Tenant default (no category) —</option> -->
     @foreach ($categories as $cat)
       <option value="{{ $cat->id }}" @selected((string) request('category_id') === (string) $cat->id)>
         {{ $cat->name }}
@@ -96,7 +101,7 @@
     @endforeach
   </select>
 
-  <select name="priority" class="input input-select" style="width:170px">
+  <select name="priority" class="input input-select auto-submit" style="width:170px">
     <option value="">All priorities</option>
     @foreach ($priorities as $value => $label)
       <option value="{{ $value }}" @selected(request('priority') === $value)>{{ $label }}</option>
@@ -104,8 +109,18 @@
   </select>
 
   <input type="hidden" name="per_page" value="{{ $perPage }}" />
-  <button class="btn btn-ghost">Filter</button>
+
+  @if ($hasFilter)
+    <a href="{{ route('admin.sla-policies.index') }}"
+       style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--muted);text-decoration:none;padding:9px 14px;border-radius:999px;border:1px dashed var(--line);transition:all .12s"
+       onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)';this.style.background='var(--red-soft)'"
+       onmouseout="this.style.borderColor='var(--line)';this.style.color='var(--muted)';this.style.background='transparent'">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      Clear
+    </a>
+  @endif
 </form>
+
 
 <div class="card">
   <table>
@@ -235,4 +250,16 @@
     @endif
   </div>
 </div>
+
+
+<script>
+(function () {
+  const form = document.getElementById('sla-filter');
+  document.querySelectorAll('.auto-submit').forEach(sel => {
+    sel.addEventListener('change', () => form.submit());
+  });
+})();
+</script>
+
+
 @endsection

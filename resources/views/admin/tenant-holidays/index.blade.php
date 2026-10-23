@@ -87,16 +87,35 @@
   </a>
 </div>
 
-<form method="GET" class="toolbar">
-  <input type="text" name="q" value="{{ request('q') }}" placeholder="Search by name…" class="input input-grow" />
+   @php
+      $hasFilter = request()->filled('q')
+      || request()->filled('scope')
+      || request()->filled('year');
+      @endphp
 
-  <select name="scope" class="input input-select" style="width:170px">
+
+            <form method="GET" class="toolbar" id="hol-filter">
+  <div style="position:relative;flex:1;min-width:200px">
+    <input type="text" name="q" value="{{ request('q') }}"
+           placeholder="Search by name…"
+           class="input" style="width:100%;padding-right:36px"
+           autocomplete="off" id="hol-search">
+    <svg id="hol-search-ico"
+         style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--subtle);pointer-events:none"
+         width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+    <span id="hol-search-spin"
+          style="position:absolute;right:14px;top:50%;transform:translateY(-50%);width:12px;height:12px;border:2px solid var(--line);border-top-color:var(--amber);border-radius:50%;display:none;animation:holspin .8s linear infinite"></span>
+  </div>
+
+  <select name="scope" class="input input-select auto-submit" style="width:170px">
     <option value="">All dates</option>
     <option value="upcoming" @selected(request('scope')==='upcoming')>Upcoming only</option>
     <option value="past"     @selected(request('scope')==='past')>Past only</option>
   </select>
 
-  <select name="year" class="input input-select" style="width:140px">
+  <select name="year" class="input input-select auto-submit" style="width:140px">
     <option value="">All years</option>
     @foreach ($years as $y)
       <option value="{{ $y }}" @selected((int) request('year') === $y)>{{ $y }}</option>
@@ -104,7 +123,16 @@
   </select>
 
   <input type="hidden" name="per_page" value="{{ $perPage }}" />
-  <button class="btn btn-ghost">Filter</button>
+
+  @if ($hasFilter)
+    <a href="{{ route('admin.tenant-holidays.index') }}"
+       style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--muted);text-decoration:none;padding:9px 14px;border-radius:999px;border:1px dashed var(--line);transition:all .12s"
+       onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)';this.style.background='var(--red-soft)'"
+       onmouseout="this.style.borderColor='var(--line)';this.style.color='var(--muted)';this.style.background='transparent'">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      Clear
+    </a>
+  @endif
 </form>
 
 <div class="card">
@@ -156,22 +184,8 @@
                 </svg>
               </a>
 
-              <form method="POST" action="{{ route('admin.tenant-holidays.destroy', $h) }}" style="margin:0"
-                    class="needs-confirm"
-                    data-confirm-title="Delete {{ $h->name }}?"
-                    data-confirm-text="This holiday on {{ $h->holiday_date->format('d M Y') }} will be removed. SLA calculations from now on will treat this day as a regular working day."
-                    data-confirm-ok="Yes, delete"
-                    data-confirm-ok-color="red">
-                @csrf @method('DELETE')
-                <button type="submit" class="icon-btn delete" data-tip="Delete">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="3 6 5 6 21 6"/>
-                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                    <path d="M10 11v6M14 11v6"/>
-                    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                  </svg>
-                </button>
-              </form>
+
+   
             </div>
           </td>
         </tr>
@@ -238,4 +252,43 @@
     @endif
   </div>
 </div>
+
+
+<style>
+  @keyframes holspin { to { transform: translateY(-50%) rotate(360deg); } }
+</style>
+
+
+<script>
+(function () {
+  const form   = document.getElementById('hol-filter');
+  const search = document.getElementById('hol-search');
+  const ico    = document.getElementById('hol-search-ico');
+  const spin   = document.getElementById('hol-search-spin');
+  let timer = null;
+
+  // Debounced search (400ms after last keystroke)
+  search.addEventListener('input', function () {
+    clearTimeout(timer);
+    ico.style.display = 'none';
+    spin.style.display = 'block';
+    timer = setTimeout(() => form.submit(), 400);
+  });
+
+  // Enter submits immediately
+  search.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      clearTimeout(timer);
+      form.submit();
+    }
+  });
+
+  // Auto-submit when either dropdown changes
+  document.querySelectorAll('.auto-submit').forEach(sel => {
+    sel.addEventListener('change', () => form.submit());
+  });
+})();
+</script>
+
 @endsection

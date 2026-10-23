@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\ServiceCategoriesController;
 use App\Http\Controllers\Admin\HoldReasonController;
 use App\Http\Controllers\Admin\VendorController;
 use App\Http\Controllers\Admin\ExpenseCategoryController;
+use App\Http\Controllers\Admin\ServiceRequestController;
 use App\Http\Controllers\Admin\TenantHolidayController;
 use App\Http\Controllers\Admin\TenantBusinessHourController;
 use App\Http\Controllers\AuthController;
@@ -23,6 +24,7 @@ use Illuminate\Support\Facades\Route;
 | Platform admin sign-in (platform_users table — owner@aiywah.app, etc.)
 |--------------------------------------------------------------------------
 */
+
 Route::get('/admin/login',   [PlatformAuthView::class, 'login'])->name('platform.login');
 Route::post('/admin/login',  [PlatformAuthView::class, 'loginStub'])->name('platform.login.attempt');
 Route::post('/admin/logout', [PlatformAuthView::class, 'logout'])
@@ -220,35 +222,77 @@ Route::post('/two-factor/challenge', [\App\Http\Controllers\TwoFactorController:
         Route::put('/{expense_category}',            [ExpenseCategoryController::class, 'update'])->name('update');
         Route::delete('/{expense_category}',         [ExpenseCategoryController::class, 'destroy'])->name('destroy');
         Route::post('/{expense_category}/suspend',   [ExpenseCategoryController::class, 'suspend'])->name('suspend');
-        Route::post('/{expense_category}/reactivate',[ExpenseCategoryController::class, 'reactivate'])->name('reactivate');
+        Route::post('/{expense_category}/reactivate', [ExpenseCategoryController::class, 'reactivate'])->name('reactivate');
     });
 
 
     // Tenant Holidays
     Route::prefix('admin/tenant-holidays')->name('admin.tenant-holidays.')->group(function () {
-    Route::get('/',                            [TenantHolidayController::class, 'index'])->name('index');
-    Route::get('/create',                      [TenantHolidayController::class, 'create'])->name('create');
-    Route::post('/',                           [TenantHolidayController::class, 'store'])->name('store');
-    Route::get('/{tenant_holiday}/edit',       [TenantHolidayController::class, 'edit'])->name('edit');
-    Route::put('/{tenant_holiday}',            [TenantHolidayController::class, 'update'])->name('update');
-    Route::delete('/{tenant_holiday}',         [TenantHolidayController::class, 'destroy'])->name('destroy');
+        Route::get('/',                            [TenantHolidayController::class, 'index'])->name('index');
+        Route::get('/create',                      [TenantHolidayController::class, 'create'])->name('create');
+        Route::post('/',                           [TenantHolidayController::class, 'store'])->name('store');
+        Route::get('/{tenant_holiday}/edit',       [TenantHolidayController::class, 'edit'])->name('edit');
+        Route::put('/{tenant_holiday}',            [TenantHolidayController::class, 'update'])->name('update');
+        Route::delete('/{tenant_holiday}',         [TenantHolidayController::class, 'destroy'])->name('destroy');
     });
 
     // Vendors
     Route::prefix('admin/vendors')->name('admin.vendors.')->group(function () {
-    Route::get('/',                      [VendorController::class, 'index'])->name('index');
-    Route::get('/create',                [VendorController::class, 'create'])->name('create');
-    Route::post('/',                     [VendorController::class, 'store'])->name('store');
-    Route::get('/{vendor}/edit',         [VendorController::class, 'edit'])->name('edit');
-    Route::put('/{vendor}',              [VendorController::class, 'update'])->name('update');
-    Route::delete('/{vendor}',           [VendorController::class, 'destroy'])->name('destroy');
-    Route::post('/{vendor}/suspend',     [VendorController::class, 'suspend'])->name('suspend');
-    Route::post('/{vendor}/reactivate',  [VendorController::class, 'reactivate'])->name('reactivate');
+        Route::get('/',                      [VendorController::class, 'index'])->name('index');
+        Route::get('/create',                [VendorController::class, 'create'])->name('create');
+        Route::post('/',                     [VendorController::class, 'store'])->name('store');
+        Route::get('/{vendor}/edit',         [VendorController::class, 'edit'])->name('edit');
+        Route::put('/{vendor}',              [VendorController::class, 'update'])->name('update');
+        Route::delete('/{vendor}',           [VendorController::class, 'destroy'])->name('destroy');
+        Route::post('/{vendor}/suspend',     [VendorController::class, 'suspend'])->name('suspend');
+        Route::post('/{vendor}/reactivate',  [VendorController::class, 'reactivate'])->name('reactivate');
     });
 
     // Business Hours
     Route::prefix('admin/business-hours')->name('admin.tenant-business-hours.')->group(function () {
         Route::get('/',  [TenantBusinessHourController::class, 'index'])->name('index');
         Route::put('/',  [TenantBusinessHourController::class, 'update'])->name('update');
+    });
+
+    // Service Requests
+        // Service Requests
+    Route::prefix('service-requests')->name('service-requests.')->group(function () {
+        Route::get('/',                       [ServiceRequestController::class, 'index'])->name('index');
+        Route::get('/create',                 [ServiceRequestController::class, 'create'])->name('create');
+        Route::post('/',                      [ServiceRequestController::class, 'store'])->name('store');
+
+        // AJAX — sites for a client
+        Route::get('/sites/for-client',       [ServiceRequestController::class, 'sitesForClient'])->name('sites.for-client');
+
+        // Serve attachment files via Laravel (no need for storage:link symlink to work)
+        Route::get('/file/{service_request}/attachments/{filename}', function (
+            \App\Models\ServiceRequest $service_request,
+            string $filename
+        ) {
+            if (str_contains($filename, '/') || str_contains($filename, '..') || str_contains($filename, '\\')) {
+                abort(400);
+            }
+            $path = "sr/{$service_request->id}/attachments/{$filename}";
+            abort_unless(\Storage::disk('public')->exists($path), 404);
+
+            return response()->file(storage_path('app/public/' . $path));
+        })->name('file');
+
+        Route::get('/{service_request}',       [ServiceRequestController::class, 'show'])->name('show');
+
+        Route::get('/{service_request}/edit', [ServiceRequestController::class, 'edit'])->name('edit');
+        Route::put('/{service_request}',      [ServiceRequestController::class, 'update'])->name('update');
+        Route::delete('/{service_request}',   [ServiceRequestController::class, 'destroy'])->name('destroy');
+
+        // State transitions
+        Route::post('/{service_request}/approve',        [ServiceRequestController::class, 'approve'])->name('approve');
+        Route::post('/{service_request}/reject',         [ServiceRequestController::class, 'reject'])->name('reject');
+        Route::post('/{service_request}/cancel',         [ServiceRequestController::class, 'cancel'])->name('cancel');
+        Route::post('/{service_request}/mark-review',    [ServiceRequestController::class, 'markReview'])->name('mark-review');
+        Route::post('/{service_request}/assign',         [ServiceRequestController::class, 'assign'])->name('assign');
+        Route::post('/{service_request}/send-for-quote', [ServiceRequestController::class, 'sendForQuote'])->name('send-for-quote');
+        Route::post('/{service_request}/change-priority',[ServiceRequestController::class, 'changePriority'])->name('change-priority');
+        // Route::delete('/{service_request}/attachments/{filename}', [ServiceRequestController::class, 'deleteAttachment'])
+        //     ->name('attachments.delete');
     });
 
