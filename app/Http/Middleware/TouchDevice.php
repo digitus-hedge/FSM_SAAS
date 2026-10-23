@@ -12,7 +12,7 @@ class TouchDevice
 
     public function handle(Request $request, Closure $next)
     {
-        $user = Auth::guard('platform')->user() ?? Auth::guard('web')->user();
+        $user = Auth::guard('web')->user() ?? Auth::guard('platform')->user();
         if ($user) {
             $this->devices->touch($user, $request);
         }

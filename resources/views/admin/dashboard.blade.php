@@ -100,9 +100,14 @@ h1{font-family:'Figtree';font-size:32px;font-weight:700;letter-spacing:-.6px}
                     </td>
                     <td style="color:var(--muted)">{{ $tenant->created_at->format('d M Y') }}</td>
                     <td class="actions-cell">
+                        <form method="POST" action="{{ route('admin.tenants.resend-invitation', $tenant) }}" style="display:inline">
+                            @csrf
+                            <button type="submit" class="linkbtn">Resend invite</button>
+                        </form>
                         @if ($tenant->status === 'active')
                             <form method="POST" action="{{ route('admin.tenants.suspend', $tenant) }}" style="display:inline" onsubmit="return confirm('Suspend {{ $tenant->name }}? Users will not be able to sign in.')">
                                 @csrf
+                                <input type="hidden" name="reason" value="Suspended by platform admin">
                                 <button type="submit" class="linkbtn danger">Suspend</button>
                             </form>
                         @else

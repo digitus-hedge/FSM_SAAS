@@ -12,6 +12,8 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\{InteractsWithQueue, SerializesModels};
 use Illuminate\Support\Facades\{DB, Hash};
 use Illuminate\Support\Str;
+use App\Mail\InvitationMail;
+use Illuminate\Support\Facades\Mail;
 
 class ProvisionCompany implements ShouldQueue
 {
@@ -45,7 +47,7 @@ class ProvisionCompany implements ShouldQueue
                 'name'               => $this->input['name'],
                 'plan_id'            => $this->input['plan_id']            ?? null,
                 'country'            => $this->input['country']            ?? null,
-                'timezone'           => $this->input['timezone']           ?? 'Asia/Calcutta',
+                'timezone'           => $this->input['timezone']           ?? 'Asia/Kolkata',
                 'base_currency'      => $this->input['base_currency']      ?? null,
                 'status'             => $this->input['start_as']           ?? 'active',
                 'trial_ends_on'      => $this->input['trial_ends_on']      ?? null,
@@ -125,12 +127,25 @@ class ProvisionCompany implements ShouldQueue
             ]);
 
             // D9: issue a 7-day invitation link (ACC-02 flow).
-            $token = $secureLinks->create($admin, 'user_invite', 7 * 24 * 60);
-            $this->invitation = [
-                'user'  => $admin->name,
-                'email' => $admin->email,
-                'url'   => url("/invitation/{$token}"),
-            ];
+                $token = $secureLinks->create($admin, 'user_invite', 7 * 24 * 60);
+
+                // Build URL against the tenant's own subdomain, not APP_URL.
+                $host   = parse_url(config('app.url'), PHP_URL_HOST);
+                $port   = parse_url(config('app.url'), PHP_URL_PORT);
+                $scheme = parse_url(config('app.url'), PHP_URL_SCHEME) ?: 'http';
+                $portPart = $port ? ":{$port}" : '';
+                $invitationUrl = "{$scheme}://{$tenant->slug}.{$host}{$portPart}/invitation/{$token}";
+
+                $this->invitation = [
+                    'user'  => $admin->name,
+                    'email' => $admin->email,
+                    'url'   => $invitationUrl,
+                ];
+
+                // Send the invitation email (afterCommit so a later rollback does not queue a stale mail).
+                Mail::to($admin->email)->send(
+                    (new InvitationMail($admin, $tenant, $invitationUrl))->afterCommit()
+                );
 
             // Step 8 — starter master data: placeholder; slice 2 will fill real content.
 

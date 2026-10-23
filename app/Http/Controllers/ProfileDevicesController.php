@@ -6,7 +6,7 @@ use App\Models\User;
 use App\Models\UserDevice;
 use App\Services\Audit\AuditLogger;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\{Auth, DB};
 
 class ProfileDevicesController extends Controller
 {
@@ -14,11 +14,17 @@ class ProfileDevicesController extends Controller
 
     private function user(): User|PlatformUser|null
     {
+        if (\App\Models\Tenant::current()) {
+            return Auth::guard('web')->user() ?? Auth::guard('platform')->user();
+        }
         return Auth::guard('platform')->user() ?? Auth::guard('web')->user();
     }
 
     private function userType(): string
     {
+        if (\App\Models\Tenant::current() && Auth::guard('web')->check()) {
+            return 'user';
+        }
         return Auth::guard('platform')->check() ? 'platform_user' : 'user';
     }
 
@@ -30,6 +36,7 @@ class ProfileDevicesController extends Controller
         $devices = UserDevice::where('user_type', $this->userType())
             ->where('user_id', $user->id)
             ->whereNull('revoked_at')
+            ->where('trusted_until', '>', now())
             ->orderByDesc('last_used_at')
             ->get();
 
@@ -45,6 +52,11 @@ class ProfileDevicesController extends Controller
 
         $device->update(['revoked_at' => now()]);
 
+        // Kill the Laravel session so that device is signed out immediately.
+        if ($device->session_id) {
+            DB::table('sessions')->where('id', $device->session_id)->delete();
+        }
+
         $this->audit->log('user.devices_revoked', [
             'item_type' => $user::class,
             'item_id'   => $user->id,
@@ -59,11 +71,20 @@ class ProfileDevicesController extends Controller
         $user = $this->user();
         abort_unless($user, 403);
 
-        $count = UserDevice::where('user_type', $this->userType())
+        $others = UserDevice::where('user_type', $this->userType())
             ->where('user_id', $user->id)
             ->where('session_id', '!=', $request->session()->getId())
             ->whereNull('revoked_at')
-            ->update(['revoked_at' => now()]);
+            ->get();
+
+        $sessionIds = $others->pluck('session_id')->filter()->all();
+
+        UserDevice::whereIn('id', $others->pluck('id'))->update(['revoked_at' => now()]);
+        if (! empty($sessionIds)) {
+            DB::table('sessions')->whereIn('id', $sessionIds)->delete();
+        }
+
+        $count = $others->count();
 
         $this->audit->log('user.devices_revoked', [
             'item_type' => $user::class,

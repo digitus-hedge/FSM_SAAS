@@ -91,8 +91,12 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
 </head>
 <body>
 @php
-    $u             = auth()->user();
-    $isPlatform    = \Illuminate\Support\Facades\Auth::guard('platform')->check();
+    $isPlatform    = \Illuminate\Support\Facades\Auth::guard('platform')->check()
+                     && ! \App\Models\Tenant::current();
+    $u             = $isPlatform
+                     ? \Illuminate\Support\Facades\Auth::guard('platform')->user()
+                     : auth()->user();
+
     $hasOps        = $u?->canDo('client.manage') || $u?->canDo('site.manage') || $u?->canDo('category.manage');
     $hasSetup      = $u?->canDo('settings.manage');
     $hasPeople     = $u?->canDo('user.manage') || $u?->canDo('role.manage') || $u?->canDo('audit.view');
@@ -244,8 +248,6 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
 
 
             @endif
-        </div>
-    </details>
     @endif
 
     {{-- ─────────────── FOOTER ─────────────── --}}

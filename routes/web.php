@@ -65,6 +65,7 @@ Route::middleware(['auth:platform', 'platform.2fa'])->prefix('admin')->name('adm
     Route::post('/tenants',                      [TenantController::class, 'store'])->name('tenants.store');
     Route::post('/tenants/{tenant}/suspend',     [TenantController::class, 'suspend'])->name('tenants.suspend');
     Route::post('/tenants/{tenant}/reactivate',  [TenantController::class, 'reactivate'])->name('tenants.reactivate');
+    Route::post('/tenants/{tenant}/resend-invitation', [TenantController::class, 'resendInvitation'])->name('tenants.resend-invitation');
 });
 
 /*

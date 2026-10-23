@@ -15,19 +15,22 @@ class DeviceService
         $isTechnician = $user instanceof User && $user->role?->code === 'field_technician';
         $trustedUntil = $isTechnician ? now()->addDays(30) : now()->addHours(8);
 
-        $device = UserDevice::create([
-            'tenant_id'     => $user instanceof User ? $user->tenant_id : null,
-            'user_type'     => $user instanceof PlatformUser ? 'platform_user' : 'user',
-            'user_id'       => $user->id,
-            'label'         => $this->labelFromUserAgent($request->userAgent()),
-            'ip'            => $request->ip(),
-            'user_agent'    => mb_substr((string) $request->userAgent(), 0, 500),
-            'session_id'    => $request->session()->getId(),
-            'last_used_at'  => now(),
-            'trusted_until' => $trustedUntil,
-        ]);
-
-        return $device;
+        return UserDevice::updateOrCreate(
+            [
+                'user_type'  => $user instanceof PlatformUser ? 'platform_user' : 'user',
+                'user_id'    => $user->id,
+                'session_id' => $request->session()->getId(),
+            ],
+            [
+                'tenant_id'     => $user instanceof User ? $user->tenant_id : null,
+                'label'         => $this->labelFromUserAgent($request->userAgent()),
+                'ip'            => $request->ip(),
+                'user_agent'    => mb_substr((string) $request->userAgent(), 0, 500),
+                'last_used_at'  => now(),
+                'trusted_until' => $trustedUntil,
+                'revoked_at'    => null,
+            ]
+        );
     }
 
     public function markCurrentRevoked(Request $request): void

@@ -6,7 +6,16 @@
 
     <form method="POST" action="{{ route('admin.tenants.store') }}" style="max-width:720px;background:#fff;border:1px solid #E6E4EE;border-radius:16px;padding:28px">
         @csrf
-
+        @if ($errors->any())
+            <div style="background:#FEE;border:1px solid #C2381B;color:#8A2718;padding:12px 16px;border-radius:10px;margin-bottom:16px">
+                <strong>Fix the following:</strong>
+                <ul style="margin:6px 0 0 20px;padding:0">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
         <h2 style="font:600 16px 'Figtree';margin-bottom:14px">Company</h2>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
             <label>
@@ -35,12 +44,12 @@
             </label>
             <label>
                 <span style="display:block;font-weight:600;font-size:13px;margin-bottom:6px">Country (ISO 2)</span>
-                <input type="text" name="country" value="{{ old('country') }}" maxlength="2"
+                <input type="text" name="country" value="{{ old('country', 'IN') }}" maxlength="2"
                        style="width:100%;height:42px;padding:0 14px;border:1px solid #E6E4EE;border-radius:10px;font-size:14px;text-transform:uppercase">
             </label>
             <label>
                 <span style="display:block;font-weight:600;font-size:13px;margin-bottom:6px">Base currency (ISO 3)</span>
-                <input type="text" name="base_currency" value="{{ old('base_currency') }}" maxlength="3"
+                <input type="text" name="base_currency" value="{{ old('base_currency', 'INR') }}" maxlength="3"
                        style="width:100%;height:42px;padding:0 14px;border:1px solid #E6E4EE;border-radius:10px;font-size:14px;text-transform:uppercase">
             </label>
         </div>
@@ -48,19 +57,19 @@
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
             <label>
                 <span style="display:block;font-weight:600;font-size:13px;margin-bottom:6px">Time zone</span>
-                <input type="text" name="timezone" value="{{ old('timezone', 'Asia/Calcutta') }}"
+                <input type="text" name="timezone" value="{{ old('timezone', 'Asia/Kolkata') }}"
                        style="width:100%;height:42px;padding:0 14px;border:1px solid #E6E4EE;border-radius:10px;font-size:14px">
             </label>
             <label>
                 <span style="display:block;font-weight:600;font-size:13px;margin-bottom:6px">Start as</span>
                 <select name="start_as" style="width:100%;height:42px;padding:0 10px;border:1px solid #E6E4EE;border-radius:10px;font-size:14px">
-                    <option value="trial"  @selected(old('start_as', 'trial')==='trial')>Trial</option>
-                    <option value="active" @selected(old('start_as')==='active')>Active</option>
+                    <option value="active" @selected(old('start_as', 'active')==='active')>Active</option>
+                    <option value="trial"  @selected(old('start_as')==='trial')>Trial</option>
                 </select>
             </label>
             <label>
                 <span style="display:block;font-weight:600;font-size:13px;margin-bottom:6px">Trial ends on</span>
-                <input type="date" name="trial_ends_on" value="{{ old('trial_ends_on') }}"
+                <input type="date" name="trial_ends_on" value="{{ old('trial_ends_on', now()->addDays(14)->format('Y-m-d')) }}"
                        style="width:100%;height:42px;padding:0 14px;border:1px solid #E6E4EE;border-radius:10px;font-size:14px">
             </label>
         </div>

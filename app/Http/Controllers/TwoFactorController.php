@@ -15,11 +15,18 @@ class TwoFactorController extends Controller
 
     private function activeUser(): mixed
     {
+        // On a tenant subdomain, the tenant (web) user wins even if a platform session is also active.
+        if (\App\Models\Tenant::current()) {
+            return Auth::guard('web')->user() ?? Auth::guard('platform')->user();
+        }
         return Auth::guard('platform')->user() ?? Auth::guard('web')->user();
     }
 
     private function activeGuard(): string
     {
+        if (\App\Models\Tenant::current() && Auth::guard('web')->check()) {
+            return 'web';
+        }
         return Auth::guard('platform')->check() ? 'platform' : 'web';
     }
 
