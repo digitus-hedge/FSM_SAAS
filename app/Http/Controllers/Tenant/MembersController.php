@@ -67,14 +67,20 @@ class MembersController extends Controller
         abort_unless($tenant, 404);
 
         $data = $this->validatedPayload($request, $tenant);
-
+        do {
+            $employeeCode = 'EMP-' . $tenant->id . '-' . strtoupper(Str::random(6));
+        } while (
+            User::where('tenant_id', $tenant->id)
+                ->where('employee_code', $employeeCode)
+                ->exists()
+        );
         $user = User::create([
             'tenant_id'            => $tenant->id,
             'role_id'              => $data['role_id'],
             'name'                 => $data['name'],
             'email'                => $data['email']  ?: null,
             'phone'                => $data['phone']  ?: null,
-            'employee_code'        => $data['employee_code'] ?: null,
+            'employee_code'         => $employeeCode,
             'password'             => Hash::make(Str::random(32)),
             'must_change_password' => true,
         ]);
@@ -135,7 +141,6 @@ class MembersController extends Controller
             'name'          => $data['name'],
             'email'         => $data['email']  ?: null,
             'phone'         => $data['phone']  ?: null,
-            'employee_code' => $data['employee_code'] ?: null,
         ]);
 
         // ↓ audit — only the keys that actually changed

@@ -20,7 +20,7 @@ h1{font-family:'Figtree';font-size:28px;font-weight:700;letter-spacing:-.5px;mar
 <h1>Add member</h1>
 <p class="lede">The user signs in with the password you set and is prompted to change it on first login.</p>
 
-<form method="POST" action="{{ route('tenant.members.store') }}" class="card">
+<form method="POST" action="{{ route('tenant.users.store') }}" class="card">
     @csrf
 
     <div class="field">
@@ -34,17 +34,38 @@ h1{font-family:'Figtree';font-size:28px;font-weight:700;letter-spacing:-.5px;mar
         <input type="email" name="email" value="{{ old('email') }}" required>
         @error('email') <span class="err">{{ $message }}</span> @enderror
     </div>
+<div class="field">
+    <label>Phone Number</label>
+    <input
+        type="tel"
+        name="phone"
+        value="{{ old('phone') }}"
+        placeholder="Enter phone number"
+    >
+    @error('phone')
+        <span class="err">{{ $message }}</span>
+    @enderror
+</div>
+<div class="field">
+    <label>Role</label>
 
-    <div class="field">
-        <label>Role</label>
-        <select name="role" required>
-            @foreach ($roles as $role)
-                <option value="{{ $role }}" {{ old('role') === $role ? 'selected' : '' }}>{{ str_replace('_', ' ', $role) }}</option>
-            @endforeach
-        </select>
-        @error('role') <span class="err">{{ $message }}</span> @enderror
-    </div>
+    <select name="role_id" required>
+        <option value="">Select role</option>
 
+        @foreach ($roles as $role)
+            <option
+                value="{{ $role->id }}"
+                {{ (string) old('role_id') === (string) $role->id ? 'selected' : '' }}
+            >
+                {{ $role->name }}
+            </option>
+        @endforeach
+    </select>
+
+    @error('role_id')
+        <span class="err">{{ $message }}</span>
+    @enderror
+</div>
     <div class="field">
         <label>Initial password</label>
         <input type="text" name="password" value="{{ old('password') }}" minlength="8" required>
@@ -54,7 +75,7 @@ h1{font-family:'Figtree';font-size:28px;font-weight:700;letter-spacing:-.5px;mar
 
     <div class="actions">
         <button type="submit" class="btn">Add member</button>
-        <a href="{{ route('tenant.members.index') }}" class="btn ghost">Cancel</a>
+        <a href="{{ route('tenant.users.index') }}" class="btn ghost">Cancel</a>
     </div>
 </form>
 @endsection
