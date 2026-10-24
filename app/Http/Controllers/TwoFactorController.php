@@ -15,19 +15,23 @@ class TwoFactorController extends Controller
 
     private function activeUser(): mixed
     {
-        // On a tenant subdomain, the tenant (web) user wins even if a platform session is also active.
         if (\App\Models\Tenant::current()) {
-            return Auth::guard('web')->user() ?? Auth::guard('platform')->user();
+            return Auth::guard('web')->user();
         }
-        return Auth::guard('platform')->user() ?? Auth::guard('web')->user();
+
+        return Auth::guard('platform')->user()
+            ?? Auth::guard('web')->user();
     }
 
     private function activeGuard(): string
     {
-        if (\App\Models\Tenant::current() && Auth::guard('web')->check()) {
+        if (\App\Models\Tenant::current()) {
             return 'web';
         }
-        return Auth::guard('platform')->check() ? 'platform' : 'web';
+
+        return Auth::guard('platform')->check()
+            ? 'platform'
+            : 'web';
     }
 
     public function setup()
@@ -107,57 +111,108 @@ class TwoFactorController extends Controller
 
     // ─────────── Challenge after password ───────────
 
-    public function challenge(Request $request)
-    {
-        $pendingKey = $request->session()->get('two_factor_pending');
-        abort_unless($pendingKey, 403);
-        return view('auth.two-factor-challenge');
+    
+public function challenge(Request $request)
+{
+    \Log::debug('2FA challenge diagnostic', [
+        'host' => $request->getHost(),
+        'tenant_id' => \App\Models\Tenant::current()?->id,
+        'pending_exists' => $request->session()->has('two_factor_pending'),
+        'pending' => $request->session()->get('two_factor_pending'),
+        'web_authenticated' => Auth::guard('web')->check(),
+        'platform_authenticated' => Auth::guard('platform')->check(),
+        'session_id' => $request->session()->getId(),
+    ]);
+
+    $pendingKey = $request->session()->get('two_factor_pending');
+
+    abort_unless($pendingKey, 403);
+
+    return view('auth.two-factor-challenge');
+}
+
+    
+public function verifyChallenge(Request $request)
+{
+    $data = $request->validate([
+        'code' => ['required', 'string', 'digits:6'],
+    ]);
+
+    $pending = $request->session()->get('two_factor_pending');
+
+    abort_unless($pending, 403);
+
+    $guard = $pending['guard'] ?? 'web';
+
+    if (! in_array($guard, ['web', 'platform'], true)) {
+        abort(403);
     }
 
-    public function verifyChallenge(Request $request)
-    {
-        $data = $request->validate([
-            'code' => ['required', 'string', 'digits:6'],
-        ]);
+    $user = $guard === 'platform'
+        ? \App\Models\PlatformUser::find($pending['user_id'])
+        : \App\Models\User::find($pending['user_id']);
 
-        $pending = $request->session()->get('two_factor_pending');
-        abort_unless($pending, 403);
+    if (! $user || ! $this->tfa->verify($user->two_factor_secret, $data['code'])) {
+        $attempts = ($pending['attempts'] ?? 0) + 1;
 
-        $guard = $pending['guard'];
-        $user  = $guard === 'platform'
-            ? \App\Models\PlatformUser::find($pending['user_id'])
-            : \App\Models\User::find($pending['user_id']);
-
-        if (! $user || ! $this->tfa->verify($user->two_factor_secret, $data['code'])) {
-            $attempts = $pending['attempts'] ?? 0;
-            $attempts++;
-            if ($attempts >= 3) {
-                // D5: 3 wrong codes cancel the attempt + count toward lockout.
-                $user?->increment('failed_login_count');
-                $request->session()->forget('two_factor_pending');
-                $this->audit->log('auth.sign_in_failed', [
-                    'item_type' => $user ? $user::class : null,
-                    'item_id'   => $user?->id,
-                    'new'       => ['reason' => 'too_many_wrong_two_factor_codes'],
-                ]);
-                return redirect()->route($guard === 'platform' ? 'platform.login' : 'login')
-                    ->withErrors(['identifier' => 'Too many wrong codes. Sign in again.']);
+        if ($attempts >= 3) {
+            if ($user) {
+                $user->increment('failed_login_count');
             }
-            $request->session()->put('two_factor_pending', ['attempts' => $attempts] + $pending);
-            return back()->withErrors(['code' => 'That code is not right. Try the next code from your app.']);
+
+            $request->session()->forget('two_factor_pending');
+
+            $this->audit->log('auth.sign_in_failed', [
+                'item_type' => $user ? $user::class : null,
+                'item_id' => $user?->id,
+                'new' => ['reason' => 'too_many_wrong_two_factor_codes'],
+            ]);
+
+            return redirect()
+                ->route($guard === 'platform' ? 'platform.login' : 'login')
+                ->withErrors([
+                    'identifier' => 'Too many wrong codes. Sign in again.',
+                ]);
         }
 
-        Auth::guard($guard)->login($user, (bool) ($pending['remember'] ?? false));
-        $user->update(['last_sign_in_at' => now(), 'failed_login_count' => 0]);
-        $request->session()->forget('two_factor_pending');
+        $pending['attempts'] = $attempts;
+        $request->session()->put('two_factor_pending', $pending);
 
-        app(\App\Services\Auth\DeviceService::class)->register($user, $request);
-        $this->audit->log('auth.sign_in', [
-            'item_type' => $user::class,
-            'item_id'   => $user->id,
-            'new'       => ['two_factor' => true],
+        return back()->withErrors([
+            'code' => 'That code is not right. Try the next code from your app.',
         ]);
-
-        return redirect()->intended($guard === 'platform' ? route('admin.dashboard') : route('tenant.dashboard'));
     }
+
+    // Authenticate only after the 2FA code is verified.
+    Auth::guard($guard)->login(
+        $user,
+        (bool) ($pending['remember'] ?? false)
+    );
+
+    // Regenerate the session once after authentication.
+    $request->session()->regenerate();
+
+    // Remove temporary 2FA state and any stale intended URL.
+    $request->session()->forget('two_factor_pending');
+    $request->session()->forget('url.intended');
+
+    $user->update([
+        'last_sign_in_at' => now(),
+        'failed_login_count' => 0,
+    ]);
+
+    app(\App\Services\Auth\DeviceService::class)
+        ->register($user, $request);
+
+    $this->audit->log('auth.sign_in', [
+        'item_type' => $user::class,
+        'item_id' => $user->id,
+        'new' => ['two_factor' => true],
+    ]);
+
+    return redirect()->route(
+        $guard === 'platform' ? 'admin.dashboard' : 'tenant.dashboard'
+    );
+}
+
 }
