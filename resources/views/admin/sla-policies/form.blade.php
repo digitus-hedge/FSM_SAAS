@@ -69,10 +69,10 @@
 
     <div class="form-grid">
       <div class="field">
-        <label for="service_category_id">Service category</label>
+        <label for="service_category_id">Service Category</label>
         <select id="service_category_id" name="service_category_id"
                 class="input @error('service_category_id') has-error @enderror">
-          <option value="">— Any (tenant default) —</option>
+          <option value="">— Select Service Category —</option>
           @foreach ($categories as $cat)
             <option value="{{ $cat->id }}" @selected((string) old('service_category_id', $policy->service_category_id) === (string) $cat->id)>
               {{ $cat->name }} ({{ $cat->code }})

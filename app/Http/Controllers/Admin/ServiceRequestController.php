@@ -17,17 +17,101 @@ class ServiceRequestController extends Controller
 {
     private array $perPageOptions = [10, 25, 50, 100];
 
+
+    // public function index(Request $request)
+    // {
+    //     $perPage = (int) $request->input('per_page', 10);
+    //     if(!in_array($perPage, $this->perPageOptions)) $perPage = 10;
+
+    //     $requests = ServiceRequest::query()
+    //         ->with(['client:id,name', 'site:id,name', 'category:id,name'])
+    //         ->status($request->input('status'))
+    //         ->priority($request->input('priority'))
+    //         ->forClient($request->input('client_id'))
+    //         ->search(trim((string) $request->input('q', '')))
+    //         ->orderByDesc('id')
+    //         ->paginate($perPage)
+    //         ->withQueryString();
+
+    //     return view('admin.service-requests.index', [
+    //         'requests'       => $requests,
+    //         'perPage'        => $perPage,
+    //         'perPageOptions' => $this->perPageOptions,
+    //         'statuses'       => ServiceRequest::STATUSES,
+    //         'priorities'     => ServiceRequest::PRIORITIES,
+    //         'clients'        => Client::active()->orderBy('name')->get(['id', 'name']),
+    //     ]);
+    // }
+
+
+
+
     public function index(Request $request)
     {
         $perPage = (int) $request->input('per_page', 10);
-        if (!in_array($perPage, $this->perPageOptions)) $perPage = 10;
 
-        $requests = ServiceRequest::query()
-            ->with(['client:id,name', 'site:id,name', 'category:id,name'])
-            ->status($request->input('status'))
+        if (!in_array($perPage, $this->perPageOptions)) {
+            $perPage = 10;
+        }
+
+        // Stage tabs mapped to database statuses
+        $stageStatuses = [
+            'needs'     => 'pending',
+            'quote'     => 'waiting_for_quote',
+            'quoted'    => 'quoted',
+            'assign'    => 'approved',
+            'assigned'  => 'assigned',
+            'progress'  => 'in_progress',
+            'review'    => 'pending_review',
+            'invoice'   => 'awaiting_invoice',
+            'rework'    => 'rework',
+            'done'      => 'completed',
+            'cancelled' => 'cancelled',
+        ];
+
+        $activeStage = $request->input('stage', 'all');
+
+        if (
+            $activeStage !== 'all' &&
+            !array_key_exists($activeStage, $stageStatuses)
+        ) {
+            $activeStage = 'all';
+        }
+
+        // Base query for stage counts.
+        // Keep the same tenant/authorization restrictions as your normal query.
+        $countQuery = ServiceRequest::query();
+
+        $stageCounts = [];
+
+        foreach ($stageStatuses as $key => $status) {
+            $stageCounts[$key] = (clone $countQuery)
+                ->where('status', $status)
+                ->count();
+        }
+
+        $stageCounts['all'] = (clone $countQuery)->count();
+
+        // Main requests query
+        $query = ServiceRequest::query()
+            ->with([
+                'client:id,name',
+                'site:id,name',
+                'category:id,name',
+            ]);
+
+        // Filter by selected tab
+        if ($activeStage !== 'all') {
+            $query->where('status', $stageStatuses[$activeStage]);
+        }
+
+        // Keep existing filters
+        $query->status($request->input('status'))
             ->priority($request->input('priority'))
             ->forClient($request->input('client_id'))
-            ->search(trim((string) $request->input('q', '')))
+            ->search(trim((string) $request->input('q', '')));
+
+        $requests = $query
             ->orderByDesc('id')
             ->paginate($perPage)
             ->withQueryString();
@@ -39,8 +123,12 @@ class ServiceRequestController extends Controller
             'statuses'       => ServiceRequest::STATUSES,
             'priorities'     => ServiceRequest::PRIORITIES,
             'clients'        => Client::active()->orderBy('name')->get(['id', 'name']),
+            'stageCounts'    => $stageCounts,
+            'activeStage'    => $activeStage,
         ]);
     }
+
+
 
     public function create()
     {

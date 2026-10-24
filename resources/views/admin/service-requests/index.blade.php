@@ -84,6 +84,10 @@
     'completed'        => 'green',
     'cancelled'        => 'gray',
   ];
+
+
+   
+
 @endphp
 
 <div class="page-head">
@@ -96,6 +100,108 @@
     New Requests
   </a>
 </div>
+
+
+
+
+
+@php
+    $stageTabs = [
+        'needs'     => ['label' => 'Needs approval',   'status' => 'pending'],
+        'quote'     => ['label' => 'Waiting for quote','status' => 'waiting_for_quote'],
+        'quoted'    => ['label' => 'Quoted',           'status' => 'quoted'],
+        'assign'    => ['label' => 'To assign',        'status' => 'approved'],
+        'assigned'  => ['label' => 'Assigned',         'status' => 'assigned'],
+        'progress'  => ['label' => 'In progress',      'status' => 'in_progress'],
+        'review'    => ['label' => 'To review',        'status' => 'pending_review'],
+        'invoice'   => ['label' => 'Awaiting invoice', 'status' => 'awaiting_invoice'],
+        'rework'    => ['label' => 'Rework',           'status' => 'rework'],
+        'done'      => ['label' => 'Completed',        'status' => 'completed'],
+        'cancelled' => ['label' => 'Cancelled',        'status' => 'cancelled'],
+        'all'       => ['label' => 'All',              'status' => ''],
+    ];
+
+    $activeStage = request('stage', 'all');
+    $activeStage = array_key_exists($activeStage, $stageTabs)
+        ? $activeStage
+        : 'all';
+@endphp
+
+<style>
+    .stage-tabs {
+        display: flex;
+        gap: 9px;
+        overflow-x: auto;
+        padding: 0 0 12px;
+        margin-bottom: 10px;
+        scrollbar-width: thin;
+    }
+
+    .stage-tab {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+        white-space: nowrap;
+        padding: 10px 16px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: #fff;
+        color: var(--ink);
+        text-decoration: none;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 13px;
+        font-weight: 600;
+        transition: all .15s;
+    }
+
+    .stage-tab:hover {
+        background: var(--soft);
+    }
+
+    .stage-tab.active {
+        background: #315BF5;
+        color: #fff;
+        border-color: #315BF5;
+    }
+
+    .stage-count {
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        min-width: 21px;
+        height: 21px;
+        padding: 0 6px;
+        border-radius: 999px;
+        background: #F3F4F8;
+        color: var(--ink);
+        font-size: 11px;
+    }
+
+    .stage-tab.active .stage-count {
+        background: rgba(255,255,255,.22);
+        color: #fff;
+    }
+</style>
+
+<div class="stage-tabs" role="group" aria-label="Request stages">
+    @foreach ($stageTabs as $key => $tab)
+        <a
+            href="{{ route('service-requests.index', array_merge(request()->except('page', 'stage'), ['stage' => $key])) }}"
+            class="stage-tab {{ $activeStage === $key ? 'active' : '' }}"
+            aria-pressed="{{ $activeStage === $key ? 'true' : 'false' }}"
+        >
+            {{ $tab['label'] }}
+
+            <span class="stage-count">
+                {{ $stageCounts[$key] ?? 0 }}
+            </span>
+        </a>
+    @endforeach
+</div>
+
+
+
 
 @php
   $hasFilter = request()->filled('q')
@@ -176,22 +282,37 @@
               </div>
             </a>
           </td>
+
           <td>
+                 <a href="{{ route('service-requests.show', $sr) }}" style="text-decoration:none;color:inherit;display:block">
             <div class="cell-sub">
               {{ $sr->client->name ?? '—' }}
               <small>{{ $sr->site->name ?? '—' }}</small>
             </div>
+             </a>
           </td>
-          <td class="cell-sub">{{ $sr->category->name ?? '—' }}</td>
+
+          <td class="cell-sub">
+               <a href="{{ route('service-requests.show', $sr) }}" style="text-decoration:none;color:inherit;display:block">
+          {{ $sr->category->name ?? '—' }}
+        </a> 
+        </td>
           <td>
+ <a href="{{ route('service-requests.show', $sr) }}" style="text-decoration:none;color:inherit;display:block">
             <span class="pill pill-{{ $sr->priorityColor() }}">
               <span class="pill-dot"></span>{{ $sr->priorityLabel() }}
             </span>
+            </a>
           </td>
+
+
           <td>
+             <a href="{{ route('service-requests.show', $sr) }}" style="text-decoration:none;color:inherit;display:block">
             <span class="pill pill-{{ $statusPill[$sr->status] ?? 'gray' }}">
               <span class="pill-dot"></span>{{ $sr->statusLabel() }}
             </span>
+
+          </a>
           </td>
           <td class="cell-sub">
             {{ $sr->created_at->format('d M Y') }}
@@ -207,28 +328,18 @@
                   <circle cx="12" cy="12" r="3"/>
                 </svg>
               </a>
-                           <a href="{{ route('service-requests.edit', $sr) }}" class="icon-btn edit" data-tip="Edit">
+              
+              <a href="{{ route('service-requests.edit', $sr) }}" class="icon-btn edit" data-tip="Edit">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                 </svg>
               </a>
-              <form method="POST" action="{{ route('service-requests.destroy', $sr) }}" style="margin:0"
-                    class="needs-confirm"
-                    data-confirm-title="Delete {{ $sr->sr_number }}?"
-                    data-confirm-text="This request will be removed. You can restore it from the archive later."
-                    data-confirm-ok="Yes, delete"
-                    data-confirm-ok-color="red">
-                @csrf @method('DELETE')
-                <button type="submit" class="icon-btn delete" data-tip="Delete">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="3 6 5 6 21 6"/>
-                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                    <path d="M10 11v6M14 11v6"/>
-                    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                  </svg>
-                </button>
-              </form>
+
+
+           
+
+              
             </div>
 
             
