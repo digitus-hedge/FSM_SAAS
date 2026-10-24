@@ -100,18 +100,37 @@ class RolesController extends Controller
             ->with('success', "Role '{$role->name}' was created from {$data['based_on']}.");
     }
 
-    public function edit(Role $role)
+        public function edit(Role $role)
     {
         $this->ensureSameTenant($role);
 
-        $permissions = Permission::orderBy('group')->orderBy('key')->get()->groupBy('group');
+        $permissions = Permission::orderBy('group')->orderBy('key')->get();
+
         $currentLevels = RolePermission::where('role_id', $role->id)
-            ->pluck('level', 'permission_id');
+            ->pluck('level', 'permission_id')
+            ->toArray();
+
+        $matrix = app(\App\Services\Permissions\PermissionMatrix::class);
+        $defaultsByKey = $matrix->defaultsForRole($role->code);
+
+        $defaultLevels = [];
+        $allowedLevels = [];
+        $scopeNotes    = [];
+
+        foreach ($permissions as $p) {
+            $defaultLevels[$p->id] = $defaultsByKey[$p->key] ?? 'none';
+            $allowedLevels[$p->id] = $matrix->allowedLevelsForPermission($p->key);
+            $scopeNotes[$p->id]    = $matrix->scopeNoteFor($p->key);
+        }
 
         return view('tenant.roles.edit', [
             'role'          => $role,
-            'permissions'   => $permissions,
+            'permissions'   => $permissions->groupBy('group'),
             'currentLevels' => $currentLevels,
+            'defaultLevels' => $defaultLevels,
+            'allowedLevels' => $allowedLevels,
+            'scopeNotes'    => $scopeNotes,
+            'levelLabels'   => \App\Services\Permissions\PermissionMatrix::LEVEL_LABELS,
             'levels'        => self::LEVELS,
             'affectedUsers' => User::where('role_id', $role->id)->count(),
         ]);

@@ -47,6 +47,7 @@
         </select>
         <button type="submit" style="background:#FFC61A;color:#1B1A24;border:0;padding:9px 18px;border-radius:999px;font-weight:600;cursor:pointer">Filter</button>
         <a href="{{ route('tenant.users.create') }}" style="margin-left:auto;background:#1B1A24;color:#fff;padding:9px 18px;border-radius:999px;text-decoration:none;font-weight:600;font-size:13px">+ New user</a>
+        <a href="{{ route('tenant.users.import.show') }}" class="btn-ghost" style="margin-right:8px">Import CSV</a>
     </form>
 
     <div style="background:#fff;border:1px solid #E6E4EE;border-radius:16px;overflow:hidden">

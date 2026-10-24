@@ -101,6 +101,13 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{user}/devices', [MembersController::class, 'devices'])->name('devices');
     });
 
+    Route::prefix('manage/users/import')->name('tenant.users.import.')->group(function () {
+        Route::get('/',           [\App\Http\Controllers\Tenant\UserImportController::class, 'show'])->name('show');
+        Route::post('/preview',   [\App\Http\Controllers\Tenant\UserImportController::class, 'preview'])->name('preview');
+        Route::post('/commit',    [\App\Http\Controllers\Tenant\UserImportController::class, 'commit'])->name('commit');
+        Route::get('/sample.csv', [\App\Http\Controllers\Tenant\UserImportController::class, 'sample'])->name('sample');
+    });
+
     // Clients + contacts
     Route::prefix('admin/clients')->name('admin.clients.')->group(function () {
         Route::get('/',                      [ClientsController::class, 'index'])->name('index');
