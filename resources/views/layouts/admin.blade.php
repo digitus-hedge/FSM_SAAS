@@ -85,14 +85,13 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
 </style>
 </head>
 <body>
-    <div style="padding:10px; background:#fff4cc; color:#000;">
-    Platform guard: {{ auth('platform')->check() ? 'Logged in' : 'Logged out' }}
-    <br>
-    Web guard: {{ auth('web')->check() ? 'Logged in' : 'Logged out' }}
-</div>
+
 @php
-    $u          = auth()->user();
-    $isPlatform = \Illuminate\Support\Facades\Auth::guard('platform')->check();
+    $isPlatform = \Illuminate\Support\Facades\Auth::guard('platform')->check()
+                  && ! \App\Models\Tenant::current();
+    $u          = $isPlatform
+                  ? \Illuminate\Support\Facades\Auth::guard('platform')->user()
+                  : auth()->user();
     $hasOps     = $u?->canDo('client.manage') || $u?->canDo('site.manage') || $u?->canDo('category.manage');
     $hasSetup   = $u?->canDo('settings.manage');
     $hasPeople  = $u?->canDo('user.manage') || $u?->canDo('role.manage') || $u?->canDo('audit.view');
