@@ -191,7 +191,7 @@
                       data-confirm-ok="Yes, deactivate"
                       data-confirm-ok-color="amber">
                   @csrf
-                  <button type="submit" class="icon-btn suspend" data-tip="Deactivate" @disabled($rate->is_default)>
+                  <button type="submit" class="icon-btn suspend" data-tip="Deactivate">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
                     </svg>
@@ -214,22 +214,7 @@
               @endif
 
               {{-- DELETE --}}
-              <form method="POST" action="{{ route('admin.tax-rates.destroy', $rate) }}" style="margin:0"
-                    class="needs-confirm"
-                    data-confirm-title="Delete {{ $rate->name }}?"
-                    data-confirm-text="This rate will be removed. Existing invoices keep their rate reference. You can restore from the archive later."
-                    data-confirm-ok="Yes, delete"
-                    data-confirm-ok-color="red">
-                @csrf @method('DELETE')
-                <button type="submit" class="icon-btn delete" data-tip="Delete" @disabled($rate->is_default)>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="3 6 5 6 21 6"/>
-                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                    <path d="M10 11v6M14 11v6"/>
-                    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                  </svg>
-                </button>
-              </form>
+             
 
             </div>
           </td>

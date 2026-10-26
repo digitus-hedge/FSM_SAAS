@@ -17,6 +17,8 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\TenantResolver::class,
             \App\Http\Middleware\ForcePasswordChange::class,
             \App\Http\Middleware\TouchDevice::class,
+            \App\Http\Middleware\RouteTechnicianMobile::class,
+
         ]);
 
         $middleware->alias([

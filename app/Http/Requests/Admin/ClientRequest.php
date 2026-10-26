@@ -17,17 +17,17 @@ class ClientRequest extends FormRequest
         $clientId = $this->route('client')?->id;
         $tenantId = Tenant::current()?->id;
 
-        return [
-            'client_code' => [
-                'required',
-                'string',
-                'min:2',
-                'max:40',
-                'regex:/^[A-Za-z0-9_\-]+$/',
-                Rule::unique('clients', 'client_code')
-                    ->where('tenant_id', $tenantId)
-                    ->ignore($clientId),
-            ],
+       return [
+        'client_code' => [
+            'nullable',                 // ← changed from required
+            'string',
+            'min:2',
+            'max:40',
+            'regex:/^[A-Za-z0-9_\-]+$/',
+            Rule::unique('clients', 'client_code')
+                ->where('tenant_id', $tenantId)
+                ->ignore($clientId),
+        ],
             'name' => [
                 'required',
                 'string',
@@ -104,7 +104,7 @@ class ClientRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'client_code.required'            => 'A client code is required.',
+       
             'client_code.regex'               => 'Client code can only contain letters, digits, dashes and underscores.',
             'client_code.unique'              => 'This client code is already used in your workspace. Pick another.',
             'client_code.min'                 => 'Client code must be at least 2 characters.',
@@ -129,15 +129,18 @@ class ClientRequest extends FormRequest
     }
 
     public function prepareForValidation(): void
-    {
-        $this->merge([
-            'client_code' => strtoupper(trim((string) $this->client_code)),
-            'name' => trim((string) $this->name),
-            'email' => trim((string) $this->email) ?: null,
-            'phone' => trim((string) $this->phone) ?: null,
-            'tax_id' => trim((string) $this->tax_id) ?: null,
-            'asset_visibility_enabled' => $this->boolean('asset_visibility_enabled'),
-            'is_active' => $this->has('is_active') ? $this->boolean('is_active') : true,
-        ]);
-    }
+{
+    // Normalise code: trim + uppercase, OR null when empty so the "nullable" rule kicks in
+    $code = trim((string) $this->client_code);
+
+    $this->merge([
+        'client_code' => $code === '' ? null : strtoupper($code),
+        'name'        => trim((string) $this->name),
+        'email'       => trim((string) $this->email) ?: null,
+        'phone'       => trim((string) $this->phone) ?: null,
+        'tax_id'      => trim((string) $this->tax_id) ?: null,
+        'asset_visibility_enabled' => $this->boolean('asset_visibility_enabled'),
+        'is_active'   => $this->has('is_active') ? $this->boolean('is_active') : true,
+    ]);
+}
 }

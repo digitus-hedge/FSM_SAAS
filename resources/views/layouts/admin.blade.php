@@ -106,6 +106,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
                || request()->routeIs('admin.expense-categories.*')
                || request()->routeIs('admin.tenant-holidays.*')
                || request()->routeIs('admin.vendors.*')
+               || request()->routeIs('admin.terminology.*')
                || request()->routeIs('admin.tenant-business-hours.*');
 
     $brandSub   = $isPlatform ? 'Platform console' : ($u?->tenant?->name ?? 'Workspace');
@@ -198,7 +199,10 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
                     <a href="{{ route('admin.expense-categories.index') }}" class="nav-item {{ request()->routeIs('admin.expense-categories.*') ? 'active' : '' }}">Expense categories</a>
                     <a href="{{ route('admin.tenant-holidays.index') }}" class="nav-item {{ request()->routeIs('admin.tenant-holidays.*') ? 'active' : '' }}">Holidays</a>
                     <a href="{{ route('admin.vendors.index') }}" class="nav-item {{ request()->routeIs('admin.vendors.*') ? 'active' : '' }}">Vendors</a>
-                    <a href="{{ route('admin.tenant-business-hours.index') }}" class="nav-item {{ request()->routeIs('admin.tenant-business-hours.*') ? 'active' : '' }}">Business hours</a>
+                    <a href="{{ route('admin.tenant-business-hours.index') }}" class="nav-item {{ request()->routeIs('admin.tenant-business-hours.*') ? 'active' : '' }}">Business Hours and Holidays</a>
+
+                   <a href="{{ route('admin.terminology.index') }}"
+   class="nav-item {{ request()->routeIs('admin.terminology.*') ? 'active' : '' }}">Terminology</a>
                 </div>
             </details>
         @endif

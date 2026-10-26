@@ -34,7 +34,7 @@ class TenantHolidayController extends Controller
             ->selectRaw('DISTINCT YEAR(holiday_date) as y')
             ->orderByDesc('y')
             ->pluck('y')
-            ->map(fn ($y) => (int) $y)
+            ->map(fn($y) => (int) $y)
             ->push((int) now()->year)
             ->push((int) now()->addYear()->year)
             ->unique()
@@ -57,6 +57,18 @@ class TenantHolidayController extends Controller
         ]);
     }
 
+    // public function store(TenantHolidayRequest $request)
+    // {
+    //     $data = $request->validated();
+    //     $data['tenant_id'] = auth()->user()->tenant_id;
+
+    //     TenantHoliday::create($data);
+
+    //     return redirect()->route('admin.tenant-holidays.index')
+    //         ->with('success', 'Holiday added.');
+    // }
+
+
     public function store(TenantHolidayRequest $request)
     {
         $data = $request->validated();
@@ -64,9 +76,9 @@ class TenantHolidayController extends Controller
 
         TenantHoliday::create($data);
 
-        return redirect()->route('admin.tenant-holidays.index')
-            ->with('success', 'Holiday added.');
+         return back()->withFragment('holidays')->with('success', 'Holiday added.');
     }
+
 
     public function edit(TenantHoliday $tenant_holiday)
     {
@@ -76,19 +88,36 @@ class TenantHolidayController extends Controller
         ]);
     }
 
+    // public function update(TenantHolidayRequest $request, TenantHoliday $tenant_holiday)
+    // {
+    //     $tenant_holiday->update($request->validated());
+
+    //     return redirect()->route('admin.tenant-holidays.index')
+    //         ->with('success', 'Holiday updated.');
+    // }
+
     public function update(TenantHolidayRequest $request, TenantHoliday $tenant_holiday)
     {
         $tenant_holiday->update($request->validated());
 
-        return redirect()->route('admin.tenant-holidays.index')
-            ->with('success', 'Holiday updated.');
+        return back()->withFragment('holidays')->with('success', 'Holiday updated.');
+
     }
+
+    // public function destroy(TenantHoliday $tenant_holiday)
+    // {
+    //     $tenant_holiday->delete();
+
+    //     return redirect()->route('admin.tenant-holidays.index')
+    //         ->with('success', 'Holiday deleted.');
+    // }
 
     public function destroy(TenantHoliday $tenant_holiday)
     {
         $tenant_holiday->delete();
 
-        return redirect()->route('admin.tenant-holidays.index')
-            ->with('success', 'Holiday deleted.');
+        return back()->withFragment('holidays')->with('success', 'Holiday removed.');
+
     }
+    
 }

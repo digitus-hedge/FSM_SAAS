@@ -1,7 +1,9 @@
 @extends('layouts.admin')
 @section('title', $mode === 'create' ? 'New Tax Rate' : 'Edit Tax Rate')
 @section('hide_layout_errors', true)
-
+@php
+    $hasDefault = $hasDefault ?? false;
+@endphp
 @section('content')
 <style>
   .page-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
@@ -87,28 +89,21 @@
       </div>
     </div>
 
-    <div class="field field-wide">
-      <div class="check-row">
-        <input type="hidden" name="is_default" value="0">
-        <input type="checkbox" name="is_default" id="is_default" value="1"
-               @checked(old('is_default', $rate->is_default))>
-        <label for="is_default">
-          Set as the default tax rate
-          @if ($hasDefault && !$rate->is_default)
-            <div class="notice">⚠ Another rate is currently the default — ticking this will replace it.</div>
-          @endif
-        </label>
-      </div>
-    </div>
+<div class="field field-wide">
+  <div class="check-row">
+    <input type="hidden" name="is_default" value="0">
+    <input type="checkbox" name="is_default" id="is_default" value="1"
+           @checked(old('is_default', $rate->is_default))>
+    <label for="is_default">
+      Set as the default tax rate
+      @if ($hasDefault && !$rate->is_default)
+        <div class="notice">⚠ Another rate is currently the default — ticking this will replace it.</div>
+      @endif
+    </label>
+  </div>
+</div>
 
-    <div class="field field-wide">
-      <div class="check-row">
-        <input type="hidden" name="is_active" value="0">
-        <input type="checkbox" name="is_active" id="is_active" value="1"
-               @checked(old('is_active', $rate->exists ? $rate->is_active : true))>
-        <label for="is_active">Active — appears in tax dropdown on new line items</label>
-      </div>
-    </div>
+  
 
   </div>
 

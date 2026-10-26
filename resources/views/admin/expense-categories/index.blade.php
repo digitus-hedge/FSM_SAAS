@@ -71,6 +71,8 @@
   .pagination-nav .is-active{background:var(--yellow);border-color:var(--yellow);cursor:default}
   .pagination-nav .is-disabled{color:var(--subtle);background:#FCFBF8;pointer-events:none}
   .pagination-nav .ellipsis{border:0;background:transparent;color:var(--subtle);min-width:20px}
+
+  .cell-rate{color:#0F0F17;font-variant-numeric:tabular-nums}
 </style>
 
 <div class="page-head">
@@ -135,16 +137,18 @@
       </tr>
     </thead>
     <tbody>
+        @php $currency = auth()->user()->tenant->currency_code ?? 'AED'; @endphp
+
       @forelse ($categories as $cat)
         <tr>
           <td class="cell-name">{{ $cat->name }}</td>
-          <td class="{{ $cat->default_unit_rate !== null ? 'cell-rate' : 'cell-rate dash' }}">
-            @if ($cat->default_unit_rate !== null)
-              <span class="currency">{{ auth()->user()->tenant->currency_code ?? '' }}</span>{{ number_format($cat->default_unit_rate, 2) }}
-            @else
-              —
-            @endif
-          </td>
+         <td class="cell-rate">
+        @if ($cat->default_unit_rate !== null)
+          {{ number_format($cat->default_unit_rate, 2) }} {{ $currency }}
+        @else
+          <span style="color:#9A98A7">None</span>
+        @endif
+      </td>
           <td>
             @if ($cat->is_billable_default)
               <span class="pill pill-ok"><span class="pill-dot"></span>Yes</span>
@@ -210,7 +214,9 @@
               @endif
 
               {{-- DELETE --}}
-              <form method="POST" action="{{ route('admin.expense-categories.destroy', $cat) }}" style="margin:0"
+
+
+              <!-- <form method="POST" action="{{ route('admin.expense-categories.destroy', $cat) }}" style="margin:0"
                     class="needs-confirm"
                     data-confirm-title="Delete {{ $cat->name }}?"
                     data-confirm-text="This category will be removed. Existing expenses keep their reference, but no new ones can use it. You can restore it from the archive later."
@@ -225,7 +231,7 @@
                     <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
                   </svg>
                 </button>
-              </form>
+              </form> -->
 
             </div>
           </td>

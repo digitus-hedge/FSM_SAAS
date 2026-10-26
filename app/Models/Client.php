@@ -45,6 +45,11 @@ class Client extends Model
         return $this->hasMany(ProjectSite::class);
     }
 
+     public function serviceRequests()
+    {
+        return $this->hasMany(ServiceRequest::class);
+    }
+
     /* -----------------------------------------------------------------
      | Scopes
      | ----------------------------------------------------------------- */

@@ -100,43 +100,29 @@
     <div class="section-sub">How this reason affects SLA tracking and operator input.</div>
 
     <label class="toggle-row">
-      <input type="hidden" name="pauses_sla" value="0">
-      <input type="checkbox" name="pauses_sla" value="1"
-             {{ old('pauses_sla', $reason->pauses_sla) ? 'checked' : '' }}>
-      <span class="track"></span>
-      <span class="meta">
-        <span class="meta-title">Pauses the SLA clock</span>
-        <span class="meta-desc">When a service request is placed on hold with this reason, response and resolution timers stop until the hold is cleared.</span>
-      </span>
-    </label>
+  <input type="hidden" name="pauses_sla" value="0">
+  <input type="checkbox" name="pauses_sla" value="1"
+         {{ old('pauses_sla', $mode === 'edit' ? $reason->pauses_sla : false) ? 'checked' : '' }}>
+  <span class="track"></span>
+  <span class="meta">
+    <span class="meta-title">Pauses the SLA clock</span>
+    <span class="meta-desc">When a service request is placed on hold with this reason, response and resolution timers stop until the hold is cleared.</span>
+  </span>
+</label>
 
-    <label class="toggle-row">
-      <input type="hidden" name="requires_note" value="0">
-      <input type="checkbox" name="requires_note" value="1"
-             {{ old('requires_note', $reason->requires_note) ? 'checked' : '' }}>
-      <span class="track"></span>
-      <span class="meta">
-        <span class="meta-title">Requires a note</span>
-        <span class="meta-desc">Dispatcher must type an explanation (e.g. part number, callback time) before the hold can be saved.</span>
-      </span>
-    </label>
+<label class="toggle-row">
+  <input type="hidden" name="requires_note" value="0">
+  <input type="checkbox" name="requires_note" value="1"
+         {{ old('requires_note', $mode === 'edit' ? $reason->requires_note : false) ? 'checked' : '' }}>
+  <span class="track"></span>
+  <span class="meta">
+    <span class="meta-title">The technician must write a note</span>
+    <span class="meta-desc">Dispatcher must type an explanation (e.g. part number, callback time) before the hold can be saved.</span>
+  </span>
+</label>
   </div>
 
-  <div class="section">
-    <div class="section-title">Status</div>
-    <div class="section-sub">Deactivated reasons stay for history but can't be chosen on new holds.</div>
 
-    <label class="toggle-row">
-      <input type="hidden" name="is_active" value="0">
-      <input type="checkbox" name="is_active" value="1"
-             {{ old('is_active', $reason->is_active) ? 'checked' : '' }}>
-      <span class="track"></span>
-      <span class="meta">
-        <span class="meta-title">Active</span>
-        <span class="meta-desc">Appears in the hold-reason dropdown when putting a service request on hold.</span>
-      </span>
-    </label>
-  </div>
 
   <div class="form-actions">
     <a href="{{ route('admin.hold-reasons.index') }}" class="btn btn-ghost">Cancel</a>

@@ -20,7 +20,6 @@ class TaxRatesController extends Controller
                 $q->where('name', 'like', '%' . $request->input('q') . '%'))
             ->when($request->filled('status'), fn ($q) =>
                 $q->where('is_active', $request->input('status') === 'active'))
-            ->orderByDesc('is_default')
             ->orderBy('rate_percent')
             ->paginate($perPage)
             ->withQueryString();
@@ -34,12 +33,9 @@ class TaxRatesController extends Controller
 
     public function create()
     {
-        $hasDefault = TaxRate::query()->where('is_default', true)->exists();
-
         return view('admin.tax-rates.form', [
-            'rate'       => new TaxRate(['rate_percent' => 18.00, 'is_active' => true, 'is_default' => !$hasDefault]),
-            'hasDefault' => $hasDefault,
-            'mode'       => 'create',
+                 'rate' => new TaxRate(['is_active' => true]),
+        'mode' => 'create',
         ]);
     }
 
@@ -54,10 +50,8 @@ class TaxRatesController extends Controller
     public function edit(TaxRate $rate)
     {
         return view('admin.tax-rates.form', [
-            'rate'       => $rate,
-            'hasDefault' => TaxRate::query()->where('is_default', true)
-                            ->where('id', '!=', $rate->id)->exists(),
-            'mode'       => 'edit',
+            'rate' => $rate,
+            'mode' => 'edit',
         ]);
     }
 
@@ -71,12 +65,11 @@ class TaxRatesController extends Controller
 
     public function suspend(TaxRate $rate)
     {
-        if ($rate->is_default) {
-            return back()->with('error', 'Cannot deactivate the default tax rate. Set another rate as default first.');
-        }
         $rate->update(['is_active' => false]);
         return back()->with('success', "{$rate->name} deactivated.");
     }
+
+    
 
     public function reactivate(TaxRate $rate)
     {
@@ -84,20 +77,17 @@ class TaxRatesController extends Controller
         return back()->with('success', "{$rate->name} reactivated.");
     }
 
+    public function setDefault(TaxRate $rate)
+{
+    $rate->update(['is_default' => true, 'is_active' => true]);
+    return back()->with('success', "{$rate->name} is now the default tax rate.");
+}
+
     public function destroy(TaxRate $rate)
     {
-        if ($rate->is_default) {
-            return back()->with('error', 'Cannot delete the default tax rate. Set another rate as default first.');
-        }
         $name = $rate->name;
         $rate->delete();
         return redirect()->route('admin.tax-rates.index')
             ->with('success', "Tax rate {$name} deleted.");
-    }
-
-    public function setDefault(TaxRate $rate)
-    {
-        $rate->update(['is_default' => true, 'is_active' => true]);
-        return back()->with('success', "{$rate->name} is now the default tax rate.");
     }
 }

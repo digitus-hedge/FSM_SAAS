@@ -194,7 +194,7 @@
                 </form>
               @endif
 
-              <form method="POST" action="{{ route('admin.hold-reasons.destroy', $reason) }}" style="margin:0"
+              <!-- <form method="POST" action="{{ route('admin.hold-reasons.destroy', $reason) }}" style="margin:0"
                     class="needs-confirm"
                     data-confirm-title="Delete {{ $reason->label }}?"
                     data-confirm-text="This reason will be removed. Past hold records keep their reference, but no new holds can use it. You can restore it from the archive later."
@@ -209,7 +209,7 @@
                     <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
                   </svg>
                 </button>
-              </form>
+              </form> -->
 
             </div>
           </td>

@@ -112,6 +112,7 @@ class ServiceRequest extends Model
         'client_star_rating',
         'client_nps_score',
         'client_feedback_comment',
+        'hold_started_at'
     ];
 
     protected $casts = [
@@ -141,6 +142,7 @@ class ServiceRequest extends Model
         'signed_at'               => 'datetime',
         'signature_gps_lat'       => 'decimal:7',
         'signature_gps_lng'       => 'decimal:7',
+            'hold_started_at' => 'datetime',
     ];
 
     /* ---------- Relationships ---------- */
@@ -173,6 +175,8 @@ class ServiceRequest extends Model
     {
         return $this->belongsTo(HoldReason::class, 'current_hold_reason_id');
     }
+
+    
     public function parent()
     {
         return $this->belongsTo(self::class, 'parent_sr_id');

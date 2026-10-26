@@ -224,7 +224,7 @@
               @endif
 
               {{-- DELETE --}}
-              <form method="POST" action="{{ route('admin.service-categories.destroy', $cat) }}" style="margin:0"
+              <!-- <form method="POST" action="{{ route('admin.service-categories.destroy', $cat) }}" style="margin:0"
                     class="needs-confirm"
                     data-confirm-title="Delete {{ $cat->name }}?"
                     data-confirm-text="This category will be removed. Existing service requests keep their reference, but no new ones can use it. You can restore it from the archive later."
@@ -239,7 +239,7 @@
                     <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
                   </svg>
                 </button>
-              </form>
+              </form> -->
 
             </div>
           </td>

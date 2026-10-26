@@ -6,19 +6,37 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\TenantBusinessHoursRequest;
 use App\Models\TenantBusinessHour;
 use Illuminate\Support\Facades\DB;
-
+use Illuminate\Http\Request;
 class TenantBusinessHourController extends Controller
 {
-    public function index()
-    {
-        $tenantId = auth()->user()->tenant_id;
-        $hours    = TenantBusinessHour::ensureForTenant($tenantId);
+   public function index(Request $request)
+{
+    $tenantId = auth()->user()->tenant_id;
+    $hours    = TenantBusinessHour::ensureForTenant($tenantId);
 
-        return view('admin.tenant-business-hours.index', [
-            'hours'    => $hours,
-            'weekdays' => TenantBusinessHour::WEEKDAYS,
-        ]);
-    }
+    $year = (int) $request->input('year', now()->year);
+
+    $holidays = \App\Models\TenantHoliday::inYear($year)
+        ->orderBy('holiday_date')
+        ->get();
+
+    // Year dropdown — existing years + current + next
+    $years = \App\Models\TenantHoliday::query()
+        ->selectRaw('DISTINCT YEAR(holiday_date) as y')
+        ->orderByDesc('y')
+        ->pluck('y')->map(fn ($y) => (int) $y)
+        ->push((int) now()->year)
+        ->push((int) now()->addYear()->year)
+        ->unique()->sortDesc()->values();
+
+    return view('admin.tenant-business-hours.index', [
+        'hours'    => $hours,
+        'weekdays' => TenantBusinessHour::WEEKDAYS,
+        'holidays' => $holidays,
+        'years'    => $years,
+        'year'     => $year,
+    ]);
+}
 
     public function update(TenantBusinessHoursRequest $request)
     {

@@ -1,279 +1,284 @@
 @extends('layouts.admin')
-@section('title', 'Business Hours')
+@section('title', 'Business hours and holidays')
 @section('hide_layout_errors', true)
 
 @section('content')
 <style>
-  .page-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:22px}
-  .page-head h1{font-family:'Figtree';font-size:26px;font-weight:700;letter-spacing:-.3px}
-  .page-head p{color:var(--muted);font-size:13px;margin-top:3px}
+  .page-head h1{font-family:'Figtree';font-size:34px;font-weight:800;line-height:1.08;letter-spacing:-.02em;margin:0;color:#0F0F17}
+  .page-head p{color:#5F5D6E;font-size:14px;margin-top:6px;margin-bottom:22px}
 
-  .btn{display:inline-flex;align-items:center;gap:6px;font-family:'DM Sans';font-size:13px;font-weight:600;padding:9px 16px;border-radius:999px;border:1px solid transparent;text-decoration:none;cursor:pointer;transition:background .15s}
-  .btn-primary{background:var(--yellow);color:var(--ink)}
-  .btn-primary:hover{background:#F0B700}
-  .btn-ghost{background:#fff;color:var(--ink);border-color:var(--line)}
-  .btn-ghost:hover{background:var(--soft)}
+  .btn{display:inline-flex;align-items:center;gap:8px;border-radius:12px;padding:11px 20px;font-family:'DM Sans';font-size:14px;font-weight:700;border:1px solid transparent;cursor:pointer;text-decoration:none;transition:all .12s}
+  .btn-primary{background:#2F5BEA;color:#fff}
+  .btn-primary:hover{background:#2749C8}
+  .btn-ghost{background:#fff;color:#0F0F17;border-color:#E5E4EC}
+  .btn-mini{padding:7px 14px;font-size:12.5px;font-weight:700;border-radius:10px;border:1px solid #E5E4EC;background:#fff;color:#0F0F17;cursor:pointer;font-family:'DM Sans'}
+  .btn-mini:hover{border-color:#0F0F17}
+  .btn-mini-danger{padding:7px 14px;font-size:12.5px;font-weight:700;border-radius:10px;border:1px solid #F0C7C7;background:#fff;color:#C7372F;cursor:pointer;font-family:'DM Sans'}
 
-  .form-card{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;max-width:960px}
+  .card{background:#fff;border:1px solid #E5E4EC;border-radius:16px;padding:22px;margin-bottom:16px}
+  .card h3{font-family:'Figtree';font-size:17px;font-weight:700;margin:0 0 16px;color:#0F0F17}
 
-  .intro{padding:20px 24px;background:#FCFBF8;border-bottom:1px solid var(--line);display:flex;gap:14px;align-items:flex-start}
-  .intro-ico{flex-shrink:0;width:36px;height:36px;background:var(--yellow-soft);color:var(--amber);display:flex;align-items:center;justify-content:center;border-radius:10px}
-  .intro-ico svg{width:18px;height:18px}
-  .intro-text{font-size:12px;color:var(--muted);line-height:1.55}
-  .intro-text strong{color:var(--ink);font-weight:600}
+  /* ---- Weekly hours grid ---- */
+  .wh-head{display:grid;grid-template-columns:140px 100px 1fr 160px;gap:16px;padding:0 4px 10px;font-size:12.5px;font-weight:600;color:#5F5D6E;border-bottom:1px solid #EEEDF3}
+  .wh-row{display:grid;grid-template-columns:140px 100px 1fr 160px;gap:16px;align-items:center;padding:14px 4px;border-bottom:1px solid #F2F1F6}
+  .wh-row:last-of-type{border-bottom:0}
+  .wh-day{font-weight:700;font-size:14px;color:#0F0F17}
+  .wh-row.is-closed .wh-day{color:#5F5D6E}
 
-  /* ---- Column header strip ---- */
-  .col-head{
-    display:grid;grid-template-columns:220px 150px 140px 140px 1fr;gap:20px;align-items:center;
-    padding:12px 24px;background:#FCFBF8;border-bottom:1px solid var(--line);
-    font-size:10px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.08em;
-  }
-  .col-head .ch-dur{text-align:right}
+  /* Toggle switch (blue) */
+  .sw{position:relative;display:inline-block;width:40px;height:22px;cursor:pointer}
+  .sw input{opacity:0;width:0;height:0}
+  .sw .slider{position:absolute;inset:0;background:#D1CFDA;border-radius:999px;transition:.15s}
+  .sw .slider::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;background:#fff;border-radius:50%;transition:.15s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+  .sw input:checked + .slider{background:#2F5BEA}
+  .sw input:checked + .slider::after{transform:translateX(18px)}
 
-  /* ---- Day row ---- */
-  .day-row{
-    display:grid;grid-template-columns:220px 150px 140px 140px 1fr;gap:20px;align-items:center;
-    padding:16px 24px;border-bottom:1px solid var(--line);transition:background .12s;
-  }
-  .day-row:last-of-type{border-bottom:0}
-  .day-row:hover{background:#FDFCF9}
-  .day-row.is-closed{background:#FCFBF8}
-  .day-row.is-closed .time-input{opacity:.4;pointer-events:none}
-  .day-row.is-closed .time-field label{opacity:.5}
+  .wh-times{display:flex;align-items:center;gap:10px}
+  .wh-times .to{color:#5F5D6E;font-size:13px}
+  .time-input{font-family:'DM Sans';font-size:14px;padding:9px 12px;border-radius:10px;border:1px solid #E5E4EC;background:#fff;color:#0F0F17;outline:none;font-variant-numeric:tabular-nums;min-width:120px}
+  .time-input:focus{border-color:#2F5BEA;box-shadow:0 0 0 3px rgba(47,91,234,.15)}
+  .closed-text{color:#5F5D6E;font-size:14px;font-style:italic}
 
-  .day-label{display:flex;align-items:center;gap:12px;min-width:0}
-  .day-dot{
-    width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
-    font-family:'Figtree';font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
-    background:#FCFBF8;color:var(--subtle);border:1px solid var(--line);
-  }
-  .day-row:not(.is-closed) .day-dot{background:var(--yellow-soft);color:var(--amber);border-color:transparent}
-  .day-name{font-family:'Figtree';font-size:14px;font-weight:600;color:var(--ink);min-width:0}
-  .day-name .sub{display:block;font-size:11px;color:var(--muted);font-weight:400;margin-top:2px;font-family:'DM Sans';white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .allday-chk{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13.5px;font-weight:600;color:#0F0F17;user-select:none}
+  .allday-chk input{appearance:none;width:17px;height:17px;border:1.5px solid #D1CFDA;border-radius:5px;cursor:pointer;position:relative;flex-shrink:0;background:#fff}
+  .allday-chk input:checked{background:#2F5BEA;border-color:#2F5BEA}
+  .allday-chk input:checked::after{content:'';position:absolute;left:5px;top:1px;width:4px;height:9px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
 
-  /* ---- Toggle (fixed width so neighbors never jitter) ---- */
-  .toggle-wrap{display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
-  .toggle-wrap input{position:absolute;opacity:0;pointer-events:none}
-  .toggle-wrap .track{position:relative;width:36px;height:20px;background:#D7D4CB;border-radius:999px;transition:background .15s;flex-shrink:0}
-  .toggle-wrap .track::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:50%;transition:transform .15s;box-shadow:0 1px 2px rgba(0,0,0,.15)}
-  .toggle-wrap input:checked ~ .track{background:var(--yellow)}
-  .toggle-wrap input:checked ~ .track::after{transform:translateX(16px)}
-  .toggle-wrap .lbl{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.02em}
-  .toggle-wrap input:checked ~ .lbl{color:var(--ink)}
+  /* ---- Holidays table ---- */
+  .hol-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px}
+  .hol-head-right{display:flex;gap:10px;align-items:center}
+  .year-sel{appearance:none;font-family:'DM Sans';font-size:13px;font-weight:600;padding:8px 32px 8px 14px;border-radius:10px;border:1px solid #E5E4EC;background:#fff;color:#0F0F17;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235F5D6E' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
 
-  /* ---- Time inputs (aligned baseline) ---- */
-  .time-field{display:flex;flex-direction:column;gap:4px;min-width:0}
-  .time-field label{font-size:10px;font-weight:600;color:var(--subtle);text-transform:uppercase;letter-spacing:.06em}
-  .time-input{
-    width:100%;font-family:'DM Sans';font-size:13px;padding:8px 12px;border-radius:8px;
-    border:1px solid var(--line);background:#fff;color:var(--ink);outline:none;transition:border .15s, box-shadow .15s;
-    font-variant-numeric:tabular-nums;
-  }
-  .time-input:focus{border-color:var(--yellow);box-shadow:0 0 0 3px rgba(255,198,26,.15)}
+  .hol-row{display:grid;grid-template-columns:120px 1fr auto;gap:16px;align-items:center;padding:14px 4px;border-bottom:1px solid #F2F1F6}
+  .hol-row:last-child{border-bottom:0}
+  .hol-date{font-weight:600;color:#0F0F17;font-size:14px;font-variant-numeric:tabular-nums}
+  .hol-name{color:#0F0F17;font-size:14px}
+  .hol-acts{display:flex;gap:8px}
 
-  /* ---- Duration (right-aligned) ---- */
-  .duration{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;text-align:right;justify-self:end;min-width:120px}
-  .duration strong{color:var(--ink);font-weight:600;font-size:13px}
-  .duration .closed-tag{display:inline-block;background:var(--soft);color:var(--muted);padding:4px 10px;border-radius:999px;font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.06em}
-  .duration .invalid{color:var(--red);font-weight:600}
+  .empty-hol{padding:40px 20px;text-align:center;color:#5F5D6E;font-size:13.5px}
 
-  .err-row{padding:6px 24px 14px 24px;background:#FFF7F7;border-bottom:1px solid #FEE2E2}
-  .err-row small{display:block;color:var(--red);font-size:11px;font-weight:500;margin-top:2px}
-
-  .quick-actions{display:flex;gap:8px;padding:14px 24px;background:#FCFBF8;border-top:1px solid var(--line);border-bottom:1px solid var(--line);flex-wrap:wrap}
-  .chip{display:inline-flex;align-items:center;gap:5px;font-family:'DM Sans';font-size:11px;font-weight:600;padding:6px 12px;border-radius:999px;border:1px dashed var(--line);background:transparent;color:var(--muted);cursor:pointer;transition:all .12s}
-  .chip:hover{border-color:var(--yellow);color:var(--amber);background:#FFFCF2}
-
-  .form-actions{display:flex;gap:10px;align-items:center;justify-content:flex-end;padding:20px 24px;border-top:1px solid var(--line)}
-
-  /* ---- Mobile stacking ---- */
-  @media (max-width:720px){
-    .col-head{display:none}
-    .day-row{
-      grid-template-columns:1fr 1fr;grid-template-rows:auto auto auto;
-      gap:12px;padding:16px 18px;
-    }
-    .day-row .day-label{grid-column:1 / -1}
-    .day-row .toggle-wrap{grid-column:1 / -1;padding-bottom:4px;border-bottom:1px dashed var(--line)}
-    .day-row .duration{grid-column:1 / -1;text-align:left;justify-self:start;min-width:0;margin-top:4px}
-    .intro{padding:16px 18px}
-  }
+  .swal-form{display:flex;flex-direction:column;gap:12px;text-align:left}
+  .swal-form label{font-size:12.5px;font-weight:600;color:#0F0F17;margin-bottom:4px;display:block}
+  .swal-form input{font-family:'DM Sans';font-size:14px;padding:10px 13px;border-radius:9px;border:1px solid #E5E4EC;background:#fff;color:#0F0F17;width:100%;outline:none;box-sizing:border-box}
+  .swal-form input:focus{border-color:#2F5BEA;box-shadow:0 0 0 3px rgba(47,91,234,.15)}
+  .hours-cell{display:flex;align-items:center;min-height:38px}
 </style>
 
 <div class="page-head">
-  <div>
-    <h1>Business Hours</h1>
-    <p>Operating window for your team — the SLA scheduler uses these to pause response and resolution timers outside business hours.</p>
-  </div>
+  <h1>Business hours and holidays</h1>
+  <p>Hours and holidays count only for SLA policies that use business hours. Time zone: {{ config('app.timezone') }}.</p>
 </div>
 
-<form method="POST" action="{{ route('admin.tenant-business-hours.update') }}" class="form-card" id="bh-form">
+{{-- ===================== WEEKLY HOURS ===================== --}}
+<form method="POST" action="{{ route('admin.tenant-business-hours.update') }}" id="bh-form">
   @csrf @method('PUT')
 
-  <div class="intro">
-    <span class="intro-ico">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-      </svg>
-    </span>
-    <div class="intro-text">
-      <strong>How this is used:</strong> Service requests created outside business hours still raise, but the SLA clock
-      doesn't start running until the next business day. The scheduler also uses this grid together with
-      <a href="{{ route('admin.tenant-holidays.index') }}" style="color:var(--amber);font-weight:600">Holidays</a>
-      to work out response and resolution deadlines.
-    </div>
-  </div>
+  <div class="card">
+    <h3>Weekly hours</h3>
 
-  <div class="quick-actions">
-    <button type="button" class="chip" data-preset="weekdays">Mon–Fri 9–6</button>
-    <button type="button" class="chip" data-preset="247">24 × 7</button>
-    <button type="button" class="chip" data-preset="halfsat">Mon–Fri 9–6, Sat half-day</button>
-    <button type="button" class="chip" data-preset="clear">Mark all closed</button>
-  </div>
-
-  <div class="col-head">
-    <div>Day</div>
-    <div>Status</div>
-    <div>Opens</div>
-    <div>Closes</div>
-    <div class="ch-dur">Daily window</div>
-  </div>
-
-  @php
-    // Display order: Mon → Sun
-    $order = [1, 2, 3, 4, 5, 6, 0];
-  @endphp
-
-  @foreach ($order as $wd)
-    @php $row = $hours[$wd] ?? null; @endphp
-    @continue(!$row)
-
-    @php
-      $isOpen = old("hours.$wd.is_open", $row->is_open) ? true : false;
-      $opens  = old("hours.$wd.opens_at",  optional($row->opens_at)->format('H:i') ?? '09:00');
-      $closes = old("hours.$wd.closes_at", optional($row->closes_at)->format('H:i') ?? '18:00');
-      $hasErr = $errors->has("hours.$wd.opens_at") || $errors->has("hours.$wd.closes_at");
-    @endphp
-
-    <div class="day-row {{ $isOpen ? '' : 'is-closed' }}" data-wd="{{ $wd }}">
-      <input type="hidden" name="hours[{{ $wd }}][weekday]" value="{{ $wd }}">
-      <input type="hidden" name="hours[{{ $wd }}][is_open]" value="{{ $isOpen ? '1' : '0' }}" class="hidden-isopen">
-
-      <div class="day-label">
-        <span class="day-dot">{{ \App\Models\TenantBusinessHour::SHORT_LABELS[$wd] }}</span>
-        <div class="day-name">
-          {{ $weekdays[$wd] }}
-          <span class="sub">
-            @if ($wd === 0) Default: closed
-            @elseif ($wd === 6) Default: half-day
-            @else Default: full working day
-            @endif
-          </span>
-        </div>
-      </div>
-
-      <label class="toggle-wrap">
-        <input type="checkbox" {{ $isOpen ? 'checked' : '' }} class="toggle-open">
-        <span class="track"></span>
-        <span class="lbl toggle-text">{{ $isOpen ? 'Open' : 'Closed' }}</span>
-      </label>
-
-      <div class="time-field">
-        <label>Opens</label>
-        <input type="time" name="hours[{{ $wd }}][opens_at]" value="{{ $opens }}" class="time-input input-opens">
-      </div>
-
-      <div class="time-field">
-        <label>Closes</label>
-        <input type="time" name="hours[{{ $wd }}][closes_at]" value="{{ $closes }}" class="time-input input-closes">
-      </div>
-
-      <div class="duration">
-        <span class="dur-text"></span>
-      </div>
+    <div class="wh-head">
+      <div>Day</div>
+      <div>Open</div>
+      <div>Hours</div>
+      <div></div>
     </div>
 
-    @if ($hasErr)
-      <div class="err-row">
-        @error("hours.$wd.opens_at")  <small>{{ $message }}</small> @enderror
-        @error("hours.$wd.closes_at") <small>{{ $message }}</small> @enderror
-      </div>
-    @endif
-  @endforeach
+    @php $order = [1, 2, 3, 4, 5, 6, 0]; @endphp
 
-  <div class="form-actions">
-    <a href="{{ route('admin.tenant-business-hours.index') }}" class="btn btn-ghost">Reset</a>
-    <button type="submit" class="btn btn-primary">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="20 6 9 17 4 12"/>
-      </svg>
-      Save business hours
-    </button>
+    @foreach ($order as $wd)
+      @php
+        $row = $hours[$wd] ?? null;
+        if (!$row) continue;
+        $isOpen = old("hours.$wd.is_open", $row->is_open) ? true : false;
+        $opens  = old("hours.$wd.opens_at",  optional($row->opens_at)->format('H:i') ?? '09:00');
+        $closes = old("hours.$wd.closes_at", optional($row->closes_at)->format('H:i') ?? '18:00');
+        $isAllDay = $opens === '00:00' && ($closes === '23:59' || $closes === '00:00');
+      @endphp
+
+     <div class="wh-row {{ $isOpen ? '' : 'is-closed' }}" data-wd="{{ $wd }}">
+  <input type="hidden" name="hours[{{ $wd }}][weekday]" value="{{ $wd }}">
+  <input type="hidden" name="hours[{{ $wd }}][is_open]" value="{{ $isOpen ? '1' : '0' }}" class="hidden-isopen">
+
+  <div class="wh-day">{{ $weekdays[$wd] }}</div>
+
+  <label class="sw">
+    <input type="checkbox" class="toggle-open" {{ $isOpen ? 'checked' : '' }}>
+    <span class="slider"></span>
+  </label>
+
+  {{-- Hours column — one of 3 states: times / "Open all day" / "Closed" --}}
+  <div class="hours-cell">
+    <div class="wh-times state-times" style="display:none">
+      <input type="time" name="hours[{{ $wd }}][opens_at]"  value="{{ $opens }}"  class="time-input input-opens">
+      <span class="to">to</span>
+      <input type="time" name="hours[{{ $wd }}][closes_at]" value="{{ $closes }}" class="time-input input-closes">
+    </div>
+    <div class="closed-text state-allday" style="display:none">Open all day</div>
+    <div class="closed-text state-closed" style="display:none">Closed</div>
+  </div>
+
+  {{-- "Open all day" checkbox (hidden when toggle is off) --}}
+  <label class="allday-chk" style="display:{{ $isOpen ? 'flex' : 'none' }}">
+    <input type="checkbox" class="allday-input" {{ $isAllDay ? 'checked' : '' }}>
+    Open all day
+  </label>
+</div>
+    @endforeach
+
+    <div style="margin-top:20px">
+      <button type="submit" class="btn btn-primary">Save hours</button>
+    </div>
   </div>
 </form>
 
+{{-- ===================== HOLIDAYS ===================== --}}
+<div class="card" id="holidays">
+  <div class="hol-head">
+    <h3 style="margin:0">Holidays</h3>
+    <div class="hol-head-right">
+      <select class="year-sel" onchange="window.location = '?year=' + this.value">
+        @foreach ($years as $y)
+          <option value="{{ $y }}" @selected((int) $year === (int) $y)>{{ $y }}</option>
+        @endforeach
+      </select>
+      <button type="button" class="btn btn-primary" onclick="openHolidayModal()">+ Add holiday</button>
+    </div>
+  </div>
+
+  @forelse ($holidays as $h)
+    <div class="hol-row">
+      <div class="hol-date">{{ $h->holiday_date->format('d M Y') }}</div>
+      <div class="hol-name">{{ $h->name }}</div>
+      <div class="hol-acts">
+        <button type="button" class="btn-mini"
+                onclick='openHolidayModal(@json(["id"=>$h->id,"name"=>$h->name,"holiday_date"=>$h->holiday_date->format("Y-m-d")]))'>Edit</button>
+        <form method="POST" action="{{ route('admin.tenant-holidays.destroy', $h) }}" style="margin:0" class="needs-confirm"
+              data-confirm-title="Remove this holiday?" data-confirm-ok="Yes, remove" data-confirm-ok-color="red">
+          @csrf @method('DELETE')
+          <button type="submit" class="btn-mini-danger">Remove</button>
+        </form>
+      </div>
+    </div>
+  @empty
+    <div class="empty-hol">No holidays recorded for {{ $year }}.</div>
+  @endforelse
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.all.min.js"></script>
 <script>
+// ===== Weekly hours UI =====
 (function () {
-  const rows = document.querySelectorAll('.day-row');
+  document.querySelectorAll('.wh-row').forEach(row => {
+    const openInput    = row.querySelector('.toggle-open');
+    const hiddenIsOpen = row.querySelector('.hidden-isopen');
+    const stateTimes   = row.querySelector('.state-times');
+    const stateAllday  = row.querySelector('.state-allday');
+    const stateClosed  = row.querySelector('.state-closed');
+    const alldayWrap   = row.querySelector('.allday-chk');
+    const allChk       = row.querySelector('.allday-input');
+    const oIn          = row.querySelector('.input-opens');
+    const cIn          = row.querySelector('.input-closes');
 
-  function syncRow(row) {
-    const isOpen = row.querySelector('.toggle-open').checked;
-    row.classList.toggle('is-closed', !isOpen);
-    row.querySelector('.hidden-isopen').value = isOpen ? '1' : '0';
-    row.querySelector('.toggle-text').textContent = isOpen ? 'Open' : 'Closed';
-    updateDuration(row);
-  }
+    function render() {
+      const isOpen   = openInput.checked;
+      const isAllDay = allChk.checked;
 
-  function updateDuration(row) {
-    const dur = row.querySelector('.dur-text');
-    const isOpen = row.querySelector('.toggle-open').checked;
-    if (!isOpen) {
-      dur.innerHTML = '<span class="closed-tag">Closed</span>';
-      return;
+      row.classList.toggle('is-closed', !isOpen);
+      hiddenIsOpen.value = isOpen ? '1' : '0';
+
+      stateTimes.style.display  = 'none';
+      stateAllday.style.display = 'none';
+      stateClosed.style.display = 'none';
+
+      if (!isOpen)       stateClosed.style.display = 'block';
+      else if (isAllDay) stateAllday.style.display = 'block';
+      else               stateTimes.style.display  = 'flex';
+
+      alldayWrap.style.display = isOpen ? 'flex' : 'none';
     }
-    const o = row.querySelector('.input-opens').value;
-    const c = row.querySelector('.input-closes').value;
-    if (!o || !c) { dur.textContent = ''; return; }
-    const [oh, om] = o.split(':').map(Number);
-    const [ch, cm] = c.split(':').map(Number);
-    const mins = (ch * 60 + cm) - (oh * 60 + om);
-    if (mins <= 0) { dur.innerHTML = '<span class="invalid">Invalid range</span>'; return; }
-    const h = Math.floor(mins / 60), m = mins % 60;
-    dur.innerHTML = `<strong>${h}h${m ? ' '+m+'m' : ''}</strong> open`;
-  }
 
-  rows.forEach(row => {
-    row.querySelector('.toggle-open').addEventListener('change', () => syncRow(row));
-    row.querySelector('.input-opens').addEventListener('input', () => updateDuration(row));
-    row.querySelector('.input-closes').addEventListener('input', () => updateDuration(row));
-    syncRow(row);
-  });
-
-  const presets = {
-    weekdays: wd => wd >= 1 && wd <= 5 ? ['09:00','18:00',true] : [null,null,false],
-    '247':    wd => ['00:00','23:59',true],
-    halfsat:  wd => {
-      if (wd >= 1 && wd <= 5) return ['09:00','18:00',true];
-      if (wd === 6)           return ['09:00','13:00',true];
-      return [null, null, false];
-    },
-    clear:    wd => [null,null,false],
-  };
-
-  document.querySelectorAll('.chip[data-preset]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const key = btn.dataset.preset;
-      const fn  = presets[key];
-      rows.forEach(row => {
-        const wd = parseInt(row.dataset.wd, 10);
-        const [open, close, isOpen] = fn(wd);
-        row.querySelector('.toggle-open').checked = !!isOpen;
-        if (open)  row.querySelector('.input-opens').value  = open;
-        if (close) row.querySelector('.input-closes').value = close;
-        syncRow(row);
-      });
+    openInput.addEventListener('change', render);
+    allChk.addEventListener('change', () => {
+      if (allChk.checked) { oIn.value = '00:00'; cIn.value = '23:59'; }
+      else                { oIn.value = oIn.value || '09:00'; cIn.value = cIn.value || '18:00'; }
+      render();
     });
+
+    render();
   });
 })();
+
+// ===== Holiday modal (add/edit) =====
+const HOL_URLS = {
+  store:  @json(route('admin.tenant-holidays.store')),
+  update: id => `{{ url('admin/tenant-holidays') }}/${id}`,
+};
+const CSRF = @json(csrf_token());
+
+function openHolidayModal(h = null) {
+  const edit = !!h?.id;
+  const esc  = s => (s ?? '').toString().replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+
+  Swal.fire({
+    title: edit ? 'Edit holiday' : 'Add holiday',
+    html: `
+      <div class="swal-form">
+        <div><label>Name *</label><input id="h-name" type="text" value="${esc(h?.name)}" placeholder="e.g. National Day"></div>
+        <div><label>Date *</label><input id="h-date" type="date" value="${esc(h?.holiday_date)}"></div>
+      </div>`,
+    showCancelButton: true, confirmButtonText: 'Save', cancelButtonText: 'Cancel',
+    reverseButtons: true, focusConfirm: false,
+    didOpen: () => document.getElementById('h-name').focus(),
+    preConfirm: () => {
+      const name = document.getElementById('h-name').value.trim();
+      const date = document.getElementById('h-date').value;
+      if (!name) { Swal.showValidationMessage('Name is required'); return false; }
+      if (!date) { Swal.showValidationMessage('Date is required'); return false; }
+      return { name, holiday_date: date };
+    }
+  }).then(async r => {
+    if (!r.isConfirmed) return;
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = edit ? HOL_URLS.update(h.id) : HOL_URLS.store;
+    form.innerHTML = `
+      <input type="hidden" name="_token" value="${CSRF}">
+      ${edit ? '<input type="hidden" name="_method" value="PUT">' : ''}
+      <input type="hidden" name="name" value="${esc(r.value.name)}">
+      <input type="hidden" name="holiday_date" value="${esc(r.value.holiday_date)}">
+    `;
+    document.body.appendChild(form);
+    form.submit();
+  });
+}
+
+// ===== Success toast =====
+@if (session('success'))
+  Swal.fire({
+    toast: true, position: 'top-end', icon: 'success',
+    title: @json(session('success')),
+    showConfirmButton: false, timer: 2500
+  });
+@endif
+
+// ===== Re-open the holiday modal when the save failed validation =====
+@if ($errors->any() && (old('name') || old('holiday_date')))
+  document.addEventListener('DOMContentLoaded', () => {
+    Swal.fire({
+      icon: 'error',
+      title: 'Could not save holiday',
+      text: @json($errors->first()),
+      confirmButtonText: 'Fix it'
+    }).then(() => {
+      openHolidayModal({
+        name: @json(old('name')),
+        holiday_date: @json(old('holiday_date')),
+      });
+      document.getElementById('holidays')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+@endif
 </script>
+
 @endsection

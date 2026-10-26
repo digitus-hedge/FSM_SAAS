@@ -99,8 +99,8 @@
     <div class="section-sub">Give the category a short, recognizable name.</div>
 
     <div class="field {{ $errors->has('name') ? 'has-error' : '' }}">
-      <label for="name" class="lbl">Expense Category name <span class="req">*</span></label>
-      <input type="text" id="name" name="name" maxlength="100" required
+      <label for="name" class="lbl">Name <span class="req">*</span></label>
+      <input type="text" id="name" name="name" maxlength="100"
              value="{{ old('name', $category->name) }}" class="input"
              placeholder="e.g. Travel, Food, Hotel, Taxi, Materials">
       @error('name') <small class="err-inline">{{ $message }}</small> @enderror
@@ -109,13 +109,13 @@
     <div class="field {{ $errors->has('default_unit_rate') ? 'has-error' : '' }}">
       <label for="default_unit_rate" class="lbl">Default unit rate</label>
       <div class="input-wrap">
-        <span class="prefix">{{ auth()->user()->tenant->currency_code ?? '₹' }}</span>
+      <span class="prefix">{{ auth()->user()->tenant->currency_code ?? 'AED' }}</span>
         <input type="number" id="default_unit_rate" name="default_unit_rate"
                step="0.01" min="0"
                value="{{ old('default_unit_rate', $category->default_unit_rate) }}" class="input"
                placeholder="0.00">
       </div>
-      <small class="hint">Optional. Pre-fills when staff log this expense; they can override per entry.</small>
+      <small class="hint">Base currency: AED</small>
       @error('default_unit_rate') <small class="err-inline">{{ $message }}</small> @enderror
     </div>
   </div>
@@ -149,7 +149,8 @@
   </div>
 
   {{-- SECTION: Status --}}
-  <div class="section">
+
+  <!-- <div class="section">
     <div class="section-title">Status</div>
     <div class="section-sub">Deactivated categories stay for history but can't be chosen on new expenses.</div>
 
@@ -163,7 +164,8 @@
         <span class="meta-desc">Appears in the expense-category dropdown on new entries.</span>
       </span>
     </label>
-  </div>
+  </div> -->
+
 
   <div class="form-actions">
     <a href="{{ route('admin.expense-categories.index') }}" class="btn btn-ghost">Cancel</a>

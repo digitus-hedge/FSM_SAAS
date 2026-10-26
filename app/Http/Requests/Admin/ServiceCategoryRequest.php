@@ -17,14 +17,17 @@ class ServiceCategoryRequest extends FormRequest
 
         return [
             'code' => [
-                'required','string','max:40','alpha_dash',
-                Rule::unique('service_categories', 'code')
-                    ->where('tenant_id', $tenantId)
-                    ->ignore($categoryId),
-            ],
+            'nullable','string','max:40','alpha_dash',   // ← nullable
+            Rule::unique('service_categories', 'code')
+                ->where('tenant_id', $tenantId)
+                ->ignore($categoryId),
+        ],
             'name'           => 'required|string|min:2|max:120',
             'service_domain' => 'nullable|string|max:80',
-            'approval_mode'  => ['required', Rule::in(array_keys(ServiceCategory::APPROVAL_MODES))],
+            // 'approval_mode'  => ['required', Rule::in(array_keys(ServiceCategory::APPROVAL_MODES))],
+
+            'approval_mode'  => ['required', Rule::in(['manual'])],   // ← only manual accepted
+
 
             // Proof rules
             'require_before_photo' => 'sometimes|boolean',
@@ -75,8 +78,14 @@ class ServiceCategoryRequest extends FormRequest
 
     public function prepareForValidation(): void
     {
+
+        $code = trim((string) $this->code);
+
         $this->merge([
-            'code' => strtoupper(trim((string) $this->code)),
+            // 'code' => strtoupper(trim((string) $this->code)),
+             'code'          => $code === '' ? null : strtoupper($code),
+                     'approval_mode' => 'manual',   // ← force Manual regardless of posted value
+
             'is_active' => $this->has('is_active') ? $this->boolean('is_active') : true,
             // Normalise all booleans
             'require_before_photo'        => $this->boolean('require_before_photo'),
