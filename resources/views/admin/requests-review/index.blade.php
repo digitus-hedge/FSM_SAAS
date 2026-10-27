@@ -222,21 +222,34 @@
                     <span class="pill pill-na">Not applicable</span>
                     @endif
                 </td>
-                <td style="text-align:right">
-                    @php
-                    $draft = $sr->quotes()->where('status','draft')->latest('id')->first();
-                    @endphp
-                    @if ($draft)
-                    <a href="{{ $draft->source === 'builder'
-                  ? route('admin.quotes.edit', $draft)
-                  : route('admin.quotes.show', $draft) }}" class="btn-primary">Open quote</a>
-                    @elseif (in_array($sr->billing_status, ['not_applicable','pending_quote']))
-                    <button type="button" class="btn-primary" onclick="openMakeQuote({{ $sr->id }})">Make quote</button>
-                    @elseif ($sr->billing_status === 'quoted')
-                    @php $latestQuote = $sr->quotes()->latest('id')->first(); @endphp
-                    <a href="{{ route('admin.quotes.show', $latestQuote) }}" class="btn-primary" style="background:#fff;color:#2F5BEA;border:1px solid #2F5BEA">View quote</a>
-                    @endif
-                </td>
+              <td style="text-align:right">
+    @php
+    $draft = $sr->quotes()->where('status','draft')->latest('id')->first();
+    $latestQuote = $sr->quotes()->latest('id')->first();
+    @endphp
+
+    {{-- WAITING FOR QUOTE tab: show Make quote / Open draft only --}}
+   {{-- WAITING FOR QUOTE tab: Make quote / Open draft --}}
+@if ($tab === 'waiting')
+    @if ($draft)
+        <a href="{{ $draft->source === 'builder' ? route('admin.quotes.edit', $draft) : route('admin.quotes.show', $draft) }}" class="btn-primary">Open quote</a>
+    @elseif (in_array($sr->billing_status, ['not_applicable','pending_quote']))
+        <button type="button" class="btn-primary" onclick="openMakeQuote({{ $sr->id }})">Make quote</button>
+    @endif
+
+    {{-- AWAITING INVOICE tab: Make invoice link only --}}
+    @elseif ($tab === 'invoice')
+        {{-- no button for now — invoice module not yet built --}}
+
+    {{-- ALL tab: show "View quote" if there's a sent quote, nothing else --}}
+    @elseif ($tab === 'all')
+        @if ($latestQuote && in_array($latestQuote->status, ['sent','accepted','rejected']))
+            <a href="{{ route('admin.quotes.show', $latestQuote) }}" class="btn-primary" style="background:#fff;color:#2F5BEA;border:1px solid #2F5BEA">View quote</a>
+        @elseif ($draft)
+            <a href="{{ $draft->source === 'builder' ? route('admin.quotes.edit', $draft) : route('admin.quotes.show', $draft) }}" class="btn-primary" style="background:#fff;color:#2F5BEA;border:1px solid #2F5BEA">Open draft</a>
+        @endif
+    @endif
+</td>
             </tr>
             @endforeach
         </tbody>
