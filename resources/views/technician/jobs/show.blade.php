@@ -303,14 +303,14 @@
 
 {{-- ===== PROOF NEEDED ===== --}}
 <div class="sec-label">Proof needed</div>
-<div class="proof-list">
+<div class="proof-list" id="proof-list">
   @foreach ([
     'before_photo' => 'Before photo',
     'after_photo'  => 'After photo',
     'signature'    => 'Signature or code',
   ] as $k => $label)
-    @php $done = $rules[$k] ?? false; @endphp
-    <div class="proof-item {{ $done ? 'proof-done' : '' }}">
+    @php $done = $proofDone[$k] ?? false; @endphp
+    <div class="proof-item {{ $done ? 'proof-done' : '' }}" id="proof-{{ $k }}">
       <div class="proof-dot">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
       </div>
@@ -397,21 +397,26 @@
       Hold
     </button>
 
-    <form method="POST"
-          action="{{ route('technician.jobs.punch-out', $job) }}"
-          style="flex:2;margin:0">
-      @csrf
-      <button type="submit" class="btn btn-dark" style="width:100%">
-        Punch out
-      </button>
-    </form>
+       <a href="{{ route('technician.jobs.punch-out-review', $job) }}"
+       class="btn btn-dark"
+       style="flex:2;text-align:center;text-decoration:none;display:inline-flex;align-items:center;justify-content:center">
+      Punch out
+    </a>
 
-  @else
-    <button type="button" class="btn btn-light"
-            onclick="openSheet('sheet-time')">
+   @elseif ($isAssigned && ! $accepted)
+    {{-- Not accepted yet --}}
+    <button type="button" class="btn btn-light" onclick="openSheet('sheet-time')">
       Change time
     </button>
+    <button type="button" class="btn btn-primary" onclick="openSheet('sheet-accept')" style="flex:2">
+      Accept job
+    </button>
 
+  @else
+    {{-- Accepted — ready to punch in --}}
+    <button type="button" class="btn btn-light" onclick="openSheet('sheet-time')">
+      Change time
+    </button>
     <form method="POST"
           action="{{ route('technician.jobs.punch-in', $job) }}"
           style="flex:2;margin:0">
@@ -496,6 +501,7 @@
 
 {{-- ===== OVERLAYS (sheets rendered inside .app, not .main) ===== --}}
 @section('overlays')
-  @include('technician.jobs._sheet_time', ['job' => $job])
-  @include('technician.jobs._sheet_hold', ['job' => $job])
+  @include('technician.jobs._sheet_time',   ['job' => $job])
+  @include('technician.jobs._sheet_hold',   ['job' => $job])
+  @include('technician.jobs._sheet_accept', ['job' => $job])
 @endsection

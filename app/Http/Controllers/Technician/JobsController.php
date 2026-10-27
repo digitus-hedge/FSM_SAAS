@@ -77,22 +77,47 @@ class JobsController extends Controller
 
     /* ===================== DETAIL + STATE CHANGES ===================== */
 
-   public function show(ServiceRequest $job)
-{
-    abort_unless($job->assigned_tech_user_id === auth()->id(), 403);
-  $job->load(['client.contacts', 'site', 'category', 'holdReason']); // + currentHoldReason
+    // public function show(ServiceRequest $job)
+    // {
+    //     abort_unless($job->assigned_tech_user_id === auth()->id(), 403);
+    //     $job->load(['client.contacts', 'site', 'category', 'holdReason']); // + currentHoldReason
 
 
-    $srType = \App\Models\ServiceRequest::class;
-    $counts = [
-        'before'   => \App\Models\Attachment::where('attachable_type', $srType)->where('attachable_id', $job->id)->where('kind', 'before_photo')->count(),
-        'after'    => \App\Models\Attachment::where('attachable_type', $srType)->where('attachable_id', $job->id)->where('kind', 'after_photo')->count(),
-        'notes'    => \App\Models\SrNote::where('service_request_id', $job->id)->count(),
-        'expenses' => \App\Models\ServiceRequestExpense::where('service_request_id', $job->id)->count(),
-    ];
+    //     $srType = \App\Models\ServiceRequest::class;
+    //     $counts = [
+    //         'before'   => \App\Models\Attachment::where('attachable_type', $srType)->where('attachable_id', $job->id)->where('kind', 'before_photo')->count(),
+    //         'after'    => \App\Models\Attachment::where('attachable_type', $srType)->where('attachable_id', $job->id)->where('kind', 'after_photo')->count(),
+    //         'notes'    => \App\Models\SrNote::where('service_request_id', $job->id)->count(),
+    //         'expenses' => \App\Models\ServiceRequestExpense::where('service_request_id', $job->id)->count(),
+    //     ];
 
-    return view('technician.jobs.show', compact('job', 'counts'));
-}
+    //     return view('technician.jobs.show', compact('job', 'counts'));
+    // }
+
+
+    public function show(ServiceRequest $job)
+    {
+        abort_unless($job->assigned_tech_user_id === auth()->id(), 403);
+        $job->load(['client.contacts', 'site', 'category', 'holdReason']);
+
+        $srType = \App\Models\ServiceRequest::class;
+
+        $counts = [
+            'before'   => \App\Models\Attachment::where('attachable_type', $srType)->where('attachable_id', $job->id)->where('kind', 'before_photo')->count(),
+            'after'    => \App\Models\Attachment::where('attachable_type', $srType)->where('attachable_id', $job->id)->where('kind', 'after_photo')->count(),
+            'notes'    => \App\Models\SrNote::where('service_request_id', $job->id)->count(),
+            'expenses' => \App\Models\ServiceRequestExpense::where('service_request_id', $job->id)->count(),
+        ];
+
+        // Live proof status — what's actually uploaded in the DB right now
+        $proofDone = [
+            'before_photo' => $counts['before'] > 0,
+            'after_photo'  => $counts['after']  > 0,
+            'signature'    => (bool) $job->signed_at,
+        ];
+
+        return view('technician.jobs.show', compact('job', 'counts', 'proofDone'));
+    }
 
     public function deletePhoto(ServiceRequest $job, \App\Models\Attachment $photo)
     {
@@ -147,8 +172,19 @@ class JobsController extends Controller
     public function accept(Request $request, ServiceRequest $job)
     {
         abort_unless($job->assigned_tech_user_id === auth()->id(), 403);
+
         $job->update(['tech_accepted_at' => now()]);
-        return back()->with('success', 'Job accepted.');
+
+        \App\Models\SrEvent::create([
+            'tenant_id'          => auth()->user()->tenant_id,
+            'service_request_id' => $job->id,
+            'user_id'            => auth()->id(),
+            'type'               => 'accepted',
+            'occurred_at'        => now(),
+        ]);
+
+        return redirect()->route('technician.jobs.show', $job)
+            ->with('success', 'Job accepted.');
     }
 
     public function changeTime(Request $request, ServiceRequest $job)
@@ -189,89 +225,194 @@ class JobsController extends Controller
     {
         abort_unless($job->assigned_tech_user_id === auth()->id(), 403);
 
+        $srType = ServiceRequest::class;
+
+        // ===== GUARD: all three proofs must be in place =====
+        $hasBefore = Attachment::where('attachable_type', $srType)
+            ->where('attachable_id', $job->id)
+            ->where('kind', 'before_photo')
+            ->exists();
+        $hasAfter  = Attachment::where('attachable_type', $srType)
+            ->where('attachable_id', $job->id)
+            ->where('kind', 'after_photo')
+            ->exists();
+        $hasSig    = (bool) $job->signed_at;
+
+        if (! $hasBefore || ! $hasAfter || ! $hasSig) {
+            $missing = [];
+            if (! $hasBefore) $missing[] = 'Before photo';
+            if (! $hasAfter)  $missing[] = 'After photo';
+            if (! $hasSig)    $missing[] = 'Signature';
+            return redirect()
+                ->route('technician.jobs.punch-out-review', $job)
+                ->with('error', 'Still missing: ' . implode(', ', $missing) . '.');
+        }
+
+        // ===== All good — punch out =====
         $job->update([
             'status'            => 'pending_review',
             'last_punch_out_at' => now(),
         ]);
 
-        return redirect()->route('technician.jobs.show', $job)
-            ->with('success', 'Punched out. Submitted for review.');
-    }
-
-    public function hold(Request $request, ServiceRequest $job)
-{
-    abort_unless($job->assigned_tech_user_id === auth()->id(), 403);
-
-    $data = $request->validate([
-        'hold_reason_id' => 'required|integer|exists:hold_reasons,id',
-        'note'           => 'nullable|string|max:2000',
-    ]);
-
-    $reason = \App\Models\HoldReason::find($data['hold_reason_id']);
-
-    // Enforce note requirement server-side (so a tampered form still fails)
-    if ($reason && $reason->requires_note && empty($data['note'])) {
-        return back()->withErrors(['note' => 'This reason needs a note.'])->withInput();
-    }
-
- $job->update([
-    'is_on_hold' => true,
-    'current_hold_reason_id' => $data['hold_reason_id'],
-    'hold_started_at' => now(),
-]);
-
-
-    \App\Models\SrEvent::create([
-    'tenant_id' => auth()->user()->tenant_id,
-    'service_request_id' => $job->id,
-    'user_id' => auth()->id(),
-    'type' => 'hold',
-    'label' => $reason?->label,
-    'occurred_at' => now(),
-]);
-// $job->update(['hold_started_at' => now()]);  // for live elapsed timer
-
-    // Save the note as an sr_note too, so it shows in the notes list
-    if (! empty($data['note'])) {
-        \App\Models\SrNote::create([
+        // Record in history
+        \App\Models\SrEvent::create([
             'tenant_id'          => auth()->user()->tenant_id,
             'service_request_id' => $job->id,
             'user_id'            => auth()->id(),
-            'visibility'         => 'internal',
-            'source'             => 'user',
-            'body'               => "Hold reason: {$reason?->label}\n\n{$data['note']}",
+            'type'               => 'punch_out',
+            'occurred_at'        => now(),
         ]);
+
+        // return redirect()->route('technician.jobs.show', $job)->with('success', 'Punched out. Submitted for review.');
+
+        return redirect()->route('technician.jobs.punched-out', $job);
     }
 
-    return redirect()->route('technician.jobs.show', $job)
-        ->with('success', 'Job placed on hold.');
-}
 
-   public function resume(ServiceRequest $job)
-{
-    abort_unless(
-        $job->assigned_tech_user_id === auth()->id(),
-        403
-    );
+    public function punchOutReview(ServiceRequest $job)
+    {
+        abort_unless($job->assigned_tech_user_id === auth()->id(), 403);
 
-    \App\Models\SrEvent::create([
-        'tenant_id' => auth()->user()->tenant_id,
-        'service_request_id' => $job->id,
-        'user_id' => auth()->id(),
-        'type' => 'resume',
-        'occurred_at' => now(),
-    ]);
+        $srType = ServiceRequest::class;
 
-    $job->update([
-        'is_on_hold' => false,
-        'current_hold_reason_id' => null,
-        'hold_started_at' => null,
-    ]);
+        $has = [
+            'before'    => Attachment::where('attachable_type', $srType)
+                ->where('attachable_id', $job->id)
+                ->where('kind', 'before_photo')
+                ->exists(),
+            'after'     => Attachment::where('attachable_type', $srType)
+                ->where('attachable_id', $job->id)
+                ->where('kind', 'after_photo')
+                ->exists(),
+            'signature' => (bool) $job->signed_at,
+        ];
 
-    return redirect()
-        ->route('technician.jobs.show', $job)
-        ->with('success', 'Resumed.');
-}
+        $ready = $has['before'] && $has['after'] && $has['signature'];
+
+        return view('technician.jobs.punch_out', compact('job', 'has', 'ready'));
+    }
+
+
+    public function hold(Request $request, ServiceRequest $job)
+    {
+        abort_unless($job->assigned_tech_user_id === auth()->id(), 403);
+
+        $data = $request->validate([
+            'hold_reason_id' => 'required|integer|exists:hold_reasons,id',
+            'note'           => 'nullable|string|max:2000',
+        ]);
+
+        $reason = \App\Models\HoldReason::find($data['hold_reason_id']);
+
+        // Enforce note requirement server-side (so a tampered form still fails)
+        if ($reason && $reason->requires_note && empty($data['note'])) {
+            return back()->withErrors(['note' => 'This reason needs a note.'])->withInput();
+        }
+
+        $job->update([
+            'is_on_hold' => true,
+            'current_hold_reason_id' => $data['hold_reason_id'],
+            'hold_started_at' => now(),
+        ]);
+
+
+        \App\Models\SrEvent::create([
+            'tenant_id' => auth()->user()->tenant_id,
+            'service_request_id' => $job->id,
+            'user_id' => auth()->id(),
+            'type' => 'hold',
+            'label' => $reason?->label,
+            'occurred_at' => now(),
+        ]);
+        // $job->update(['hold_started_at' => now()]);  // for live elapsed timer
+
+        // Save the note as an sr_note too, so it shows in the notes list
+        if (! empty($data['note'])) {
+            \App\Models\SrNote::create([
+                'tenant_id'          => auth()->user()->tenant_id,
+                'service_request_id' => $job->id,
+                'user_id'            => auth()->id(),
+                'visibility'         => 'internal',
+                'source'             => 'user',
+                'body'               => "Hold reason: {$reason?->label}\n\n{$data['note']}",
+            ]);
+        }
+
+        return redirect()->route('technician.jobs.show', $job)
+            ->with('success', 'Job placed on hold.');
+    }
+
+    public function resume(ServiceRequest $job)
+    {
+        abort_unless(
+            $job->assigned_tech_user_id === auth()->id(),
+            403
+        );
+
+        \App\Models\SrEvent::create([
+            'tenant_id' => auth()->user()->tenant_id,
+            'service_request_id' => $job->id,
+            'user_id' => auth()->id(),
+            'type' => 'resume',
+            'occurred_at' => now(),
+        ]);
+
+        $job->update([
+            'is_on_hold' => false,
+            'current_hold_reason_id' => null,
+            'hold_started_at' => null,
+        ]);
+
+        return redirect()
+            ->route('technician.jobs.show', $job)
+            ->with('success', 'Resumed.');
+    }
+
+
+    public function punchedOut(ServiceRequest $job)
+    {
+        abort_unless($job->assigned_tech_user_id === auth()->id(), 403);
+
+        $srType = ServiceRequest::class;
+
+        // Total time on hold = sum of each hold→resume interval
+        $events = \App\Models\SrEvent::where('service_request_id', $job->id)
+            ->orderBy('occurred_at')->get();
+
+        $totalHoldSec = 0;
+        $holdStart = null;
+        foreach ($events as $ev) {
+            if ($ev->type === 'hold')   $holdStart = $ev->occurred_at;
+            if ($ev->type === 'resume' && $holdStart) {
+                $totalHoldSec += $holdStart->diffInSeconds($ev->occurred_at);
+                $holdStart = null;
+            }
+        }
+
+        // Work time = (punch out - first punch in) - total hold
+        $totalSec = 0;
+        if ($job->first_punch_in_at && $job->last_punch_out_at) {
+            $totalSec = max(
+                0,
+                \Carbon\Carbon::parse($job->first_punch_in_at)
+                    ->diffInSeconds(\Carbon\Carbon::parse($job->last_punch_out_at))
+                    - $totalHoldSec
+            );
+        }
+
+        $summary = [
+            'work_minutes' => (int) round($totalSec / 60),
+            'hold_minutes' => (int) round($totalHoldSec / 60),
+            'photos'       => Attachment::where('attachable_type', $srType)
+                ->where('attachable_id', $job->id)
+                ->whereIn('kind', ['before_photo', 'after_photo'])
+                ->count(),
+            'expenses'     => \App\Models\ServiceRequestExpense::where('service_request_id', $job->id)
+                ->count(),
+        ];
+
+        return view('technician.jobs.punched_out', compact('job', 'summary'));
+    }
 
     /* ===================== SUB-PAGES ===================== */
 
@@ -447,6 +588,26 @@ class JobsController extends Controller
             $receiptAttachmentId = $att->id;
         }
 
+        // \App\Models\ServiceRequestExpense::create([
+        //     'tenant_id'            => auth()->user()->tenant_id,
+        //     'service_request_id'   => $job->id,
+        //     'logged_by_user_id'    => auth()->id(),
+        //     'client_event_uuid'    => (string) \Illuminate\Support\Str::uuid(),
+        //     'expense_category_id'  => $data['category_id'],
+        //     'description'          => $data['desc'] ?? '',
+        //     'quantity'             => $data['qty'],
+        //     'unit_rate'            => $data['rate'],
+        //     'total_amount'         => $total,
+        //     'is_billable_to_client' => true,
+        //     'receipt_attachment_id' => $receiptAttachmentId,
+        //     'approval_status'      => 'pending',
+        // ]);
+
+
+        // Read the category's billable default — fall back to false if not set
+        $category = \App\Models\ExpenseCategory::find($data['category_id']);
+        $isBillable = (bool) ($category->is_billable_default ?? false);
+
         \App\Models\ServiceRequestExpense::create([
             'tenant_id'            => auth()->user()->tenant_id,
             'service_request_id'   => $job->id,
@@ -457,45 +618,46 @@ class JobsController extends Controller
             'quantity'             => $data['qty'],
             'unit_rate'            => $data['rate'],
             'total_amount'         => $total,
-            'is_billable_to_client' => true,
+            'is_billable_to_client' => $isBillable,                    // ← reads from category
             'receipt_attachment_id' => $receiptAttachmentId,
             'approval_status'      => 'pending',
         ]);
+
 
         return redirect()->route('technician.jobs.expenses', $job)
             ->with('success', 'Expense saved. Total ' . number_format($total, 2) . ' AED.');
     }
 
     public function signature(ServiceRequest $job)
-{
-    abort_unless($job->assigned_tech_user_id === auth()->id(), 403);
+    {
+        abort_unless($job->assigned_tech_user_id === auth()->id(), 403);
 
-    $existing = null;
-    if ($job->customer_signature_attachment_id) {
-        $existing = \App\Models\Attachment::find($job->customer_signature_attachment_id);
+        $existing = null;
+        if ($job->customer_signature_attachment_id) {
+            $existing = \App\Models\Attachment::find($job->customer_signature_attachment_id);
+        }
+
+        return view('technician.jobs.signature', [
+            'job'      => $job,
+            'existing' => $existing,
+        ]);
     }
-
-    return view('technician.jobs.signature', [
-        'job'      => $job,
-        'existing' => $existing,
-    ]);
-}
 
     public function storeSignature(Request $request, ServiceRequest $job)
     {
-         abort_unless($job->assigned_tech_user_id === auth()->id(), 403);
+        abort_unless($job->assigned_tech_user_id === auth()->id(), 403);
 
-    $data = $request->validate([
-        'signer_name'    => 'required|string|max:150',
-        'signer_phone'   => 'nullable|string|max:40',
-        'signature_data' => 'required|string|starts_with:data:image/',
-    ], [
-        'signer_name.required'    => 'Signer name is required.',
-        'signer_name.max'         => 'Signer name is too long (max 150 characters).',
-        'signer_phone.max'        => 'Phone is too long.',
-        'signature_data.required'       => 'Please sign in the box before saving.',
-        'signature_data.starts_with'    => 'Signature is invalid. Try drawing again.',
-    ]);
+        $data = $request->validate([
+            'signer_name'    => 'required|string|max:150',
+            'signer_phone'   => 'nullable|string|max:40',
+            'signature_data' => 'required|string|starts_with:data:image/',
+        ], [
+            'signer_name.required'    => 'Signer name is required.',
+            'signer_name.max'         => 'Signer name is too long (max 150 characters).',
+            'signer_phone.max'        => 'Phone is too long.',
+            'signature_data.required'       => 'Please sign in the box before saving.',
+            'signature_data.starts_with'    => 'Signature is invalid. Try drawing again.',
+        ]);
 
         // ===== Decode the base64 PNG from the canvas =====
         [$meta, $raw] = explode(',', $data['signature_data'], 2);

@@ -77,6 +77,8 @@
       <span class="chip chip-notaccepted">Not accepted</span>
     @endif
 
+  
+
     @if ($isRework)
       <span class="chip chip-rework">Rework</span>
     @endif
@@ -85,7 +87,7 @@
       <span class="chip" style="background:#FFF4E6;color:#B35F00">On hold</span>
     @endif
 
-    @if ($job->status === 'in_progress' && ($job->always_enforce_geofence ?? false))
+    @if ($job->enforce_geofence)
       <span class="chip chip-med">Geofence on</span>
     @endif
   </div>

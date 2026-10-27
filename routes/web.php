@@ -14,6 +14,12 @@ use App\Http\Controllers\Admin\ExpenseCategoryController;
 use App\Http\Controllers\Admin\ServiceRequestController;
 use App\Http\Controllers\Admin\TenantHolidayController;
 use App\Http\Controllers\Admin\TenantBusinessHourController;
+use App\Http\Controllers\Admin\ExpenseReviewController;
+
+use App\Http\Controllers\Admin\RequestsReviewController;
+use App\Http\Controllers\Admin\QuotesController;
+use App\Http\Controllers\PublicQuoteController;
+
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Technician\JobsController;
 
@@ -81,6 +87,14 @@ Route::middleware(['auth:platform', 'platform.2fa'])->prefix('admin')->name('adm
 // Invitation accept — public, token-gated.
 Route::get('/invitation/{token}',  [AuthController::class, 'showAcceptInvitation'])->name('invitation.accept');
 Route::post('/invitation/{token}', [AuthController::class, 'acceptInvitation'])->name('invitation.accept.submit');
+
+
+
+Route::get ('/q/{token}',          [PublicQuoteController::class, 'show'])->name('public.quote.show');
+Route::get ('/q/{token}/pdf',      [PublicQuoteController::class, 'pdf'])->name('public.quote.pdf');
+Route::post('/q/{token}/accept',   [PublicQuoteController::class, 'accept'])->name('public.quote.accept');
+Route::post('/q/{token}/reject',   [PublicQuoteController::class, 'reject'])->name('public.quote.reject');
+
 
 Route::middleware(['auth'])->group(function () {
 
@@ -189,8 +203,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/jobs/{job}/punch-in',       [JobsController::class, 'punchIn'])->name('jobs.punch-in');
     Route::get('/jobs/{job}/punched-in',      [JobsController::class, 'punchedIn'])->name('jobs.punched-in');
     Route::post('/jobs/{job}/punch-out',      [JobsController::class, 'punchOut'])->name('jobs.punch-out');
+    Route::get('/jobs/{job}/punch-out',       [JobsController::class, 'punchOutReview'])->name('jobs.punch-out-review');
     Route::post('/jobs/{job}/hold',           [JobsController::class, 'hold'])->name('jobs.hold');
     Route::post('/jobs/{job}/resume',         [JobsController::class, 'resume'])->name('jobs.resume');
+
+    Route::get('/jobs/{job}/punched-out', [JobsController::class, 'punchedOut'])->name('jobs.punched-out');
 
     Route::get('/jobs/{job}/photos',          [JobsController::class, 'photos'])->name('jobs.photos');
     Route::post('/jobs/{job}/photos',         [JobsController::class, 'storePhoto'])->name('jobs.photos.store');
@@ -280,6 +297,36 @@ Route::prefix('admin/expense-categories')->name('admin.expense-categories.')->gr
     Route::delete('/{expense_category}',         [ExpenseCategoryController::class, 'destroy'])->name('destroy');
     Route::post('/{expense_category}/suspend',   [ExpenseCategoryController::class, 'suspend'])->name('suspend');
     Route::post('/{expense_category}/reactivate', [ExpenseCategoryController::class, 'reactivate'])->name('reactivate');
+});
+
+
+// Requests Review (billing)
+Route::prefix('admin/requests-review')->name('admin.requests-review.')->group(function () {
+    Route::get('/', [RequestsReviewController::class, 'index'])->name('index');
+});
+
+// Quotes
+Route::prefix('admin/quotes')->name('admin.quotes.')->group(function () {
+    Route::get ('/',                    [QuotesController::class, 'index'])->name('index');  // ← NEW
+
+    Route::get ('/build/{sr}',          [QuotesController::class, 'build'])->name('build');          // start/edit builder
+    Route::get ('/upload/{sr}',         [QuotesController::class, 'uploadForm'])->name('upload');    // upload PDF form
+    Route::post('/save/{sr}',           [QuotesController::class, 'saveBuilt'])->name('save-built'); // save builder draft
+    Route::post('/upload/{sr}',         [QuotesController::class, 'storeUpload'])->name('store-upload'); // save upload
+    Route::get ('/{quote}',             [QuotesController::class, 'show'])->name('show');
+    Route::get ('/{quote}/pdf',         [QuotesController::class, 'pdf'])->name('pdf');
+    Route::get ('/{quote}/edit',        [QuotesController::class, 'edit'])->name('edit');
+    Route::put ('/{quote}',             [QuotesController::class, 'update'])->name('update');
+    Route::post('/{quote}/send',        [QuotesController::class, 'send'])->name('send');
+    Route::post('/{quote}/revise',      [QuotesController::class, 'revise'])->name('revise');
+});
+
+
+// Expenses to review
+Route::prefix('admin/expenses-review')->name('admin.expenses-review.')->group(function () {
+    Route::get ('/',                              [ExpenseReviewController::class, 'index'])->name('index');
+    Route::post('/{expense}/approve',             [ExpenseReviewController::class, 'approve'])->name('approve');
+    Route::post('/{expense}/reject',              [ExpenseReviewController::class, 'reject'])->name('reject');
 });
 
 

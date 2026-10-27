@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
+
 class ServiceRequest extends Model
 {
     use HasFactory, SoftDeletes, BelongsToTenant;
@@ -142,7 +143,7 @@ class ServiceRequest extends Model
         'signed_at'               => 'datetime',
         'signature_gps_lat'       => 'decimal:7',
         'signature_gps_lng'       => 'decimal:7',
-            'hold_started_at' => 'datetime',
+        'hold_started_at' => 'datetime',
     ];
 
     /* ---------- Relationships ---------- */
@@ -163,6 +164,12 @@ class ServiceRequest extends Model
     {
         return $this->belongsTo(User::class, 'created_by_user_id');
     }
+
+    public function quotes()
+    {
+        return $this->hasMany(\App\Models\Quote::class);
+    }
+
     public function assignedTech()
     {
         return $this->belongsTo(User::class, 'assigned_tech_user_id');
@@ -176,7 +183,7 @@ class ServiceRequest extends Model
         return $this->belongsTo(HoldReason::class, 'current_hold_reason_id');
     }
 
-    
+
     public function parent()
     {
         return $this->belongsTo(self::class, 'parent_sr_id');
@@ -288,38 +295,38 @@ class ServiceRequest extends Model
             ->orderByRaw("FIELD(priority, ?, 'low', 'medium', 'high', 'critical', 'emergency')", [$this->priority])
             ->first();
     }
-    
+
 
 
     /**
- * Return the list of attachments stored on disk for this SR.
- * Each item: ['filename' => stored name, 'display' => original name, 'url' => public URL, 'size' => bytes, 'type' => mime group]
- */
-public function attachmentsRel()
-{
-    return $this->morphMany(Attachment::class, 'attachable')->orderBy('id', 'desc');
-}
+     * Return the list of attachments stored on disk for this SR.
+     * Each item: ['filename' => stored name, 'display' => original name, 'url' => public URL, 'size' => bytes, 'type' => mime group]
+     */
+    public function attachmentsRel()
+    {
+        return $this->morphMany(Attachment::class, 'attachable')->orderBy('id', 'desc');
+    }
 
-/**
- * Backward-compatible helper — returns the array format the Blade views already use.
- */
+    /**
+     * Backward-compatible helper — returns the array format the Blade views already use.
+     */
 
-public function attachments(): array
-{
-    return $this->attachmentsRel
-        ->filter(fn ($a) => !empty($a->storage_path))
-        ->map(fn ($a) => [
-            'id'       => $a->id,
-            'filename' => basename($a->storage_path),
-            'display'  => $a->original_name ?? basename($a->storage_path),
-            'url'      => $a->url,
-            'size'     => $a->size_bytes,
-            'type'     => $a->is_image ? 'image' : 'file',
-            'ext'      => $a->ext,
-        ])
-        ->values()
-        ->toArray();
-}
+    public function attachments(): array
+    {
+        return $this->attachmentsRel
+            ->filter(fn($a) => !empty($a->storage_path))
+            ->map(fn($a) => [
+                'id'       => $a->id,
+                'filename' => basename($a->storage_path),
+                'display'  => $a->original_name ?? basename($a->storage_path),
+                'url'      => $a->url,
+                'size'     => $a->size_bytes,
+                'type'     => $a->is_image ? 'image' : 'file',
+                'ext'      => $a->ext,
+            ])
+            ->values()
+            ->toArray();
+    }
 
 
 

@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Figtree:wght@600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#FBFAF6; --ink:#1B1A24; --muted:#5F5D6E; --subtle:#8B89A0;
+    --bg:#ffffff; --ink:#1B1A24; --muted:#5F5D6E; --subtle:#8B89A0;
     --line:#E6E4EE; --soft:#F5F4FA;
     --accent:#2F5BEA; --accent-soft:#EEF2FF; --accent-ink:#2749C8;
     --green:#1D7A3A; --green-soft:#E6F7EC;
@@ -55,7 +55,11 @@
   .drawer-backdrop.open{opacity:1;pointer-events:auto}
   @media (max-width:600px){.drawer-backdrop{border-radius:0}}
 
-  .drawer{position:absolute;top:0;left:0;bottom:0;width:88%;max-width:280px;background:var(--bg);z-index:100;display:flex;flex-direction:column;transform:translateX(-100%);transition:transform .22s;box-shadow:4px 0 24px rgba(0,0,0,.25);border-top-left-radius:28px;border-bottom-left-radius:28px;overflow:hidden}
+  .drawer{position:absolute;top:0;left:0;bottom:0;width:88%;max-width:280px;background:var(--bg);z-index:100;display:flex;flex-direction:column;transform:translateX(-100%);transition:transform .22s;
+  /* box-shadow:4px 0 24px rgba(0,0,0,.25); */
+  border-top-left-radius:28px;
+  border-bottom-left-radius:28px;
+  overflow:hidden}
   .drawer.open{transform:translateX(0)}
   @media (max-width:600px){.drawer{border-radius:0}}
 
