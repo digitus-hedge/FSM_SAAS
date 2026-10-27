@@ -431,7 +431,7 @@
       @if (!$policy)
         <div class="warn-banner">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          <div>No SLA policy matches this category and priority. <a href="{{ route('admin.sla-policies.create') }}" class="link" style="color:var(--red);border-color:var(--red)">Add one</a> so response and resolution deadlines are tracked.</div>
+          <div>No SLA policy matches this category and priority. <a href="{{ route('admin.sla-policies.index') }}" class="link" style="color:var(--red);border-color:var(--red)">Add one</a> so response and resolution deadlines are tracked.</div>
         </div>
       @else
         <div class="sla-rows">
