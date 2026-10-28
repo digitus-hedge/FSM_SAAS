@@ -28,6 +28,9 @@ use App\Http\Controllers\Tenant\MembersController;
 use App\Models\Tenant;
 use Illuminate\Support\Facades\Route;
 
+use App\Http\Controllers\Admin\InvoicesController;
+use App\Http\Controllers\PublicInvoiceController;
+use App\Http\Controllers\Client\ClientAuthController;
 /*
 |--------------------------------------------------------------------------
 | Platform admin sign-in (platform_users table — owner@aiywah.app, etc.)
@@ -95,6 +98,39 @@ Route::get ('/q/{token}/pdf',      [PublicQuoteController::class, 'pdf'])->name(
 Route::post('/q/{token}/accept',   [PublicQuoteController::class, 'accept'])->name('public.quote.accept');
 Route::post('/q/{token}/reject',   [PublicQuoteController::class, 'reject'])->name('public.quote.reject');
 
+// Public client-facing (no auth, token-based)
+Route::get('/i/{token}',     [PublicInvoiceController::class, 'show'])->name('public.invoice.show');
+Route::get('/i/{token}/pdf', [PublicInvoiceController::class, 'pdf'])->name('public.invoice.pdf');
+
+// Invoices
+Route::prefix('admin/invoices')->name('admin.invoices.')->group(function () {
+    Route::get ('/',                            [InvoicesController::class, 'index'])->name('index');
+    Route::get ('/build/{sr}',                  [InvoicesController::class, 'build'])->name('build');
+    Route::get ('/upload/{sr}',                 [InvoicesController::class, 'uploadForm'])->name('upload');
+    Route::post('/save/{sr}',                   [InvoicesController::class, 'saveBuilt'])->name('save-built');
+    Route::post('/upload/{sr}',                 [InvoicesController::class, 'storeUpload'])->name('store-upload');
+    Route::get ('/{invoice}',                   [InvoicesController::class, 'show'])->name('show');
+    Route::get ('/{invoice}/pdf',               [InvoicesController::class, 'pdf'])->name('pdf');
+    Route::get ('/{invoice}/edit',              [InvoicesController::class, 'edit'])->name('edit');
+    Route::put ('/{invoice}',                   [InvoicesController::class, 'update'])->name('update');
+    Route::post('/{invoice}/submit',            [InvoicesController::class, 'submit'])->name('submit');
+    Route::post('/{invoice}/approve',           [InvoicesController::class, 'approve'])->name('approve');
+    Route::post('/{invoice}/send-back',         [InvoicesController::class, 'sendBack'])->name('send-back');
+    Route::post('/{invoice}/send',              [InvoicesController::class, 'send'])->name('send');
+    Route::post('/{invoice}/payment',           [InvoicesController::class, 'recordPayment'])->name('payment');
+    Route::post('/payment/{payment}/reverse',   [InvoicesController::class, 'reversePayment'])->name('payment.reverse');
+    Route::post('/{invoice}/write-off',         [InvoicesController::class, 'writeOff'])->name('write-off');
+    Route::post('/{invoice}/undo-write-off',    [InvoicesController::class, 'undoWriteOff'])->name('undo-write-off');
+    Route::post('/{invoice}/void',              [InvoicesController::class, 'void'])->name('void');
+});
+
+// Client portal sign-in (public, on tenant subdomain)
+Route::prefix('client')->name('client.')->group(function () {
+    Route::get ('/sign-in',         [ClientAuthController::class, 'showSignIn'])->name('sign-in');
+    Route::post('/sign-in',         [ClientAuthController::class, 'requestLink'])->name('sign-in.request');
+    Route::get ('/sign-in/sent',    [ClientAuthController::class, 'showSent'])->name('sign-in.sent');
+    Route::get ('/sign-in/{token}', [ClientAuthController::class, 'verifyLink'])->name('sign-in.verify');
+});
 
 Route::middleware(['auth'])->group(function () {
 
@@ -104,6 +140,11 @@ Route::middleware(['auth'])->group(function () {
         return view('tenant.dashboard', compact('tenant'));
     })->name('tenant.dashboard');
 
+    // Client portal (authenticated client user)
+    Route::prefix('portal')->name('portal.')->group(function () {
+        Route::get ('/',         [ClientAuthController::class, 'dashboard'])->name('dashboard');
+        Route::post('/sign-out', [ClientAuthController::class, 'signOut'])->name('sign-out');
+    });
     // Users (was Members) — Company Admins only
     Route::prefix('manage/users')->name('tenant.users.')->group(function () {
         Route::get('/',                        [MembersController::class, 'index'])->name('index');

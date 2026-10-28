@@ -265,6 +265,23 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
   </a>
 @endif
 
+@if ($u->role?->name === 'Company Admin' || $u->role?->name === 'Finance')
+  @php
+    $invCount = \App\Models\Invoice::whereIn('status', ['draft','pending_approval'])->count();
+  @endphp
+  <a href="{{ route('admin.invoices.index') }}" class="nav-item {{ request()->routeIs('admin.invoices.*') ? 'active' : '' }}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="9" y1="12" x2="15" y2="12"/>
+      <line x1="9" y1="16" x2="12" y2="16"/>
+    </svg>
+    Invoices
+    @if ($invCount > 0)
+      <span style="margin-left:auto;background:var(--yellow);color:var(--ink);font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px">{{ $invCount }}</span>
+    @endif
+  </a>
+@endif
 
 
     @endif

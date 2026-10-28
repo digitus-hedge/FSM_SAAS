@@ -373,4 +373,9 @@ class ServiceRequest extends Model
             default     => $this->sla_clock_started_at ? 'red' : 'gray',
         };
     }
+
+    public function invoices()
+    {
+        return $this->hasMany(\App\Models\Invoice::class);
+    }
 }
