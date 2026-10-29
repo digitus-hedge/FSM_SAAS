@@ -358,6 +358,10 @@ Route::prefix('admin/expense-categories')->name('admin.expense-categories.')->gr
 // Requests Review (billing)
 Route::prefix('admin/requests-review')->name('admin.requests-review.')->group(function () {
     Route::get('/', [RequestsReviewController::class, 'index'])->name('index');
+    Route::get('/{sr}',  [RequestsReviewController::class, 'show'])->name('show');
+    Route::post('/{sr}/qc-pass',  [RequestsReviewController::class, 'qcPass'])->name('qc-pass');
+    Route::post('/{sr}/cancel',   [RequestsReviewController::class, 'cancel'])->name('cancel');
+
 });
 
 // Quotes

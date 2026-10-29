@@ -45,7 +45,7 @@ class PublicQuoteController extends Controller
             'responded_by_name'   => $data['name'],
             'responded_ip'        => $request->ip(),
         ]);
-        $quote->serviceRequest->update(['billing_status' => 'awaiting_invoice']);
+        $quote->serviceRequest->update(['billing_status' => 'awaiting_invoice','status'=>'awaiting_invoice']);
 
         QuoteEvent::create([
             'tenant_id'   => $quote->tenant_id,

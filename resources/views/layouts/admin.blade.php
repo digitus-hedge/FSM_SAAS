@@ -243,7 +243,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
   @endphp
   <a href="{{ route('admin.requests-review.index') }}" class="nav-item {{ request()->routeIs('admin.requests-review.*')  ? 'active' : '' }}">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-    Requests (Billing)
+    Billing Requests
     @if ($billingCount > 0)
       <!-- <span style="margin-left:auto;background:var(--yellow);color:var(--ink);font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px">{{ $billingCount }}</span> -->
     @endif

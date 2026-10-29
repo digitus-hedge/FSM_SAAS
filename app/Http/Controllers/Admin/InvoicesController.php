@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
@@ -313,13 +314,20 @@ class InvoicesController extends Controller
                 'approved_by_user_id' => auth()->id(),
                 'issued_at'           => $invoice->issued_at ?? now(),
             ]);
-            InvoiceEvent::log($invoice->id, 'approved',
-                $invoice->submitted_by_user_id === auth()->id() ? '(own invoice)' : null);
+            InvoiceEvent::log(
+                $invoice->id,
+                'approved',
+                $invoice->submitted_by_user_id === auth()->id() ? '(own invoice)' : null
+            );
 
             $sr = $invoice->serviceRequest;
-            if ($sr && $sr->status === 'Awaiting Invoice') {
-                $sr->update(['status' => 'Completed']);
-            }
+            if ($sr) {
+    // When the invoice goes out, the job itself is done — advance the SR status.
+    $sr->update([
+        'status'         => 'completed',
+        // 'billing_status' => 'invoiced',   // (keeps your existing cascade)
+    ]);
+}
         });
 
         return redirect()->route('admin.invoices.show', $invoice)
@@ -371,8 +379,13 @@ class InvoicesController extends Controller
             ]);
         }
 
+        $sr = $invoice->serviceRequest;
+
         if ($invoice->status === 'approved') {
             $invoice->update(['status' => 'sent', 'sent_at' => now()]);
+
+            $sr->update(['billing_status' => 'invoiced','status' => 'completed']);
+            
         }
         InvoiceEvent::log($invoice->id, 'sent', 'Sent to ' . implode(', ', $request->recipients));
 
@@ -410,6 +423,22 @@ class InvoicesController extends Controller
             ]);
             $invoice->recomputeBalance();
             InvoiceEvent::log($invoice->id, 'payment_received', 'AED ' . number_format($data['amount'], 3));
+
+
+            $sr = $invoice->serviceRequest;
+            if ($sr) {
+                if ($invoice->status === 'paid') {
+                    // Fully paid — move SR to Paid
+                    $sr->update(['billing_status' => 'paid']);
+                    InvoiceEvent::log($invoice->id, 'invoice_paid', 'Request marked as Paid');
+                } else {
+                    // Partial payment — keep SR at Invoiced
+                    if ($sr->billing_status !== 'invoiced') {
+                        $sr->update(['billing_status' => 'invoiced']);
+                    }
+                }
+            }
+
         });
 
         return redirect()->route('admin.invoices.show', $invoice)->with('success', 'Payment recorded.');
