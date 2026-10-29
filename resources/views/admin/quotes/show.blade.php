@@ -35,6 +35,12 @@
   .hist-row:last-child{border:0}
   .hist-row .t{color:var(--muted);display:inline-block;min-width:80px}
   .hist-row .u{color:var(--muted)}
+
+  .btn.primary {
+    background: #2F5BEA;
+    color: #ffffff;
+}
+
 </style>
 
 <div class="crumb"><a href="{{ route('admin.requests-review.index') }}">Quotes</a> / {{ $quote->quote_number }}</div>
@@ -53,12 +59,26 @@
     @endif
   </div>
   <div class="actions">
-    @if (in_array($quote->status, ['sent','accepted','rejected','superseded']))
+    @if (in_array($quote->status, ['sent','rejected','superseded']))
       <form method="POST" action="{{ route('admin.quotes.revise', $quote) }}" style="margin:0">@csrf
         <button type="submit" class="btn">Revise</button>
       </form>
       <button type="button" class="btn" onclick="openSendSheet()">Resend</button>
       <a href="{{ route('admin.quotes.pdf', $quote) }}" target="_blank" class="btn">Download PDF</a>
+
+      @elseif ($quote->status === 'accepted')
+    <a href="{{ route('admin.invoices.build', $quote->service_request_id) }}"
+       class="btn primary">
+        Start invoice from this quote
+    </a>
+
+    <a href="{{ route('admin.quotes.pdf', $quote) }}"
+       target="_blank"
+       class="btn">
+        Download PDF
+    </a>
+
+
     @elseif ($quote->status === 'draft')
       @if ($quote->source === 'builder')
         <a href="{{ route('admin.quotes.edit', $quote) }}" class="btn">Edit</a>

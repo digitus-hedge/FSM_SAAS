@@ -350,7 +350,7 @@
             Approve
           </button>
 
-          <form method="POST" action="{{ route('service-requests.send-for-quote', $sr) }}" class="needs-confirm"
+          <!-- <form method="POST" action="{{ route('service-requests.send-for-quote', $sr) }}" class="needs-confirm"
                 data-confirm-title="Send for quote?"
                 data-confirm-text="This request will move to the Quoted stage. The SLA clock pauses until the client approves the quote."
                 data-confirm-ok="Yes, send" data-confirm-ok-color="amber">
@@ -361,7 +361,7 @@
               </svg>
               Send for quote
             </button>
-          </form>
+          </form> -->
 
           <button type="button" class="act-btn act-danger-outline" onclick="document.getElementById('reject-modal').classList.add('show')">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>

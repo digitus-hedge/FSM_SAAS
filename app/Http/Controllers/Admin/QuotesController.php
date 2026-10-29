@@ -165,6 +165,10 @@ class QuotesController extends Controller
                 'base_total'     => $total,
             ]);
 
+            ServiceRequest::where('id', $quote->service_request_id)
+                ->where('tenant_id', $quote->tenant_id)
+                ->update(['status' => 'quoted']);
+
             QuoteItem::where('quote_id', $quote->id)->delete();
             foreach ($built as $row) {
                 QuoteItem::create(array_merge(['quote_id' => $quote->id], $row));
@@ -243,6 +247,11 @@ class QuotesController extends Controller
 
         $att->update(['attachable_id' => $quote->id]);
 
+
+        $sr->update([
+            'status' => 'quoted',
+        ]);
+
         QuoteEvent::log($quote->id, 'draft_made', 'Uploaded ' . $file->getClientOriginalName());
 
         if (! empty($data['and_send'])) {
@@ -318,7 +327,7 @@ class QuotesController extends Controller
         }
 
         $quote->update(['status' => 'sent', 'sent_at' => now()]);
-        $quote->serviceRequest->update(['billing_status' => 'quoted']);
+        $quote->serviceRequest->update(['status' => 'quoted']);
 
         \App\Models\QuoteEvent::log($quote->id, 'sent', 'Sent to ' . implode(', ', $request->recipients));
 

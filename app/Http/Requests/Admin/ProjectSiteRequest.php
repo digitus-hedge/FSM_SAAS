@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Requests\Admin;
 
 use App\Models\Tenant;
@@ -7,7 +8,10 @@ use Illuminate\Validation\Rule;
 
 class ProjectSiteRequest extends FormRequest
 {
-    public function authorize(): bool { return $this->user() !== null; }
+    public function authorize(): bool
+    {
+        return $this->user() !== null;
+    }
 
     public function rules(): array
     {
@@ -15,17 +19,23 @@ class ProjectSiteRequest extends FormRequest
         $tenantId = Tenant::current()?->id;
 
         return [
+
             'site_code' => [
-                'required','string','max:40','alpha_dash',
+                'nullable',
+                'sometimes',
+                'string',
+                'max:40',
+                'alpha_dash',
                 Rule::unique('project_sites', 'site_code')
                     ->where('tenant_id', $tenantId)
                     ->ignore($siteId),
             ],
+
             'name'      => 'required|string|min:2|max:180',
             'site_type' => 'required|in:client_site,tenant_workshop',
             'client_id' => [
                 'nullable',
-                Rule::requiredIf(fn () => $this->input('site_type') === 'client_site'),
+                Rule::requiredIf(fn() => $this->input('site_type') === 'client_site'),
                 'exists:clients,id',
             ],
             'address'                => 'nullable|string|max:1000',
@@ -60,15 +70,18 @@ class ProjectSiteRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'site_code.required'   => 'A site code is required.',
-            'site_code.alpha_dash' => 'Site code can only contain letters, digits, dashes, underscores.',
+            'site_code.alpha_dash' => 'Site code can only contain letters, digits, dashes, and underscores.',
             'site_code.unique'     => 'This site code is already used in your workspace.',
-            'name.required'        => 'Please enter the site name.',
-            'name.min'             => 'Site name is too short (min 2 characters).',
-            'client_id.required'   => 'A client site needs a client — pick one, or change the type to a Tenant workshop.',
-            'client_id.exists'     => 'Selected client no longer exists.',
-            'lat.between'          => 'Latitude must be between -90 and 90.',
-            'lng.between'          => 'Longitude must be between -180 and 180.',
+
+            'name.required' => 'Please enter the site name.',
+            'name.min'      => 'Site name is too short (minimum 2 characters).',
+
+            'client_id.required' => 'A client site needs a client — pick one, or change the type to a Tenant workshop.',
+            'client_id.exists'   => 'Selected client no longer exists.',
+
+            'lat.between' => 'Latitude must be between -90 and 90.',
+            'lng.between' => 'Longitude must be between -180 and 180.',
+
             'geofence_radius_meters.max' => 'Geofence radius cannot exceed 10,000 meters.',
         ];
     }
@@ -76,7 +89,9 @@ class ProjectSiteRequest extends FormRequest
     public function prepareForValidation(): void
     {
         $this->merge([
-            'site_code' => strtoupper(trim((string) $this->site_code)),
+            'site_code' => $this->filled('site_code')
+                ? strtoupper(trim($this->input('site_code')))
+                : null,
             // If type is tenant_workshop, force client_id to null (workshops have no client)
             'client_id' => $this->input('site_type') === 'tenant_workshop'
                 ? null

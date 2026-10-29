@@ -4,7 +4,7 @@
 <style>
 .page-h1{font-family:'Figtree';font-size:28px;font-weight:800;margin-bottom:6px;letter-spacing:-.4px}
 .page-sub{color:var(--muted);font-size:14px;margin-bottom:22px}
-.tab-strip{display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:22px;overflow-x:auto}
+.tab-strip{display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:22px;}
 .tab-strip a{padding:12px 20px;color:var(--muted);text-decoration:none;font-weight:600;border-bottom:2px solid transparent;position:relative;top:1px;white-space:nowrap;font-size:13.5px}
 .tab-strip a.active{color:var(--ink);border-bottom-color:var(--ink)}
 .tab-strip a .n{color:var(--muted);font-weight:400;margin-left:4px;font-size:12px}
