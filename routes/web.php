@@ -31,6 +31,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\InvoicesController;
 use App\Http\Controllers\PublicInvoiceController;
 use App\Http\Controllers\Client\ClientAuthController;
+use App\Http\Controllers\Technician\TeamController;
 /*
 |--------------------------------------------------------------------------
 | Platform admin sign-in (platform_users table — owner@aiywah.app, etc.)
@@ -137,6 +138,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', function () {
         $tenant = Tenant::current();
         abort_unless($tenant, 404);
+
+        $clientCodes = ['client_user', 'client_admin', 'client_viewer'];
+        if (in_array(auth()->user()->role?->code, $clientCodes, true)) {
+            return redirect()->route('portal.dashboard');
+        }
+
         return view('tenant.dashboard', compact('tenant'));
     })->name('tenant.dashboard');
 
@@ -239,6 +246,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/jobs/all',                   [JobsController::class, 'all'])->name('jobs.all');
     Route::get('/jobs/{job}',                 [JobsController::class, 'show'])->name('jobs.show');
 
+    Route::get('/team',                        [TeamController::class, 'index'])->name('team.index');
+    Route::post('/team/new',                   [TeamController::class, 'storeNew'])->name('team.new');
+    Route::post('/team/overrides/{override}/approve', [TeamController::class, 'approveOverride'])->name('team.overrides.approve');
+    Route::post('/team/overrides/{override}/reject',  [TeamController::class, 'rejectOverride'])->name('team.overrides.reject');
+    Route::post('/team/conflicts/{log}/reviewed',      [TeamController::class, 'markConflictReviewed'])->name('team.conflicts.reviewed');
+
     Route::post('/jobs/{job}/accept',         [JobsController::class, 'accept'])->name('jobs.accept');
     Route::post('/jobs/{job}/change-time',    [JobsController::class, 'changeTime'])->name('jobs.change-time');
     Route::post('/jobs/{job}/punch-in',       [JobsController::class, 'punchIn'])->name('jobs.punch-in');
@@ -246,6 +259,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/jobs/{job}/punch-out',      [JobsController::class, 'punchOut'])->name('jobs.punch-out');
     Route::get('/jobs/{job}/punch-out',       [JobsController::class, 'punchOutReview'])->name('jobs.punch-out-review');
     Route::post('/jobs/{job}/hold',           [JobsController::class, 'hold'])->name('jobs.hold');
+    Route::post('/jobs/{job}/geofence-override', [JobsController::class, 'requestGeofenceOverride'])->name('jobs.geofence-override');
     Route::post('/jobs/{job}/resume',         [JobsController::class, 'resume'])->name('jobs.resume');
 
     Route::get('/jobs/{job}/punched-out', [JobsController::class, 'punchedOut'])->name('jobs.punched-out');

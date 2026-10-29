@@ -203,17 +203,47 @@ class JobsController extends Controller
     }
 
     public function punchIn(Request $request, ServiceRequest $job)
-    {
-        abort_unless($job->assigned_tech_user_id === auth()->id(), 403);
+{
+    abort_unless($job->assigned_tech_user_id === auth()->id(), 403);
 
-        $job->update([
-            'status'            => 'in_progress',
-            'first_punch_in_at' => $job->first_punch_in_at ?? now(),
-            'tech_accepted_at'  => $job->tech_accepted_at  ?? now(),
-        ]);
+    $data = $this->normalizeFieldEventInput($request);
+    $geo  = $this->evaluateGeofence($job, $data);
 
+    if ($this->alreadyApplied($data['client_event_uuid'])) {
         return redirect()->route('technician.jobs.punched-in', $job);
     }
+
+    $usableOverride = $this->findUsableOverride($job);
+
+    if ($job->enforce_geofence && $geo['within'] === false && ! $usableOverride) {
+        $this->logFieldEvent($job, 'punch_in', $data, 'conflict_rejected', 'outside_geofence');
+        return redirect()->route('technician.jobs.show', $job)
+            ->with('geofence_blocked', [
+                'distance' => $geo['distance'],
+                'radius'   => $geo['radius'],
+            ]);
+    }
+
+    $punch = $this->writePunch($job, 'punch_in', $data, $geo);
+
+    if ($usableOverride) {
+        $usableOverride->update(['used_punch_id' => $punch->id]);
+        $punch->update([
+            'geofence_override_reason'     => $usableOverride->reason,
+            'geofence_override_by_user_id' => $usableOverride->decided_by_user_id,
+        ]);
+    }
+
+    $job->update([
+        'status'            => 'in_progress',
+        'first_punch_in_at' => $job->first_punch_in_at ?? now(),
+        'tech_accepted_at'  => $job->tech_accepted_at  ?? now(),
+    ]);
+
+    $this->logFieldEvent($job, 'punch_in', $data, 'applied');
+
+    return redirect()->route('technician.jobs.punched-in', $job);
+}
 
     public function punchedIn(ServiceRequest $job)
     {
@@ -222,51 +252,44 @@ class JobsController extends Controller
     }
 
     public function punchOut(Request $request, ServiceRequest $job)
-    {
-        abort_unless($job->assigned_tech_user_id === auth()->id(), 403);
+{
+    abort_unless($job->assigned_tech_user_id === auth()->id(), 403);
 
-        $srType = ServiceRequest::class;
+    $data = $this->normalizeFieldEventInput($request);
+    $geo  = $this->evaluateGeofence($job, $data);
 
-        // ===== GUARD: all three proofs must be in place =====
-        $hasBefore = Attachment::where('attachable_type', $srType)
-            ->where('attachable_id', $job->id)
-            ->where('kind', 'before_photo')
-            ->exists();
-        $hasAfter  = Attachment::where('attachable_type', $srType)
-            ->where('attachable_id', $job->id)
-            ->where('kind', 'after_photo')
-            ->exists();
-        $hasSig    = (bool) $job->signed_at;
+    $srType = ServiceRequest::class;
 
-        if (! $hasBefore || ! $hasAfter || ! $hasSig) {
-            $missing = [];
-            if (! $hasBefore) $missing[] = 'Before photo';
-            if (! $hasAfter)  $missing[] = 'After photo';
-            if (! $hasSig)    $missing[] = 'Signature';
-            return redirect()
-                ->route('technician.jobs.punch-out-review', $job)
-                ->with('error', 'Still missing: ' . implode(', ', $missing) . '.');
-        }
+    $hasBefore = Attachment::where('attachable_type', $srType)->where('attachable_id', $job->id)->where('kind', 'before_photo')->exists();
+    $hasAfter  = Attachment::where('attachable_type', $srType)->where('attachable_id', $job->id)->where('kind', 'after_photo')->exists();
+    $hasSig    = (bool) $job->signed_at;
 
-        // ===== All good — punch out =====
-        $job->update([
-            'status'            => 'pending_review',
-            'last_punch_out_at' => now(),
-        ]);
-
-        // Record in history
-        \App\Models\SrEvent::create([
-            'tenant_id'          => auth()->user()->tenant_id,
-            'service_request_id' => $job->id,
-            'user_id'            => auth()->id(),
-            'type'               => 'punch_out',
-            'occurred_at'        => now(),
-        ]);
-
-        // return redirect()->route('technician.jobs.show', $job)->with('success', 'Punched out. Submitted for review.');
-
-        return redirect()->route('technician.jobs.punched-out', $job);
+    if (! $hasBefore || ! $hasAfter || ! $hasSig) {
+        $missing = [];
+        if (! $hasBefore) $missing[] = 'Before photo';
+        if (! $hasAfter)  $missing[] = 'After photo';
+        if (! $hasSig)    $missing[] = 'Signature';
+        return redirect()->route('technician.jobs.punch-out-review', $job)
+            ->with('error', 'Still missing: ' . implode(', ', $missing) . '.');
     }
+
+    if (! $this->alreadyApplied($data['client_event_uuid'])) {
+        $this->writePunch($job, 'punch_out', $data, $geo);
+        $this->logFieldEvent($job, 'punch_out', $data, 'applied');
+    }
+
+    $job->update(['status' => 'pending_review', 'last_punch_out_at' => now()]);
+
+    \App\Models\SrEvent::create([
+        'tenant_id' => auth()->user()->tenant_id,
+        'service_request_id' => $job->id,
+        'user_id' => auth()->id(),
+        'type' => 'punch_out',
+        'occurred_at' => now(),
+    ]);
+
+    return redirect()->route('technician.jobs.punched-out', $job);
+}
 
 
     public function punchOutReview(ServiceRequest $job)
@@ -294,79 +317,86 @@ class JobsController extends Controller
 
 
     public function hold(Request $request, ServiceRequest $job)
-    {
-        abort_unless($job->assigned_tech_user_id === auth()->id(), 403);
+{
+    abort_unless($job->assigned_tech_user_id === auth()->id(), 403);
 
-        $data = $request->validate([
-            'hold_reason_id' => 'required|integer|exists:hold_reasons,id',
-            'note'           => 'nullable|string|max:2000',
-        ]);
+    $validated = $request->validate([
+        'hold_reason_id' => 'required|integer|exists:hold_reasons,id',
+        'note'           => 'nullable|string|max:2000',
+    ]);
 
-        $reason = \App\Models\HoldReason::find($data['hold_reason_id']);
+    $reason = \App\Models\HoldReason::find($validated['hold_reason_id']);
 
-        // Enforce note requirement server-side (so a tampered form still fails)
-        if ($reason && $reason->requires_note && empty($data['note'])) {
-            return back()->withErrors(['note' => 'This reason needs a note.'])->withInput();
-        }
-
-        $job->update([
-            'is_on_hold' => true,
-            'current_hold_reason_id' => $data['hold_reason_id'],
-            'hold_started_at' => now(),
-        ]);
-
-
-        \App\Models\SrEvent::create([
-            'tenant_id' => auth()->user()->tenant_id,
-            'service_request_id' => $job->id,
-            'user_id' => auth()->id(),
-            'type' => 'hold',
-            'label' => $reason?->label,
-            'occurred_at' => now(),
-        ]);
-        // $job->update(['hold_started_at' => now()]);  // for live elapsed timer
-
-        // Save the note as an sr_note too, so it shows in the notes list
-        if (! empty($data['note'])) {
-            \App\Models\SrNote::create([
-                'tenant_id'          => auth()->user()->tenant_id,
-                'service_request_id' => $job->id,
-                'user_id'            => auth()->id(),
-                'visibility'         => 'internal',
-                'source'             => 'user',
-                'body'               => "Hold reason: {$reason?->label}\n\n{$data['note']}",
-            ]);
-        }
-
-        return redirect()->route('technician.jobs.show', $job)
-            ->with('success', 'Job placed on hold.');
+    if ($reason && $reason->requires_note && empty($validated['note'])) {
+        return back()->withErrors(['note' => 'This reason needs a note.'])->withInput();
     }
 
-    public function resume(ServiceRequest $job)
-    {
-        abort_unless(
-            $job->assigned_tech_user_id === auth()->id(),
-            403
-        );
+    $data = $this->normalizeFieldEventInput($request);
 
-        \App\Models\SrEvent::create([
-            'tenant_id' => auth()->user()->tenant_id,
-            'service_request_id' => $job->id,
-            'user_id' => auth()->id(),
-            'type' => 'resume',
-            'occurred_at' => now(),
-        ]);
-
-        $job->update([
-            'is_on_hold' => false,
-            'current_hold_reason_id' => null,
-            'hold_started_at' => null,
-        ]);
-
-        return redirect()
-            ->route('technician.jobs.show', $job)
-            ->with('success', 'Resumed.');
+    if (! $this->alreadyApplied($data['client_event_uuid'])) {
+        $geo = $this->evaluateGeofence($job, $data);
+        $this->writePunch($job, 'hold_start', $data, $geo, $validated['hold_reason_id']);
+        $this->logFieldEvent($job, 'hold_start', $data, 'applied');
     }
+
+    $job->update([
+        'is_on_hold'              => true,
+        'current_hold_reason_id'  => $validated['hold_reason_id'],
+        'hold_started_at'         => now(),
+    ]);
+
+    \App\Models\SrEvent::create([
+        'tenant_id' => auth()->user()->tenant_id,
+        'service_request_id' => $job->id,
+        'user_id' => auth()->id(),
+        'type' => 'hold',
+        'label' => $reason?->label,
+        'occurred_at' => now(),
+    ]);
+
+    if (! empty($validated['note'])) {
+        \App\Models\SrNote::create([
+            'tenant_id'          => auth()->user()->tenant_id,
+            'service_request_id' => $job->id,
+            'user_id'            => auth()->id(),
+            'visibility'         => 'internal',
+            'source'             => 'user',
+            'body'               => "Hold reason: {$reason?->label}\n\n{$validated['note']}",
+        ]);
+    }
+
+    return redirect()->route('technician.jobs.show', $job)
+        ->with('success', 'Job placed on hold.');
+}
+
+    public function resume(Request $request, ServiceRequest $job)
+{
+    abort_unless($job->assigned_tech_user_id === auth()->id(), 403);
+
+    $data = $this->normalizeFieldEventInput($request);
+
+    if (! $this->alreadyApplied($data['client_event_uuid'])) {
+        $geo = $this->evaluateGeofence($job, $data);
+        $this->writePunch($job, 'hold_resume', $data, $geo);
+        $this->logFieldEvent($job, 'hold_resume', $data, 'applied');
+    }
+
+    \App\Models\SrEvent::create([
+        'tenant_id' => auth()->user()->tenant_id,
+        'service_request_id' => $job->id,
+        'user_id' => auth()->id(),
+        'type' => 'resume',
+        'occurred_at' => now(),
+    ]);
+
+    $job->update([
+        'is_on_hold' => false,
+        'current_hold_reason_id' => null,
+        'hold_started_at' => null,
+    ]);
+
+    return redirect()->route('technician.jobs.show', $job)->with('success', 'Resumed.');
+}
 
 
     public function punchedOut(ServiceRequest $job)
@@ -413,6 +443,140 @@ class JobsController extends Controller
 
         return view('technician.jobs.punched_out', compact('job', 'summary'));
     }
+
+    /* ===================== FIELD EVENT / GEOFENCE HELPERS ===================== */
+
+private function normalizeFieldEventInput(Request $request): array
+{
+    return [
+        'client_event_uuid'  => $request->input('client_event_uuid') ?: (string) \Illuminate\Support\Str::uuid(),
+        'recorded_at_device' => $request->input('recorded_at_device') ?: now()->toIso8601String(),
+        'lat'                => $request->input('lat'),
+        'lng'                => $request->input('lng'),
+        'accuracy'           => $request->input('accuracy'),
+        'gps_status'         => $request->input('gps_status') ?: 'unavailable',
+        'device_info'        => $request->input('device_info') ?: $request->userAgent(),
+    ];
+}
+
+private function alreadyApplied(string $clientEventUuid): bool
+{
+    return ServiceRequestPunch::where('tenant_id', auth()->user()->tenant_id)
+        ->where('client_event_uuid', $clientEventUuid)
+        ->exists();
+}
+
+private function evaluateGeofence(ServiceRequest $job, array $data): array
+{
+    $site   = $job->site;
+    $radius = $site->geofence_radius_meters ?? 250;
+
+    if (! in_array($data['gps_status'], ['ok', 'low_accuracy'], true)) {
+        return ['within' => false, 'distance' => null, 'radius' => $radius];
+    }
+
+    if (! $site || $site->lat === null || $site->lng === null || $data['lat'] === null || $data['lng'] === null) {
+        return ['within' => null, 'distance' => null, 'radius' => $radius];
+    }
+
+    $distance = $this->haversineMeters((float) $site->lat, (float) $site->lng, (float) $data['lat'], (float) $data['lng']);
+
+    return ['within' => $distance <= $radius, 'distance' => (int) round($distance), 'radius' => $radius];
+}
+
+private function haversineMeters(float $lat1, float $lon1, float $lat2, float $lon2): float
+{
+    $earthRadius = 6371000;
+    $dLat = deg2rad($lat2 - $lat1);
+    $dLon = deg2rad($lon2 - $lon1);
+    $a = sin($dLat / 2) ** 2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLon / 2) ** 2;
+    return $earthRadius * 2 * atan2(sqrt($a), sqrt(1 - $a));
+}
+
+private function writePunch(ServiceRequest $job, string $type, array $data, array $geo, ?int $holdReasonId = null): ServiceRequestPunch
+{
+    return ServiceRequestPunch::create([
+        'tenant_id'            => auth()->user()->tenant_id,
+        'service_request_id'   => $job->id,
+        'technician_user_id'   => auth()->id(),
+        'client_event_uuid'    => $data['client_event_uuid'],
+        'punch_type'           => $type,
+        'hold_reason_id'       => $holdReasonId,
+        'recorded_at_device'   => $data['recorded_at_device'],
+        'synced_to_server_at'  => now(),
+        'is_offline_sync'      => false,
+        'clock_drift_seconds'  => now()->diffInSeconds(\Carbon\Carbon::parse($data['recorded_at_device']), false),
+        'gps_lat'              => $data['lat'],
+        'gps_lng'              => $data['lng'],
+        'gps_accuracy_meters'  => $data['accuracy'] !== null ? (int) round($data['accuracy']) : null,
+        'gps_status'           => $data['gps_status'],
+        'site_distance_meters' => $geo['distance'],
+        'is_within_geofence'   => $geo['within'],
+        'sync_status'          => 'synced',
+        'device_info'          => substr((string) $data['device_info'], 0, 255),
+    ]);
+}
+
+private function logFieldEvent(ServiceRequest $job, string $eventType, array $data, string $result, ?string $conflictCode = null): void
+{
+    FieldEventLog::firstOrCreate(
+        ['tenant_id' => auth()->user()->tenant_id, 'client_event_uuid' => $data['client_event_uuid']],
+        [
+            'user_id'             => auth()->id(),
+            'event_type'          => $eventType,
+            'service_request_id'  => $job->id,
+            'recorded_at_device'  => $data['recorded_at_device'],
+            'synced_to_server_at' => now(),
+            'clock_drift_seconds' => now()->diffInSeconds(\Carbon\Carbon::parse($data['recorded_at_device']), false),
+            'result'              => $result,
+            'conflict_code'       => $conflictCode,
+            'payload_hash'        => hash('sha256', json_encode($data)),
+            'payload_json'        => $data,
+        ]
+    );
+}
+
+private function findUsableOverride(ServiceRequest $job): ?GeofenceOverrideRequest
+{
+    return GeofenceOverrideRequest::where('tenant_id', auth()->user()->tenant_id)
+        ->where('service_request_id', $job->id)
+        ->where('technician_user_id', auth()->id())
+        ->where('status', 'approved')
+        ->whereNull('used_punch_id')
+        ->where(fn ($q) => $q->whereNull('valid_until')->orWhere('valid_until', '>', now()))
+        ->latest('decided_at')
+        ->first();
+}
+
+public function requestGeofenceOverride(Request $request, ServiceRequest $job)
+{
+    abort_unless($job->assigned_tech_user_id === auth()->id(), 403);
+
+    $validated = $request->validate([
+        'reason' => 'required|string|max:255',
+    ]);
+
+    $data = $this->normalizeFieldEventInput($request);
+    $geo  = $this->evaluateGeofence($job, $data);
+
+    GeofenceOverrideRequest::create([
+        'tenant_id'            => auth()->user()->tenant_id,
+        'service_request_id'   => $job->id,
+        'technician_user_id'   => auth()->id(),
+        'client_event_uuid'    => $data['client_event_uuid'],
+        'reason'               => $validated['reason'],
+        'requested_at_device'  => $data['recorded_at_device'],
+        'gps_lat'              => $data['lat'],
+        'gps_lng'              => $data['lng'],
+        'gps_accuracy_meters'  => $data['accuracy'] !== null ? (int) round($data['accuracy']) : null,
+        'site_distance_meters' => $geo['distance'],
+        'status'               => 'pending',
+        'valid_until'          => now()->addHours(2),
+    ]);
+
+    return redirect()->route('technician.jobs.show', $job)
+        ->with('success', 'Override request sent. Waiting for your manager to approve it.');
+}
 
     /* ===================== SUB-PAGES ===================== */
 

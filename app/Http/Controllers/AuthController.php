@@ -89,6 +89,14 @@ class AuthController extends Controller
             ]);
         }
 
+        // Client-role accounts don't use password login — direct them to the sign-in link flow.
+        $clientCodes = ['client_user', 'client_admin', 'client_viewer'];
+        if (in_array($user->role?->code, $clientCodes, true)) {
+            return back()->withErrors([
+                'identifier' => 'This account signs in using a link emailed to you, not a password. Request a new sign-in link to continue.',
+            ])->onlyInput('identifier');
+        }
+
         if ($user->two_factor_secret && $user->two_factor_confirmed_at) {
             $request->session()->put('two_factor_pending', [
                 'user_id'  => $user->id,
@@ -114,7 +122,8 @@ class AuthController extends Controller
             return redirect()->route('password.change');
         }
 
-        return redirect()->intended(route('tenant.dashboard'));
+         return redirect()->intended($this->redirectAfterSignIn($user)->getTargetUrl());
+        
     }
 
     public function logout(Request $request)
@@ -168,8 +177,7 @@ class AuthController extends Controller
             'item_id'   => $user->id,
         ]);
 
-        return redirect()->route('tenant.dashboard')
-                         ->with('success', 'Your password was changed.');
+        return $this->redirectAfterSignIn($user)->with('success', 'Your password was changed.');
     }
 
     public function showAcceptInvitation(string $token)
@@ -215,7 +223,15 @@ public function acceptInvitation(\Illuminate\Http\Request $request, string $toke
         'item_id'   => $user->id,
     ]);
 
-    return redirect()->route('tenant.dashboard')
-                     ->with('success', 'Welcome. Your account is ready.');
+    return $this->redirectAfterSignIn($user)->with('success', 'Welcome. Your account is ready.');
 }
+
+    private function redirectAfterSignIn(\App\Models\User $user)
+    {
+        $fieldCodes = ['technician', 'team_lead'];
+        if (in_array($user->role?->code, $fieldCodes, true)) {
+            return redirect()->route('technician.jobs.index');
+        }
+        return redirect()->route('tenant.dashboard');
+    }
 }

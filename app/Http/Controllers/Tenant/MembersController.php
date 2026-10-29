@@ -62,53 +62,80 @@ class MembersController extends Controller
     }
 
     public function store(Request $request)
-    {
-        $tenant = Tenant::current();
-        abort_unless($tenant, 404);
+{
+    $tenant = Tenant::current();
+    abort_unless($tenant, 404);
 
-        $data = $this->validatedPayload($request, $tenant);
-        do {
-            $employeeCode = 'EMP-' . $tenant->id . '-' . strtoupper(Str::random(6));
-        } while (
-            User::where('tenant_id', $tenant->id)
-                ->where('employee_code', $employeeCode)
-                ->exists()
-        );
-        $user = User::create([
-            'tenant_id'            => $tenant->id,
-            'role_id'              => $data['role_id'],
-            'name'                 => $data['name'],
-            'email'                => $data['email']  ?: null,
-            'phone'                => $data['phone']  ?: null,
-            'employee_code'         => $employeeCode,
-            'password'             => Hash::make(Str::random(32)),
-            'must_change_password' => true,
+    $data = $this->validatedPayload($request, $tenant);
+
+    $clientRoleCodes = ['client_user', 'client_admin', 'client_viewer'];
+    $role = Role::find($data['role_id']);
+    $isClientRole = in_array($role?->code, $clientRoleCodes, true);
+
+    if ($isClientRole && empty($data['email'])) {
+        throw ValidationException::withMessages([
+            'email' => 'Client accounts need an email — that is how they sign in.',
         ]);
+    }
 
-        // ↓ audit
-        $this->audit->log('user.created', [
-            'item_type' => User::class,
-            'item_id'   => $user->id,
-            'new'       => $user->only(['name', 'email', 'phone', 'role_id', 'employee_code']),
-        ]);
+    do {
+        $employeeCode = 'EMP-' . $tenant->id . '-' . strtoupper(Str::random(6));
+    } while (
+        User::where('tenant_id', $tenant->id)
+            ->where('employee_code', $employeeCode)
+            ->exists()
+    );
 
-        if ($user->email) {
-            $token = app(\App\Services\Auth\SecureLinkService::class)
-                        ->create($user, 'user_invite', 7 * 24 * 60);
+    $user = User::create([
+        'tenant_id'            => $tenant->id,
+        'role_id'              => $data['role_id'],
+        'name'                 => $data['name'],
+        'email'                => $data['email']  ?: null,
+        'phone'                => $data['phone']  ?: null,
+        'employee_code'        => $employeeCode,
+        'password'             => Hash::make(Str::random(32)),
+        'must_change_password' => ! $isClientRole,
+    ]);
 
-            $url = url("/invitation/{$token}");
-            return redirect()->route('tenant.users.index')
-                ->with('success', "{$user->name} was created.")
-                ->with('invitation_link', ['user' => $user->name, 'url' => $url]);
-        }
+    $this->audit->log('user.created', [
+        'item_type' => User::class,
+        'item_id'   => $user->id,
+        'new'       => $user->only(['name', 'email', 'phone', 'role_id', 'employee_code']),
+    ]);
 
-        $tempPassword = Str::random(12);
-        $user->update(['password' => Hash::make($tempPassword)]);
-
+    if ($isClientRole) {
+        $signInUrl = $this->buildClientSignInUrl($tenant);
         return redirect()->route('tenant.users.index')
             ->with('success', "{$user->name} was created.")
-            ->with('temp_password', ['user' => $user->name, 'password' => $tempPassword]);
+            ->with('client_info', [
+                'user'  => $user->name,
+                'email' => $user->email,
+                'url'   => $signInUrl,
+            ]);
     }
+
+    if ($user->email) {
+    $token = app(\App\Services\Auth\SecureLinkService::class)
+                ->create($user, 'user_invite', 7 * 24 * 60);
+
+    $url = url("/invitation/{$token}");
+
+    \Illuminate\Support\Facades\Mail::to($user->email)->send(
+        (new \App\Mail\InvitationMail($user, $tenant, $url))->afterCommit()
+    );
+
+    return redirect()->route('tenant.users.index')
+        ->with('success', "{$user->name} was created.")
+        ->with('invitation_link', ['user' => $user->name, 'url' => $url]);
+}
+
+    $tempPassword = Str::random(12);
+    $user->update(['password' => Hash::make($tempPassword)]);
+
+    return redirect()->route('tenant.users.index')
+        ->with('success', "{$user->name} was created.")
+        ->with('temp_password', ['user' => $user->name, 'password' => $tempPassword]);
+}
 
     public function edit(User $user)
     {
@@ -285,6 +312,15 @@ class MembersController extends Controller
             && $user->deactivated_at === null
             && $this->activeAdminCount($user->tenant) === 1;
     }
+
+    private function buildClientSignInUrl(Tenant $tenant): string
+{
+    $host     = parse_url(config('app.url'), PHP_URL_HOST);
+    $port     = parse_url(config('app.url'), PHP_URL_PORT);
+    $scheme   = parse_url(config('app.url'), PHP_URL_SCHEME) ?: 'http';
+    $portPart = $port ? ":{$port}" : '';
+    return "{$scheme}://{$tenant->slug}.{$host}{$portPart}/client/sign-in";
+}
     public function devices(User $user)
 {
     $this->ensureSameTenant($user);

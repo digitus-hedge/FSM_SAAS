@@ -1,6 +1,29 @@
 @extends('layouts.admin')
 @section('title', 'Users')
 @section('content')
+
+<script>
+function copyText(text, btn) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, 99999);
+    try {
+        document.execCommand('copy');
+        if (btn) {
+            const original = btn.textContent;
+            btn.textContent = 'Copied!';
+            setTimeout(() => { btn.textContent = original; }, 1500);
+        }
+    } catch (e) {
+        alert('Could not copy automatically — please select and copy manually.');
+    }
+    document.body.removeChild(ta);
+}
+</script>
     <h1 style="font:700 24px 'Figtree';letter-spacing:-.3px;margin-bottom:6px">Users</h1>
     <p class="muted" style="color:#5F5D6E;margin-bottom:20px">
         Everyone who signs in to this company.
@@ -17,7 +40,7 @@
         <div style="background:#DDF7F1;border:1px solid #00866F;color:#00564A;padding:12px 16px;border-radius:12px;margin-bottom:16px">
             <strong>Temporary password for {{ $tp['user'] }}</strong><br>
             <code style="background:#fff;padding:4px 8px;border-radius:4px;font-family:'JetBrains Mono',Consolas,monospace;font-size:13px;display:inline-block;margin-top:6px">{{ $tp['password'] }}</code>
-            <button onclick="navigator.clipboard.writeText('{{ $tp['password'] }}')" style="margin-left:8px;background:#00866F;color:#fff;border:0;padding:5px 11px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">Copy</button>
+            <button onclick="copyText('{{ $tp['password'] }}', this)" style="margin-left:8px;background:#00866F;color:#fff;border:0;padding:5px 11px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">Copy</button>
             <div style="font-size:12px;color:#00564A;margin-top:8px">Shown once. They must change it on first sign-in.</div>
         </div>
     @endif
@@ -26,7 +49,7 @@
     <div style="background:#E3EBF4;border:1px solid #2B5A8C;color:#1C3E63;padding:12px 16px;border-radius:12px;margin-bottom:16px">
         <strong>Invitation link for {{ $il['user'] }}</strong><br>
         <code style="background:#fff;padding:4px 8px;border-radius:4px;font-family:'JetBrains Mono',Consolas,monospace;font-size:12px;display:inline-block;margin-top:6px;word-break:break-all">{{ $il['url'] }}</code>
-        <button onclick="navigator.clipboard.writeText('{{ $il['url'] }}')" style="margin-left:8px;background:#2B5A8C;color:#fff;border:0;padding:5px 11px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">Copy</button>
+        <button onclick="copyText('{{ $il['url'] }}', this)" style="margin-left:8px;background:#2B5A8C;color:#fff;border:0;padding:5px 11px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">Copy</button>
         <div style="font-size:12px;margin-top:8px">Share with them. Works once, expires in 7 days. Email delivery lands later.</div>
     </div>
 @endif
