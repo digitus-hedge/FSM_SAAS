@@ -25,9 +25,15 @@
     <div style="font-weight:700;font-size:13.5px;margin-bottom:10px">Change time</div>
     <form method="POST" action="{{ route('technician.jobs.change-time', $serviceRequest) }}">
         @csrf
-        <label class="field">New time<input type="datetime-local" name="new_eta_at" required></label>
-        <label class="field">Reason<input type="text" name="reason" maxlength="255"></label>
-        <button type="submit" class="btn secondary block">Update time</button>
+        <div class="field">
+            <label>New time</label>
+            <input type="datetime-local" name="new_eta_at" class="inp" required>
+        </div>
+        <div class="field">
+            <label>Reason</label>
+            <input type="text" name="reason" class="inp" maxlength="255">
+        </div>
+        <button type="submit" class="btn block">Update time</button>
     </form>
 </div>
 
@@ -96,7 +102,14 @@
 </div>
 
 <script>
-document.querySelectorAll('.uuid-field').forEach(el => el.value = crypto.randomUUID());
+function makeUuid() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+        const r = Math.random() * 16 | 0;
+        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    });
+}
+document.querySelectorAll('.uuid-field').forEach(el => el.value = makeUuid());
 document.querySelectorAll('.gps-submit').forEach(btn => {
     btn.addEventListener('click', function (e) {
         const form = btn.closest('form');

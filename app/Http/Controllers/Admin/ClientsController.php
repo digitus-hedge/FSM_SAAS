@@ -47,18 +47,38 @@ class ClientsController extends Controller
         ]);
     }
 
-   public function store(ClientRequest $request)
+    public function store(ClientRequest $request)
 {
     $data = $request->validated();
+    unset($data['client_code']); // code is always system-generated, never user input
 
-    if (empty($data['client_code'])) {
-        $data['client_code'] = $this->nextClientCode();
-    }
-
-    $client = Client::create($data);
+    $client = $this->createWithUniqueCode($data);
 
     return redirect()->route('admin.clients.index')
         ->with('success', "Client {$client->name} created.");
+}
+
+/**
+ * Create a client with a guaranteed-unique client_code.
+ * Locks the last-code row inside a transaction (closes the common race),
+ * and retries on a duplicate-key error as a fallback (closes the edge case
+ * where this is the tenant's very first client and no row exists to lock yet).
+ */
+protected function createWithUniqueCode(array $data, int $attempts = 3): Client
+{
+    for ($i = 0; $i < $attempts; $i++) {
+        try {
+            return \DB::transaction(function () use ($data) {
+                $data['client_code'] = $this->nextClientCode();
+                return Client::create($data);
+            });
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->getCode() !== '23000' || $i === $attempts - 1) {
+                throw $e;
+            }
+            // duplicate client_code — loop again and generate a fresh one
+        }
+    }
 }
 
 protected function nextClientCode(): string
@@ -69,6 +89,7 @@ protected function nextClientCode(): string
         ->when($tenantId, fn ($q) => $q->where('tenant_id', $tenantId))
         ->where('client_code', 'like', 'CL-%')
         ->orderByDesc('id')
+        ->lockForUpdate()
         ->value('client_code');
 
     $next = $last && preg_match('/CL-(\d+)/', $last, $m)

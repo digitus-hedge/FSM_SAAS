@@ -2,7 +2,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\{BelongsTo, HasMany};
+use Illuminate\Database\Eloquent\Relations\{BelongsTo, BelongsToMany, HasMany};
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -90,5 +90,15 @@ class User extends Authenticatable
             ->whereHas('permission', fn ($q) => $q->where('key', $key))
             ->where('level', '!=', 'none')
             ->exists();
+    }
+
+    public function coveredCategories(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            ServiceCategory::class,
+            'service_category_team_leads',
+            'team_lead_user_id',
+            'service_category_id'
+        )->withTimestamps();
     }
 }

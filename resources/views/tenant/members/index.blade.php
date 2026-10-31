@@ -5,9 +5,9 @@
 @section('content')
 <style>
 .row-top{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:24px}
-h1{font-family:'Figtree';font-size:30px;font-weight:700;letter-spacing:-.6px}
+h1{font-family:var(--font-display);font-size:30px;font-weight:700;letter-spacing:-.6px}
 .lede{color:var(--muted);margin-top:4px}
-.btn{background:var(--yellow);color:var(--ink);font-weight:700;font-size:14px;padding:11px 20px;border-radius:999px;border:0;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.btn{background:var(--yellow);color:var(--ink);font-weight:700;font-size:14px;padding:11px 20px;border-radius:999px;border:0;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px;font-family:var(--font-body)}
 .panel{background:#fff;border:1px solid var(--line);border-radius:18px;overflow:hidden}
 .tbl{width:100%;border-collapse:collapse}
 .tbl thead th{text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);padding:12px 22px;background:var(--soft)}
@@ -41,7 +41,7 @@ h1{font-family:'Figtree';font-size:30px;font-weight:700;letter-spacing:-.6px}
             <tr><th>Member</th><th>Role</th><th>Status</th><th>Joined</th><th style="text-align:right">Actions</th></tr>
         </thead>
         <tbody>
-            @foreach ($members as $member)
+            @forelse ($members as $member)
                 <tr>
                     <td>
                         <div class="who">
@@ -54,7 +54,7 @@ h1{font-family:'Figtree';font-size:30px;font-weight:700;letter-spacing:-.6px}
                     </td>
                     <td><span class="chip {{ $member->pivot->role }}">{{ str_replace('_', ' ', $member->pivot->role) }}</span></td>
                     <td><span class="pill {{ $member->pivot->status }}"><span class="d"></span>{{ $member->pivot->status }}</span></td>
-                    <td style="color:var(--muted)">{{ \Carbon\Carbon::parse($member->pivot->joined_at)->format('d M Y') }}</td>
+                    <td style="color:var(--muted)">{{ $member->pivot->joined_at ? \Carbon\Carbon::parse($member->pivot->joined_at)->format('d M Y') : '—' }}</td>
                     <td style="text-align:right">
                         @if ($member->pivot->status === 'active')
                             <form method="POST" action="{{ route('tenant.members.suspend', $member) }}" style="display:inline" onsubmit="return confirm('Suspend {{ $member->name }}?')">
@@ -69,7 +69,9 @@ h1{font-family:'Figtree';font-size:30px;font-weight:700;letter-spacing:-.6px}
                         @endif
                     </td>
                 </tr>
-            @endforeach
+            @empty
+                <tr><td colspan="5" style="text-align:center;padding:40px 22px;color:var(--muted)">No members yet.</td></tr>
+            @endforelse
         </tbody>
     </table>
 </div>

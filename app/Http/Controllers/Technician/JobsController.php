@@ -20,7 +20,7 @@ class JobsController extends Controller
 {
     private function authorizeTech(ServiceRequest $sr): void
     {
-        abort_unless($sr->assigned_tech_user_id === auth()->id(), 403);
+        abort_unless((int) $sr->assigned_tech_user_id === (int) auth()->id(), 403);
     }
 
     private function alreadyApplied(int $srId, string $punchType, string $uuid): bool

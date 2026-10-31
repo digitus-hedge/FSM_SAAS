@@ -56,13 +56,13 @@ class RequestsReviewController extends Controller
 
 
     public function qcPass(ServiceRequest $sr)
-    {
-        $this->guard();
+{
+    $this->guard();
+    abort_unless($sr->status === 'pending_review', 422, 'QC can only pass a job that is in Pending Review.');
 
-        abort_unless($sr->status === 'pending_review', 422, 'QC can only pass a job that is in Pending Review.');
-
+    if ($sr->coverage_type === 'out_of_coverage') {
         $sr->update([
-            'status'          => 'awaiting_invoice',             // or whatever your "work done" status is
+            'status'          => 'awaiting_invoice',
             'billing_status'  => 'awaiting_invoice',
             'qc_reviewed_at'  => now(),
         ]);
@@ -72,6 +72,18 @@ class RequestsReviewController extends Controller
             ->with('success', 'QC passed. The job now waits for an invoice.');
     }
 
+    // In contract / in warranty / goodwill — covered, no billing needed.
+    $sr->update([
+        'status'          => 'completed',
+        'billing_status'  => 'not_applicable',
+        'qc_reviewed_at'  => now(),
+        'completed_at'    => now(),
+    ]);
+
+    return redirect()
+        ->route('admin.requests-review.show', $sr)
+        ->with('success', 'QC passed. Covered under ' . str_replace('_', ' ', $sr->coverage_type) . ' — job completed, no invoice needed.');
+}
     public function cancel(Request $request, ServiceRequest $sr)
 {
     $this->guard();

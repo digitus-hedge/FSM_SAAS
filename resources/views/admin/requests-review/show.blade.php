@@ -90,7 +90,7 @@
 
 <div class="pills">
   <span class="pill {{ $st[0] }}">{{ $st[1] }}</span>
-  <span class="pill pill-coverage">Out of coverage</span>
+  <span class="pill pill-coverage">{{ $sr->coverage_type ? ucwords(str_replace('_', ' ', $sr->coverage_type)) : '—' }}</span>
   @if (! empty($sr->invoice_mandatory))
     <span class="pill pill-invoice-mandatory">Invoice mandatory</span>
   @endif
@@ -260,7 +260,8 @@
 
   @elseif ($isInvoiced)
     <span style="color:var(--muted);font-size:13.5px">This request is fully closed.</span>
-
+  @elseif ($sr->status === 'completed')
+    <span style="color:var(--muted);font-size:13.5px">This request is complete — covered under {{ str_replace('_',' ',$sr->coverage_type) }}, no invoice needed.</span>
   @else
     {{-- Other states (Pending / In Progress / Quoted) can still be cancelled --}}
 
@@ -282,38 +283,45 @@
   <h2>Status history</h2>
 
   @php
-    $events = [];
+  $events = [];
 
-    if ($isInvoiced) {
-        $events[] = [
-            'from' => 'Awaiting Invoice',
-            'to'   => 'Invoiced',
-            'at'   => $sr->updated_at,
-            'note' => 'Invoice issued',
-        ];
-    } elseif ($isAwaitingInv) {
-        $events[] = [
-            'from' => 'Pending Review',
-            'to'   => 'Awaiting Invoice',
-            'at'   => $sr->updated_at,
-            'note' => 'QC pass',
-        ];
-    } elseif ($isCancelled) {
-        $events[] = [
-            'from' => ucfirst(str_replace('_',' ', $sr->status === 'cancelled' ? 'pending_review' : $sr->status)),
-            'to'   => 'Cancelled',
-            'at'   => $sr->updated_at,
-            'note' => 'Request cancelled',
-        ];
-    } elseif ($isPendingReview) {
-        $events[] = [
-            'from' => 'In Progress',
-            'to'   => 'Pending Review',
-            'at'   => $sr->updated_at,
-            'note' => 'Technician punched out',
-        ];
-    }
-  @endphp
+  if ($sr->status === 'completed') {
+      $events[] = [
+          'from' => 'Pending Review',
+          'to'   => 'Completed',
+          'at'   => $sr->qc_reviewed_at ?? $sr->updated_at,
+          'note' => 'QC pass — covered under ' . str_replace('_',' ',$sr->coverage_type) . ', no invoice needed',
+      ];
+  } elseif ($isInvoiced) {
+      $events[] = [
+          'from' => 'Awaiting Invoice',
+          'to'   => 'Invoiced',
+          'at'   => $sr->updated_at,
+          'note' => 'Invoice issued',
+      ];
+  } elseif ($isAwaitingInv) {
+      $events[] = [
+          'from' => 'Pending Review',
+          'to'   => 'Awaiting Invoice',
+          'at'   => $sr->updated_at,
+          'note' => 'QC pass',
+      ];
+  } elseif ($isCancelled) {
+      $events[] = [
+          'from' => ucfirst(str_replace('_',' ', $sr->status === 'cancelled' ? 'pending_review' : $sr->status)),
+          'to'   => 'Cancelled',
+          'at'   => $sr->updated_at,
+          'note' => 'Request cancelled',
+      ];
+  } elseif ($isPendingReview) {
+      $events[] = [
+          'from' => 'In Progress',
+          'to'   => 'Pending Review',
+          'at'   => $sr->updated_at,
+          'note' => 'Technician punched out',
+      ];
+  }
+@endphp
 
   @if (empty($events))
     <div class="history-empty">No history yet.</div>

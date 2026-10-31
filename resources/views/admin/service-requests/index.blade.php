@@ -4,17 +4,17 @@
 @section('content')
 <style>
   .page-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:22px}
-  .page-head h1{font-family:'Figtree';font-size:26px;font-weight:700;letter-spacing:-.3px}
+  .page-head h1{font-family:var(--font-display);font-size:26px;font-weight:700;letter-spacing:-.3px}
   .page-head p{color:var(--muted);font-size:13px;margin-top:3px}
 
-  .btn{display:inline-flex;align-items:center;gap:6px;font-family:'DM Sans';font-size:13px;font-weight:600;padding:9px 16px;border-radius:999px;border:1px solid transparent;text-decoration:none;cursor:pointer;transition:background .15s}
+  .btn{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-body);font-size:13px;font-weight:600;padding:9px 16px;border-radius:999px;border:1px solid transparent;text-decoration:none;cursor:pointer;transition:background .15s}
   .btn-primary{background:var(--yellow);color:var(--ink)}
-  .btn-primary:hover{background:#F0B700}
+  .btn-primary:hover{background:color-mix(in srgb, var(--yellow) 85%, black 15%)}
   .btn-ghost{background:#fff;color:var(--ink);border-color:var(--line)}
   .btn-ghost:hover{background:var(--soft)}
 
   .toolbar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
-  .input{font-family:'DM Sans';font-size:13px;padding:10px 14px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--ink);outline:none;transition:border .15s}
+  .input{font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--ink);outline:none;transition:border .15s}
   .input:focus{border-color:var(--yellow)}
   .input-grow{flex:1;min-width:220px}
   .input-select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235F5D6E' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:34px}
@@ -27,7 +27,7 @@
   tbody tr:hover{background:#FDFCF9}
 
   .sr-cell{display:flex;flex-direction:column;gap:2px;min-width:0}
-  .sr-num{font-family:'DM Sans';font-size:11px;font-weight:600;color:var(--amber);letter-spacing:.04em}
+  .sr-num{font-family:var(--font-body);font-size:11px;font-weight:600;color:var(--amber);letter-spacing:.04em}
   .sr-title{font-weight:600;color:var(--ink);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:380px}
   .cell-sub{color:var(--muted);font-size:12px;line-height:1.4}
   .cell-sub small{color:var(--subtle);font-size:10px;text-transform:uppercase;letter-spacing:.06em;display:block;margin-top:1px}
@@ -45,11 +45,9 @@
   .icon-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;border:1px solid transparent;background:transparent;cursor:pointer;color:var(--muted);transition:all .12s;text-decoration:none;padding:0;position:relative}
   .icon-btn:hover{background:var(--soft);border-color:var(--line);color:var(--ink)}
   .icon-btn svg{width:16px;height:16px}
-  .icon-btn.edit:hover{background:#FFFCF2;border-color:var(--yellow);color:var(--amber)}
 
   .icon-btn.view:hover{background:#EEF2FF;border-color:#6366F1;color:#4338CA}
-.icon-btn.edit:hover{background:#FFFCF2;border-color:var(--yellow);color:var(--amber)}
-.icon-btn.delete:hover{background:var(--red-soft);border-color:var(--red);color:var(--red)}
+  .icon-btn.edit:hover{background:#FFFCF2;border-color:var(--yellow);color:var(--amber)}
   .icon-btn.delete:hover{background:var(--red-soft);border-color:var(--red);color:var(--red)}
   .icon-btn::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;font-size:10px;font-weight:600;padding:4px 8px;border-radius:6px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .12s;z-index:10}
   .icon-btn:hover::after{opacity:1}
@@ -62,7 +60,7 @@
   .pager-info strong{color:var(--ink);font-weight:600}
   .pager-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
   .per-page{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
-  .per-page select{font-family:'DM Sans';font-size:12px;padding:6px 24px 6px 10px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--ink);outline:none;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235F5D6E' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+  .per-page select{font-family:var(--font-body);font-size:12px;padding:6px 24px 6px 10px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--ink);outline:none;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235F5D6E' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
   .pagination-nav{display:flex;align-items:center;gap:4px}
   .pagination-nav a,.pagination-nav span{display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:32px;padding:0 10px;font-size:12px;font-weight:600;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:8px;text-decoration:none;transition:all .12s}
   .pagination-nav a:hover{background:var(--soft)}
@@ -74,6 +72,7 @@
   // Map SR status → pill color
   $statusPill = [
     'pending'          => 'gray',
+    'waiting_for_quote'=> 'blue',
     'quoted'           => 'blue',
     'approved'         => 'green',
     'assigned'         => 'blue',
@@ -84,10 +83,6 @@
     'completed'        => 'green',
     'cancelled'        => 'gray',
   ];
-
-
-   
-
 @endphp
 
 <div class="page-head">
@@ -100,10 +95,6 @@
     New Requests
   </a>
 </div>
-
-
-
-
 
 @php
     $stageTabs = [
@@ -149,7 +140,7 @@
         background: #fff;
         color: var(--ink);
         text-decoration: none;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body);
         font-size: 13px;
         font-weight: 600;
         transition: all .15s;
@@ -160,9 +151,9 @@
     }
 
     .stage-tab.active {
-        background: #315BF5;
+        background: var(--amber);
         color: #fff;
-        border-color: #315BF5;
+        border-color: var(--amber);
     }
 
     .stage-count {
@@ -173,7 +164,7 @@
         height: 21px;
         padding: 0 6px;
         border-radius: 999px;
-        background: #F3F4F8;
+        background: var(--soft);
         color: var(--ink);
         font-size: 11px;
     }
@@ -199,9 +190,6 @@
         </a>
     @endforeach
 </div>
-
-
-
 
 @php
   $hasFilter = request()->filled('q')
@@ -257,7 +245,6 @@
   @endif
 </form>
 
-
 <div class="card">
   <table>
     <thead>
@@ -274,7 +261,7 @@
     <tbody>
       @forelse ($requests as $sr)
         <tr>
-                    <td>
+          <td>
             <a href="{{ route('service-requests.show', $sr) }}" style="text-decoration:none;color:inherit;display:block">
               <div class="sr-cell">
                 <div class="sr-num">{{ $sr->sr_number }}</div>
@@ -284,43 +271,39 @@
           </td>
 
           <td>
-                 <a href="{{ route('service-requests.show', $sr) }}" style="text-decoration:none;color:inherit;display:block">
-            <div class="cell-sub">
-              {{ $sr->client->name ?? '—' }}
-              <small>{{ $sr->site->name ?? '—' }}</small>
-            </div>
-             </a>
-          </td>
-
-          <td class="cell-sub">
-               <a href="{{ route('service-requests.show', $sr) }}" style="text-decoration:none;color:inherit;display:block">
-          {{ $sr->category->name ?? '—' }}
-        </a> 
-        </td>
-          <td>
- <a href="{{ route('service-requests.show', $sr) }}" style="text-decoration:none;color:inherit;display:block">
-            <span class="pill pill-{{ $sr->priorityColor() }}">
-              <span class="pill-dot"></span>{{ $sr->priorityLabel() }}
-            </span>
+            <a href="{{ route('service-requests.show', $sr) }}" style="text-decoration:none;color:inherit;display:block">
+              <div class="cell-sub">
+                {{ $sr->client->name ?? '—' }}
+                <small>{{ $sr->site->name ?? '—' }}</small>
+              </div>
             </a>
           </td>
 
+          <td class="cell-sub">
+            <a href="{{ route('service-requests.show', $sr) }}" style="text-decoration:none;color:inherit;display:block">
+              {{ $sr->category->name ?? '—' }}
+            </a>
+          </td>
+          <td>
+            <a href="{{ route('service-requests.show', $sr) }}" style="text-decoration:none;color:inherit;display:block">
+              <span class="pill pill-{{ $sr->priorityColor() }}">
+                <span class="pill-dot"></span>{{ $sr->priorityLabel() }}
+              </span>
+            </a>
+          </td>
 
           <td>
-             <a href="{{ route('service-requests.show', $sr) }}" style="text-decoration:none;color:inherit;display:block">
-            <span class="pill pill-{{ $statusPill[$sr->status] ?? 'gray' }}">
-              <span class="pill-dot"></span>{{ $sr->statusLabel() }}
-            </span>
-
-          </a>
+            <a href="{{ route('service-requests.show', $sr) }}" style="text-decoration:none;color:inherit;display:block">
+              <span class="pill pill-{{ $statusPill[$sr->status] ?? 'gray' }}">
+                <span class="pill-dot"></span>{{ $sr->statusLabel() }}
+              </span>
+            </a>
           </td>
           <td class="cell-sub">
             {{ $sr->created_at->format('d M Y') }}
             <small>{{ $sr->created_at->format('H:i') }}</small>
           </td>
           <td>
-
-
             <div class="row-actions">
               <a href="{{ route('service-requests.show', $sr) }}" class="icon-btn view" data-tip="View">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -328,21 +311,14 @@
                   <circle cx="12" cy="12" r="3"/>
                 </svg>
               </a>
-              
+
               <a href="{{ route('service-requests.edit', $sr) }}" class="icon-btn edit" data-tip="Edit">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                 </svg>
               </a>
-
-
-           
-
-              
             </div>
-
-            
           </td>
         </tr>
       @empty
@@ -395,8 +371,6 @@
   </div>
 </div>
 
-
-
 <style>
   @keyframes srspin { to { transform: translateY(-50%) rotate(360deg); } }
 </style>
@@ -432,6 +406,4 @@
   });
 })();
 </script>
-
-
 @endsection

@@ -5,18 +5,18 @@
 @section('content')
 <style>
   .page-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
-  .page-head h1{font-family:'Figtree';font-size:26px;font-weight:700;letter-spacing:-.3px}
+  .page-head h1{font-family:var(--font-display);font-size:26px;font-weight:700;letter-spacing:-.3px}
 
-  .btn{display:inline-flex;align-items:center;gap:6px;font-family:'DM Sans';font-size:13px;font-weight:600;padding:10px 18px;border-radius:999px;border:1px solid transparent;text-decoration:none;cursor:pointer;transition:background .15s}
+  .btn{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-body);font-size:13px;font-weight:600;padding:10px 18px;border-radius:999px;border:1px solid transparent;text-decoration:none;cursor:pointer;transition:background .15s}
   .btn-primary{background:var(--yellow);color:var(--ink)}
-  .btn-primary:hover{background:#F0B700}
+  .btn-primary:hover{background:color-mix(in srgb, var(--yellow) 85%, black 15%)}
   .btn-ghost{background:#fff;color:var(--ink);border-color:var(--line)}
   .btn-ghost:hover{background:var(--soft)}
 
   .form-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px;margin:0 auto}
   .section{padding-bottom:22px;margin-bottom:22px;border-bottom:1px solid var(--line)}
   .section:last-of-type{border-bottom:0;padding-bottom:0;margin-bottom:0}
-  .section-title{font-family:'Figtree';font-size:14px;font-weight:700;color:var(--ink);margin-bottom:4px}
+  .section-title{font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--ink);margin-bottom:4px}
   .section-sub{font-size:12px;color:var(--muted);margin-bottom:14px}
 
   .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px 20px}
@@ -29,8 +29,8 @@
   .err{font-size:11px;color:var(--red);margin-top:2px;font-weight:500;display:flex;align-items:center;gap:4px}
   .err::before{content:'⚠';font-size:12px}
 
-  .input,select.input{font-family:'DM Sans';font-size:13px;padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:#FCFBF8;color:var(--ink);outline:none;width:100%;transition:border .15s,background .15s}
-  .input:focus,select.input:focus{border-color:var(--yellow);background:#fff;box-shadow:0 0 0 3px rgba(255,198,26,.15)}
+  .input,select.input{font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:#FCFBF8;color:var(--ink);outline:none;width:100%;transition:border .15s,background .15s}
+  .input:focus,select.input:focus{border-color:var(--yellow);background:#fff;box-shadow:0 0 0 3px color-mix(in srgb, var(--yellow) 15%, transparent)}
   .input.has-error{border-color:var(--red);background:#fff}
   select.input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235F5D6E' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:34px}
 
@@ -58,7 +58,7 @@
 
 <form method="POST"
       action="{{ $mode === 'create' ? route('admin.sla-policies.store') : route('admin.sla-policies.update', $policy) }}"
-      class="form-card" novalidate>
+      class="form-card" novalidate id="sla-form">
   @csrf
   @if ($mode === 'edit') @method('PUT') @endif
 
@@ -202,6 +202,23 @@ function setMin(id, val) {
   const sync = () => human.textContent = humanDuration(el.value);
   el.addEventListener('input', sync);
   sync();
+});
+
+document.getElementById('sla-form').addEventListener('submit', function (e) {
+  const response   = parseInt(document.getElementById('response_minutes').value, 10);
+  const resolution = parseInt(document.getElementById('resolution_minutes').value, 10);
+  if (response && resolution && resolution < response) {
+    e.preventDefault();
+    if (window.Swal) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Resolution time too short',
+        text: 'Resolution time must be greater than or equal to response time.'
+      });
+    } else {
+      alert('Resolution time must be greater than or equal to response time.');
+    }
+  }
 });
 </script>
 @endsection

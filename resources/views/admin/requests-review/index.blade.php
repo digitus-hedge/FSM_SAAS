@@ -215,7 +215,7 @@
                     <div class="rr-site">{{ $sr->client?->name }}, {{ $sr->site?->name }}</div>
                 </td>
                 <td><span class="pill {{ $st[0] }}">{{ $st[1] }}</span></td>
-                <td style="color:var(--muted)">Out of coverage</td>
+                <td style="color:var(--muted)">{{ $sr->coverage_type ? ucwords(str_replace('_', ' ', $sr->coverage_type)) : '—' }}</td>
                <td>
     @if ($sr->billing_status === 'awaiting_invoice')
         <span class="pill pill-awaiting">Pending invoice</span>
@@ -239,8 +239,8 @@
    @if (in_array($tab, ['waiting','all']))
     @php
         // Hide Make quote on these states — nothing to quote
-        $quotableStatus = ! in_array($sr->status, ['cancelled','completed','quoted','awaiting_invoice','invoiced','paid']);
-        $quotableBilling = in_array($sr->billing_status, ['not_applicable','pending_quote']);
+        $quotableStatus  = ! in_array($sr->status, ['cancelled','completed','quoted','awaiting_invoice','invoiced','paid']);
+        $quotableBilling = $sr->billing_status === 'pending_quote';
     @endphp
 
     @if ($draft)

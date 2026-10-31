@@ -29,7 +29,7 @@ input,select,textarea{font:inherit;color:inherit}
 .badge{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 11px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .badge i{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block}
 .badge.amber i{background:var(--amber)}.badge.grey i{background:var(--slate)}
-.main{flex:1 1 auto;overflow:auto;overscroll-behavior:contain;padding:14px 14px 100px;-webkit-overflow-scrolling:touch}
+.main{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;padding:14px 14px 100px;-webkit-overflow-scrolling:touch}
 .nav{flex:0 0 auto;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border-top:1px solid var(--line);background:var(--bg);padding-bottom:env(safe-area-inset-bottom,0px)}
 .nav a{border:0;background:none;min-height:62px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:12px;font-weight:600;color:var(--muted);position:relative;text-decoration:none}
 .nav a[aria-current=page]{color:var(--ink)}

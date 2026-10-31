@@ -46,7 +46,7 @@ class TenantController extends Controller
                 'regex:/^[a-z][a-z0-9-]*$/', 'not_regex:/--/',
                 'unique:tenants,slug',
             ],
-            'plan_id'           => ['nullable', 'exists:plans,id'],
+            'plan_id'           => ['required', 'exists:plans,id'],
             'country'           => ['nullable', 'string', 'size:2'],
             'timezone'          => ['nullable', 'timezone'],
             'base_currency'     => ['nullable', 'string', 'size:3'],

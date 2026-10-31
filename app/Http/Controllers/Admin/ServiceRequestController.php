@@ -146,9 +146,13 @@ class ServiceRequestController extends Controller
     {
         $data     = $request->validated();
         $tenantId = auth()->user()->tenant_id;
-
+        
         $cat = ServiceCategory::where('tenant_id', $tenantId)->findOrFail($data['service_category_id']);
-
+        $teamLeadId = User::where('tenant_id', $tenantId)
+            ->whereNull('deactivated_at')
+            ->whereHas('coveredCategories', fn ($q) => $q->where('service_categories.id', $data['service_category_id']))
+            ->orderBy('id')
+            ->value('id');
         $proofSnapshot = [
             'require_before_photo' => (bool) $cat->require_before_photo,
             'require_after_photo'  => (bool) $cat->require_after_photo,
@@ -158,7 +162,7 @@ class ServiceRequestController extends Controller
             'category_code'        => $cat->code ?? null,
         ];
 
-        $sr = DB::transaction(function () use ($data, $tenantId, $cat, $proofSnapshot) {
+        $sr = DB::transaction(function () use ($data, $tenantId, $cat, $proofSnapshot, $teamLeadId) {
             $sr = ServiceRequest::create([
                 'tenant_id'              => $tenantId,
                 'sr_number'              => ServiceRequest::nextSrNumber($tenantId),
@@ -179,6 +183,7 @@ class ServiceRequestController extends Controller
                 'allow_signature_waiver' => false,
                 'created_by_user_id'     => auth()->id(),
                 'proof_rules_snapshot'   => $proofSnapshot,
+                'team_lead_user_id'      => $teamLeadId,
             ]);
 
             // Start SLA clock at creation for every priority
@@ -397,40 +402,41 @@ class ServiceRequestController extends Controller
      * ============================================================ */
 
     public function approve(Request $request, ServiceRequest $service_request)
-    {
-        $data = $request->validate([
-            'coverage' => ['required', 'in:in_contract,in_warranty,goodwill,needs_quote'],
-            'note'     => ['nullable', 'string', 'max:500'],
-        ]);
+{
+    $data = $request->validate([
+        'coverage' => ['required', 'in:in_contract,in_warranty,goodwill,needs_quote'],
+        'note'     => ['nullable', 'string', 'max:500'],
+    ]);
 
-        // "Needs a quote" branches to QUOTED, not APPROVED
-        if ($data['coverage'] === 'needs_quote') {
-            $service_request->update([
-                'status'                   => 'quoted',
-                'coverage_type'            => 'out_of_coverage',
-                'quote_requested_at'       => now(),
-                'coverage_override_reason' => $data['note'] ?? null,
-            ]);
-
-            return back()->with('success', "{$service_request->sr_number} marked for quoting.");
-        }
-
-        // In-contract / In-warranty / Goodwill → APPROVE and start SLA clock
-        $policy  = $service_request->resolveSlaPolicy();
-        $started = now();
-
+    if ($data['coverage'] === 'needs_quote') {
         $service_request->update([
-            'status'                   => 'approved',
-            'approved_by_user_id'      => auth()->id(),
-            'coverage_type'            => $data['coverage'],
+            'status'                   => 'quoted',
+            'coverage_type'            => 'out_of_coverage',
+            'billing_status'           => 'pending_quote',
+            'quote_requested_at'       => now(),
             'coverage_override_reason' => $data['note'] ?? null,
-            'sla_clock_started_at'     => $started,
-            'sla_response_due_at'      => $policy ? $started->copy()->addMinutes((int) $policy->response_minutes) : null,
-            'sla_resolution_due_at'    => $policy ? $started->copy()->addMinutes((int) $policy->resolution_minutes) : null,
         ]);
 
-        return back()->with('success', "{$service_request->sr_number} approved — " . str_replace('_', ' ', $data['coverage']) . '.');
+        return back()->with('success', "{$service_request->sr_number} marked for quoting.");
     }
+
+    // In-contract / In-warranty / Goodwill — no billing needed, work is covered.
+    $policy  = $service_request->resolveSlaPolicy();
+    $started = now();
+
+    $service_request->update([
+        'status'                   => 'approved',
+        'approved_by_user_id'      => auth()->id(),
+        'coverage_type'            => $data['coverage'],
+        'billing_status'           => 'not_applicable',
+        'coverage_override_reason' => $data['note'] ?? null,
+        'sla_clock_started_at'     => $started,
+        'sla_response_due_at'      => $policy ? $started->copy()->addMinutes((int) $policy->response_minutes) : null,
+        'sla_resolution_due_at'    => $policy ? $started->copy()->addMinutes((int) $policy->resolution_minutes) : null,
+    ]);
+
+    return back()->with('success', "{$service_request->sr_number} approved — " . str_replace('_', ' ', $data['coverage']) . '.');
+}
 
     public function assign(Request $request, ServiceRequest $service_request)
     {
@@ -482,6 +488,7 @@ class ServiceRequestController extends Controller
         $service_request->update([
             'status'             => 'quoted',
             'coverage_type'      => 'out_of_coverage',
+            'billing_status'     => 'pending_quote',
             'quote_requested_at' => now(),
         ]);
 

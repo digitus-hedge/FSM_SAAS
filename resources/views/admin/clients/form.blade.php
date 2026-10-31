@@ -12,19 +12,19 @@
 <style>
   .crumb{font-size:13px;color:#5F5D6E;margin-bottom:12px}
   .crumb a{color:#0F0F17;text-decoration:underline;text-underline-offset:3px}
-  .crumb a:hover{color:#2F5BEA}
+  .crumb a:hover{color:var(--amber)}
 
   .page-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:16px}
-  .page-head h1{font-family:'Figtree',sans-serif;font-size:34px;font-weight:800;line-height:1.08;letter-spacing:-.02em;margin:0;color:#0F0F17}
+  .page-head h1{font-family:var(--font-display);font-size:34px;font-weight:800;line-height:1.08;letter-spacing:-.02em;margin:0;color:#0F0F17}
   .meta-row{display:flex;gap:8px;align-items:center;margin-top:12px;margin-bottom:24px}
-  .code-pill{display:inline-block;font-family:'DM Sans';font-size:12.5px;font-weight:600;color:#2F5BEA;background:#E6ECFE;padding:5px 11px;border-radius:7px}
+  .code-pill{display:inline-block;font-family:var(--font-body);font-size:12.5px;font-weight:600;color:var(--amber);background:var(--yellow-soft);padding:5px 11px;border-radius:7px}
   .status{display:inline-flex;align-items:center;font-size:12.5px;font-weight:700;padding:5px 12px;border-radius:999px}
   .status-ok{background:#E6F7EC;color:#1D7A3A}
   .status-off{background:#F2F1F6;color:#5F5D6E}
 
-  .btn{display:inline-flex;align-items:center;gap:8px;border-radius:12px;padding:11px 20px;font-family:'DM Sans';font-size:14px;font-weight:700;border:1px solid transparent;cursor:pointer;text-decoration:none;transition:all .12s}
-  .btn-primary{background:#2F5BEA;color:#fff}
-  .btn-primary:hover{background:#2749C8}
+  .btn{display:inline-flex;align-items:center;gap:8px;border-radius:12px;padding:11px 20px;font-family:var(--font-body);font-size:14px;font-weight:700;border:1px solid transparent;cursor:pointer;text-decoration:none;transition:all .12s}
+  .btn-primary{background:var(--amber);color:#fff}
+  .btn-primary:hover{background:color-mix(in srgb, var(--amber) 85%, black 15%)}
   .btn-ghost{background:#fff;color:#0F0F17;border-color:#E5E4EC}
   .btn-ghost:hover{border-color:#0F0F17}
   .btn-danger-out{background:#fff;color:#C7372F;border-color:#F0C7C7}
@@ -32,10 +32,10 @@
 
   /* Tabs */
   .tabs{display:flex;gap:32px;border-bottom:1px solid #EEEDF3;margin-bottom:24px}
-  .tab-btn{background:none;border:0;padding:14px 0 16px;font-family:'Figtree';font-size:16px;font-weight:600;color:#5F5D6E;cursor:pointer;position:relative;transition:color .12s}
+  .tab-btn{background:none;border:0;padding:14px 0 16px;font-family:var(--font-display);font-size:16px;font-weight:600;color:#5F5D6E;cursor:pointer;position:relative;transition:color .12s}
   .tab-btn:hover{color:#0F0F17}
   .tab-btn.active{color:#0F0F17}
-  .tab-btn.active::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2.5px;background:#2F5BEA;border-radius:2px}
+  .tab-btn.active::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2.5px;background:var(--amber);border-radius:2px}
   .tab-count{font-size:12.5px;color:#9A98A7;font-weight:400;margin-left:4px}
 
   .tabpane{display:none}
@@ -47,8 +47,8 @@
   .fld:last-child{margin-bottom:0}
   .fld label{font-weight:600;font-size:14px;margin-bottom:8px;color:#0F0F17}
   .req{color:#C7372F}
-  .inp,.sel,.txt{width:100%;font-family:'DM Sans';font-size:14px;padding:12px 14px;border-radius:10px;border:1px solid #E5E4EC;background:#fff;color:#0F0F17;outline:none;transition:border .15s, box-shadow .15s;box-sizing:border-box}
-  .inp:focus,.sel:focus,.txt:focus{border-color:#2F5BEA;box-shadow:0 0 0 3px rgba(47,91,234,.15)}
+  .inp,.sel,.txt{width:100%;font-family:var(--font-body);font-size:14px;padding:12px 14px;border-radius:10px;border:1px solid #E5E4EC;background:#fff;color:#0F0F17;outline:none;transition:border .15s, box-shadow .15s;box-sizing:border-box}
+  .inp:focus,.sel:focus,.txt:focus{border-color:var(--amber);box-shadow:0 0 0 3px color-mix(in srgb, var(--amber) 15%, transparent)}
   .inp.err,.txt.err{border-color:#C7372F;background:#FFF7F7}
   .txt{min-height:88px;resize:vertical;font-family:inherit}
   .hint{font-size:12.5px;color:#5F5D6E;margin-top:6px}
@@ -59,7 +59,7 @@
 
   .switch-row{display:flex;align-items:flex-start;gap:12px;padding:14px;background:#FAFAFC;border:1px solid #EEEDF3;border-radius:10px;cursor:pointer;margin-bottom:10px}
   .switch-row input[type=checkbox]{appearance:none;width:18px;height:18px;border:1.5px solid #D1CFDA;border-radius:5px;cursor:pointer;position:relative;flex-shrink:0;margin-top:1px;background:#fff}
-  .switch-row input:checked{background:#2F5BEA;border-color:#2F5BEA}
+  .switch-row input:checked{background:var(--amber);border-color:var(--amber)}
   .switch-row input:checked::after{content:'';position:absolute;left:5px;top:1px;width:5px;height:10px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
   .switch-row .st{font-size:13.5px;font-weight:600;color:#0F0F17}
   .switch-row .sd{font-size:12.5px;color:#5F5D6E;margin-top:2px}
@@ -68,20 +68,20 @@
 
   /* List rows (contacts/sites/users) */
   .section-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:16px;flex-wrap:wrap}
-  .section-head h3{font-family:'Figtree';font-size:17px;font-weight:700;margin:0;color:#0F0F17}
+  .section-head h3{font-family:var(--font-display);font-size:17px;font-weight:700;margin:0;color:#0F0F17}
   .section-head p{font-size:12.5px;color:#5F5D6E;margin:4px 0 0}
 
   .list-row{display:flex;align-items:center;gap:14px;padding:14px 16px;border:1px solid #EEEDF3;border-radius:10px;margin-bottom:8px;background:#fff}
-  .list-row.primary{border-color:#2F5BEA;background:#F5F7FF}
-  .list-ini{width:36px;height:36px;border-radius:9px;background:#E6ECFE;color:#2F5BEA;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .list-row.primary{border-color:var(--amber);background:color-mix(in srgb, var(--amber) 6%, white)}
+  .list-ini{width:36px;height:36px;border-radius:9px;background:var(--yellow-soft);color:var(--amber);font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
   .list-main{flex:1;min-width:0}
   .list-ttl{font-weight:700;font-size:14px;color:#0F0F17;display:flex;align-items:center;gap:8px}
   .list-sub{font-size:12.5px;color:#5F5D6E;margin-top:2px}
-  .list-badge{font-size:9px;font-weight:800;background:#2F5BEA;color:#fff;padding:2px 7px;border-radius:4px;letter-spacing:.04em}
+  .list-badge{font-size:9px;font-weight:800;background:var(--amber);color:#fff;padding:2px 7px;border-radius:4px;letter-spacing:.04em}
   .list-acts{display:flex;gap:14px}
   .list-acts button,.list-acts a{background:0;border:0;padding:0;cursor:pointer;font-size:12.5px;font-weight:700;font-family:inherit;text-decoration:none}
   .act-edit{color:#0F0F17}
-  .act-edit:hover{color:#2F5BEA}
+  .act-edit:hover{color:var(--amber)}
   .act-del{color:#C7372F}
 
   .empty-list{padding:48px 20px;text-align:center;color:#5F5D6E;font-size:13.5px;border:1px dashed #D1CFDA;border-radius:10px}
@@ -89,8 +89,8 @@
 
   .swal-form{display:flex;flex-direction:column;gap:12px;text-align:left}
   .swal-form label{font-size:12.5px;font-weight:600;color:#0F0F17;margin-bottom:4px;display:block}
-  .swal-form input[type="text"],.swal-form input[type="email"]{font-family:'DM Sans';font-size:14px;padding:10px 13px;border-radius:9px;border:1px solid #E5E4EC;background:#fff;color:#0F0F17;width:100%;outline:none;box-sizing:border-box}
-  .swal-form input:focus{border-color:#2F5BEA;box-shadow:0 0 0 3px rgba(47,91,234,.15)}
+  .swal-form input[type="text"],.swal-form input[type="email"]{font-family:var(--font-body);font-size:14px;padding:10px 13px;border-radius:9px;border:1px solid #E5E4EC;background:#fff;color:#0F0F17;width:100%;outline:none;box-sizing:border-box}
+  .swal-form input:focus{border-color:var(--amber);box-shadow:0 0 0 3px color-mix(in srgb, var(--amber) 15%, transparent)}
   .swal-form .check-row{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:6px 0}
 </style>
 
@@ -98,9 +98,9 @@
 
 <style>
   /* Add these to the existing <style> block */
-  .btn-mini{padding:6px 12px;font-size:12.5px;font-weight:700;border-radius:8px;border:1px solid #E5E4EC;background:#fff;color:#0F0F17;cursor:pointer;font-family:'DM Sans';white-space:nowrap}
+  .btn-mini{padding:6px 12px;font-size:12.5px;font-weight:700;border-radius:8px;border:1px solid #E5E4EC;background:#fff;color:#0F0F17;cursor:pointer;font-family:var(--font-body);white-space:nowrap}
   .btn-mini:hover{border-color:#0F0F17}
-  .btn-mini-danger{padding:6px 12px;font-size:12.5px;font-weight:700;border-radius:8px;border:1px solid #F0C7C7;background:#fff;color:#C7372F;cursor:pointer;font-family:'DM Sans';white-space:nowrap}
+  .btn-mini-danger{padding:6px 12px;font-size:12.5px;font-weight:700;border-radius:8px;border:1px solid #F0C7C7;background:#fff;color:#C7372F;cursor:pointer;font-family:var(--font-body);white-space:nowrap}
   .btn-mini-danger:hover{background:#FFF5F5}
   .chip-sm{display:inline-flex;align-items:center;font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;margin-top:4px}
   .chip-ok-sm{background:#E6F7EC;color:#1D7A3A}
@@ -177,15 +177,6 @@
     @if ($mode === 'edit') @method('PUT') @endif
 
     <div class="card">
-      <div class="fld">
-        <label for="client_code">Code</label>
-        <input id="client_code" name="client_code" value="{{ old('client_code', $client->client_code) }}"
-               maxlength="40" pattern="[A-Za-z0-9_\-]+" class="inp @error('client_code') err @enderror"
-               style="text-transform:uppercase;letter-spacing:.04em">
-        @error('client_code')<div class="errtxt">{{ $message }}</div>@else
-          <div class="hint">Leave empty to use the next code. 1 to 40 letters, digits or hyphens.</div>
-        @enderror
-      </div>
 
       <div class="fld">
         <label for="name">Name <span class="req">*</span></label>
@@ -196,8 +187,9 @@
 
       <div class="fld">
         <label for="contact_person">Contact person</label>
-        <input id="contact_person" name="contact_person" value="{{ old('contact_person', $client->contact_person) }}"
-               maxlength="150" class="inp @error('contact_person') err @enderror">
+          <input id="contact_person" name="contact_person" value="{{ old('contact_person', $client->contact_person) }}"
+                maxlength="150" class="inp @error('contact_person') err @enderror">
+          @error('contact_person')<div class="errtxt">{{ $message }}</div>@enderror
       </div>
 
       <div class="two">
@@ -208,17 +200,21 @@
           @error('email')<div class="errtxt">{{ $message }}</div>@enderror
         </div>
         <div class="fld">
-          <label for="phone">Phone</label>
-          <input id="phone" name="phone" value="{{ old('phone', $client->phone) }}"
-                 maxlength="40" class="inp @error('phone') err @enderror">
-        </div>
+  <label for="phone">Phone</label>
+  <input type="tel" id="phone" name="phone" value="{{ old('phone', $client->phone) }}"
+         maxlength="40" inputmode="tel" pattern="[0-9+\-\s()]*"
+         class="inp @error('phone') err @enderror"
+         oninput="this.value = this.value.replace(/[^0-9+\-\s()]/g, '')">
+  @error('phone')<div class="errtxt">{{ $message }}</div>@enderror
+</div>
       </div>
 
       <div class="two">
         <div class="fld">
           <label for="tax_id">Tax ID (GSTIN / VAT)</label>
           <input id="tax_id" name="tax_id" value="{{ old('tax_id', $client->tax_id) }}"
-                 maxlength="60" class="inp @error('tax_id') err @enderror">
+       maxlength="60" class="inp @error('tax_id') err @enderror">
+@error('tax_id')<div class="errtxt">{{ $message }}</div>@enderror
         </div>
         <div class="fld">
           <label for="payment_terms_days">Payment terms (days) <span class="req">*</span></label>
@@ -230,15 +226,18 @@
 
       <div class="fld">
         <label for="billing_address">Billing address</label>
-        <textarea id="billing_address" name="billing_address" rows="2" maxlength="1000"
-                  class="txt @error('billing_address') err @enderror">{{ old('billing_address', $client->billing_address) }}</textarea>
+          <input id="tax_id" name="tax_id" value="{{ old('tax_id', $client->tax_id) }}"
+       maxlength="60" class="inp @error('tax_id') err @enderror">
+@error('tax_id')<div class="errtxt">{{ $message }}</div>@enderror
       </div>
 
       <div class="fld">
         <label for="notes">Internal notes</label>
-        <textarea id="notes" name="notes" rows="3" maxlength="2000"
-                  class="txt @error('notes') err @enderror">{{ old('notes', $client->notes) }}</textarea>
-        <div class="hint">Visible only to your team.</div>
+       <textarea id="notes" name="notes" rows="3" maxlength="2000"
+          class="txt @error('notes') err @enderror">{{ old('notes', $client->notes) }}</textarea>
+@error('notes')<div class="errtxt">{{ $message }}</div>@else
+  <div class="hint">Visible only to your team.</div>
+@enderror
       </div>
 
       <!-- <label class="switch-row" for="asset_visibility_enabled">

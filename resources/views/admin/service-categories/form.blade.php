@@ -12,7 +12,7 @@
   }
 
   .page-head h1 {
-    font-family: 'Figtree';
+    font-family: var(--font-display);
     font-size: 26px;
     font-weight: 700;
     letter-spacing: -.3px
@@ -22,7 +22,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-family: 'DM Sans';
+    font-family: var(--font-body);
     font-size: 13px;
     font-weight: 600;
     padding: 10px 18px;
@@ -39,7 +39,7 @@
   }
 
   .btn-primary:hover {
-    background: #F0B700
+    background: color-mix(in srgb, var(--yellow) 85%, black 15%)
   }
 
   .btn-ghost {
@@ -73,7 +73,7 @@
   }
 
   .section-title {
-    font-family: 'Figtree';
+    font-family: var(--font-display);
     font-size: 14px;
     font-weight: 700;
     color: var(--ink);
@@ -137,7 +137,7 @@
   .input,
   select.input,
   textarea.input {
-    font-family: 'DM Sans';
+    font-family: var(--font-body);
     font-size: 13px;
     padding: 10px 14px;
     border-radius: 10px;
@@ -154,7 +154,7 @@
   textarea.input:focus {
     border-color: var(--yellow);
     background: #fff;
-    box-shadow: 0 0 0 3px rgba(255, 198, 26, .15)
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--yellow) 15%, transparent)
   }
 
   .input.has-error {
@@ -332,15 +332,6 @@
     <div class="section-sub">What this category is called and what domain it belongs to.</div>
 
     <div class="form-grid">
-      <div class="field">
-        <label for="code">Code </label>
-       <input id="code" name="code" value="{{ old('code', $category->code) }}"
-       maxlength="40" pattern="[A-Za-z0-9_\-]+"
-       placeholder="Made automatically"
-       class="input upper @error('code') has-error @enderror" />
-        @error('code')<span class="err">{{ $message }}</span>
-        @else<span class="hint">Leave empty to use the next code. Example: CAT-0001</span>@enderror
-      </div>
 
       <div class="field">
         <label for="name">Name <span class="req">*</span></label>

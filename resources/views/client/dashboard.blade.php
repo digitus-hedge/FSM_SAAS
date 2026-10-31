@@ -4,26 +4,40 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Portal — {{ $tenant->name }}</title>
+    @php
+    $brandFont   = \App\Models\BrandFont::where('key', $tenant->font_key ?? 'dm_sans')->first();
+    $brandColor  = $tenant->primary_color ?? '#FFC61A';
+    $googleParam = $brandFont->google_param ?? 'DM+Sans:wght@400;500;700&family=Figtree:wght@600;700;800';
+    $fontBody    = $brandFont->body_family ?? 'DM Sans';
+    $fontDisplay = $brandFont->display_family ?? 'Figtree';
+    @endphp
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Figtree:wght@600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family={{ $googleParam }}&display=swap" rel="stylesheet">
     <style>
         *{box-sizing:border-box;margin:0;padding:0}
-        body{background:#FBFAF6;color:#1B1A24;font-family:'DM Sans',system-ui,sans-serif;font-size:14px;line-height:1.5}
+        :root{
+  --yellow:{{ $brandColor }};
+  --yellow-soft:color-mix(in srgb, {{ $brandColor }} 18%, white);
+  --amber:color-mix(in srgb, {{ $brandColor }} 60%, black 25%);
+  --font-body:{{ $fontBody }};
+  --font-display:{{ $fontDisplay }};
+}
+body{background:#FBFAF6;color:#1B1A24;font-family:var(--font-body),system-ui,sans-serif;font-size:14px;line-height:1.5}
         .wrap{max-width:720px;margin:0 auto;padding:28px 20px 60px}
         .welcome{background:#DDF7F1;border:1px solid #00866F;color:#00866F;padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:13px;display:flex;gap:10px;align-items:center}
         .welcome svg{width:16px;height:16px;flex-shrink:0}
         .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;gap:12px;flex-wrap:wrap}
-        .me{font-family:'Figtree';font-size:22px;font-weight:800;letter-spacing:-.3px}
+        .me{font-family:var(--font-display);font-size:22px;font-weight:800;letter-spacing:-.3px}
         .me .co{color:#5F5D6E;font-size:14px;font-weight:600;margin-left:6px}
         .signout{background:none;border:0;color:#5F5D6E;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;font-family:inherit}
         .signout:hover{color:#1B1A24;text-decoration:underline}
         .card{background:#fff;border:1px solid #E6E4EE;border-radius:16px;padding:20px 22px;margin-bottom:12px}
         .ph{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
-        .ph h3{font-family:'Figtree';font-weight:700;font-size:15px}
+        .ph h3{font-family:var(--font-display);font-weight:700;font-size:15px}
         .ph a{color:#5F5D6E;font-size:13px;font-weight:600;text-decoration:none}
         .sr{display:grid;grid-template-columns:auto 1fr auto;gap:14px;padding:12px 0;border-top:1px solid #E6E4EE;align-items:center}
         .sr:first-child{border-top:0;padding-top:4px}
-        .num{font-family:'JetBrains Mono',Consolas,monospace;font-weight:700;font-size:12px;background:#F5F4FA;padding:4px 10px;border-radius:5px;color:#8A5A00}
+        .num{font-family:'JetBrains Mono',Consolas,monospace;font-weight:700;font-size:12px;background:#F5F4FA;padding:4px 10px;border-radius:5px;color:var(--amber)}
         .mid b{display:block;font-size:14px}
         .mid span{color:#5F5D6E;font-size:12.5px}
         .pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
@@ -32,7 +46,7 @@
         .p-completed{background:#DDF7F1;color:#00866F}
         .p-approved{background:#E3EBF4;color:#2B5A8C}
         .p-cancelled{background:#F5F4FA;color:#5F5D6E}
-        .btn{display:inline-block;background:#FFC61A;color:#1B1A24;font-weight:700;padding:10px 18px;border-radius:999px;text-decoration:none;font-size:13.5px}
+        .btn{display:inline-block;background:var(--yellow);color:#1B1A24;font-weight:700;padding:10px 18px;border-radius:999px;text-decoration:none;font-size:13.5px}
         .btn.ghost{background:transparent;border:1px solid #E6E4EE;color:#1B1A24;font-weight:600}
         .empty{color:#5F5D6E;text-align:center;padding:24px;font-size:13px}
     </style>

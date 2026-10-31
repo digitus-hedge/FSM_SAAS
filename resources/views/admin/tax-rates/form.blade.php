@@ -7,11 +7,11 @@
 @section('content')
 <style>
   .page-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
-  .page-head h1{font-family:'Figtree';font-size:26px;font-weight:700;letter-spacing:-.3px}
+  .page-head h1{font-family:var(--font-display);font-size:26px;font-weight:700;letter-spacing:-.3px}
 
-  .btn{display:inline-flex;align-items:center;gap:6px;font-family:'DM Sans';font-size:13px;font-weight:600;padding:10px 18px;border-radius:999px;border:1px solid transparent;text-decoration:none;cursor:pointer;transition:background .15s}
+  .btn{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-body);font-size:13px;font-weight:600;padding:10px 18px;border-radius:999px;border:1px solid transparent;text-decoration:none;cursor:pointer;transition:background .15s}
   .btn-primary{background:var(--yellow);color:var(--ink)}
-  .btn-primary:hover{background:#F0B700}
+  .btn-primary:hover{background:color-mix(in srgb, var(--yellow) 85%, black 15%)}
   .btn-ghost{background:#fff;color:var(--ink);border-color:var(--line)}
   .btn-ghost:hover{background:var(--soft)}
 
@@ -25,8 +25,8 @@
   .err{font-size:11px;color:var(--red);margin-top:2px;font-weight:500;display:flex;align-items:center;gap:4px}
   .err::before{content:'⚠';font-size:12px}
 
-  .input{font-family:'DM Sans';font-size:13px;padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:#FCFBF8;color:var(--ink);outline:none;width:100%;transition:border .15s,background .15s}
-  .input:focus{border-color:var(--yellow);background:#fff;box-shadow:0 0 0 3px rgba(255,198,26,.15)}
+  .input{font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:#FCFBF8;color:var(--ink);outline:none;width:100%;transition:border .15s,background .15s}
+  .input:focus{border-color:var(--yellow);background:#fff;box-shadow:0 0 0 3px color-mix(in srgb, var(--yellow) 15%, transparent)}
   .input.has-error{border-color:var(--red);background:#fff}
 
   .rate-input{position:relative}

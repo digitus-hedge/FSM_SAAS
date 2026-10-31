@@ -8,14 +8,14 @@
   .breadcrumb a:hover{color:var(--amber);border-color:var(--yellow)}
 
   .sr-head{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:22px;flex-wrap:wrap}
-  .sr-head h1{font-family:'Figtree';font-size:26px;font-weight:700;letter-spacing:-.3px;line-height:1.2;margin-bottom:4px}
-  .sr-head .num{display:inline-block;font-family:'DM Sans';font-size:12px;font-weight:600;color:var(--amber);background:var(--yellow-soft);padding:3px 10px;border-radius:999px;letter-spacing:.03em;margin-bottom:8px}
+  .sr-head h1{font-family:var(--font-display);font-size:26px;font-weight:700;letter-spacing:-.3px;line-height:1.2;margin-bottom:4px}
+  .sr-head .num{display:inline-block;font-family:var(--font-body);font-size:12px;font-weight:600;color:var(--amber);background:var(--yellow-soft);padding:3px 10px;border-radius:999px;letter-spacing:.03em;margin-bottom:8px}
   .sr-head .meta{font-size:12px;color:var(--muted)}
   .sr-head .actions{display:flex;gap:8px;flex-shrink:0}
 
-  .btn{display:inline-flex;align-items:center;gap:6px;font-family:'DM Sans';font-size:13px;font-weight:600;padding:9px 16px;border-radius:999px;border:1px solid transparent;text-decoration:none;cursor:pointer;transition:background .15s}
+  .btn{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-body);font-size:13px;font-weight:600;padding:9px 16px;border-radius:999px;border:1px solid transparent;text-decoration:none;cursor:pointer;transition:background .15s}
   .btn-primary{background:var(--yellow);color:var(--ink)}
-  .btn-primary:hover{background:#F0B700}
+  .btn-primary:hover{background:color-mix(in srgb, var(--yellow) 85%, black 15%)}
   .btn-ghost{background:#fff;color:var(--ink);border-color:var(--line)}
   .btn-ghost:hover{background:var(--soft)}
 
@@ -34,7 +34,7 @@
   .card{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:16px}
   .card-head{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--line);background:#FCFBF8}
   .card-head svg{color:var(--amber);width:18px;height:18px;flex-shrink:0}
-  .card-head h3{font-family:'Figtree';font-size:14px;font-weight:700;color:var(--ink);letter-spacing:.02em;margin:0}
+  .card-head h3{font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--ink);letter-spacing:.02em;margin:0}
   .card-head .right{margin-left:auto}
   .card-body{padding:18px 20px}
 
@@ -56,14 +56,14 @@
   .link{color:var(--amber);text-decoration:none;font-weight:600;border-bottom:1px solid var(--yellow)}
   .link:hover{color:var(--ink)}
 
-  .warn-banner{background:#FFF7F7;border:1px solid #FEE2E2;color:var(--red);padding:10px 14px;border-radius:10px;font-size:12px;margin:0 20px 16px;display:flex;gap:8px;align-items:flex-start}
+  .warn-banner{background:var(--red-soft);border:1px solid #FEE2E2;color:var(--red);padding:10px 14px;border-radius:10px;font-size:12px;margin:0 20px 16px;display:flex;gap:8px;align-items:flex-start}
   .warn-banner svg{flex-shrink:0;margin-top:1px}
 
   /* Action buttons */
-  .act-btn{display:flex;align-items:center;justify-content:center;gap:8px;font-family:'DM Sans';font-size:13px;font-weight:600;padding:11px 16px;border-radius:10px;border:1px solid transparent;text-decoration:none;cursor:pointer;transition:all .12s;width:100%;background:#fff;color:var(--ink)}
+  .act-btn{display:flex;align-items:center;justify-content:center;gap:8px;font-family:var(--font-body);font-size:13px;font-weight:600;padding:11px 16px;border-radius:10px;border:1px solid transparent;text-decoration:none;cursor:pointer;transition:all .12s;width:100%;background:#fff;color:var(--ink)}
   .act-btn svg{flex-shrink:0}
-  .act-primary{background:#2563EB;color:#fff;border-color:#2563EB}
-  .act-primary:hover{background:#1D4ED8;border-color:#1D4ED8}
+  .act-primary{background:var(--amber);color:#fff;border-color:var(--amber)}
+  .act-primary:hover{background:color-mix(in srgb, var(--amber) 85%, black 15%);border-color:color-mix(in srgb, var(--amber) 85%, black 15%)}
   .act-danger-outline{color:var(--red);border-color:#FCA5A5}
   .act-danger-outline:hover{background:var(--red-soft);border-color:var(--red)}
   .act-neutral{color:var(--ink);border-color:var(--line)}
@@ -75,7 +75,7 @@
   .modal-backdrop.show{display:flex}
   .modal-card{background:#fff;border-radius:16px;width:100%;max-width:560px;box-shadow:0 20px 60px rgba(0,0,0,.2);display:flex;flex-direction:column;max-height:90vh;overflow:hidden}
   .modal-head{padding:24px 28px 10px}
-  .modal-head h2{font-family:'Figtree';font-size:18px;font-weight:700;color:var(--ink);margin:0 0 4px}
+  .modal-head h2{font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--ink);margin:0 0 4px}
   .modal-head p{font-size:12px;color:var(--muted);margin:0}
   .modal-body{padding:16px 28px;overflow-y:auto}
   .modal-foot{padding:16px 28px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:10px;background:#FCFBF8}
@@ -89,21 +89,21 @@
   .radio-row:hover{border-color:#C7C3BF;background:#FDFCF9}
   .radio-row input{position:absolute;opacity:0;pointer-events:none}
   .radio-row .radio-dot{width:14px;height:14px;border:2px solid var(--line);border-radius:50%;flex-shrink:0;transition:all .12s}
-  .radio-row:has(input:checked){border-color:#2563EB;background:#EEF2FF}
-  .radio-row input:checked ~ .radio-dot{border-color:#2563EB;background:#2563EB;box-shadow:inset 0 0 0 3px #fff}
+  .radio-row:has(input:checked){border-color:var(--amber);background:var(--yellow-soft)}
+  .radio-row input:checked ~ .radio-dot{border-color:var(--amber);background:var(--amber);box-shadow:inset 0 0 0 3px #fff}
 
-  .note-area{width:100%;font-family:'DM Sans';font-size:13px;padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--ink);outline:none;min-height:90px;resize:vertical;transition:border .15s}
-  .note-area:focus{border-color:var(--yellow);box-shadow:0 0 0 3px rgba(255,198,26,.15)}
+  .note-area{width:100%;font-family:var(--font-body);font-size:13px;padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--ink);outline:none;min-height:90px;resize:vertical;transition:border .15s}
+  .note-area:focus{border-color:var(--yellow);box-shadow:0 0 0 3px color-mix(in srgb, var(--yellow) 15%, transparent)}
 
   .err-msg{color:var(--red);font-size:11px;font-weight:600;margin-top:4px}
 
-  .modal-select, .modal-input{width:100%;font-family:'DM Sans';font-size:13px;padding:11px 14px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--ink);outline:none;transition:border .15s}
-  .modal-select:focus, .modal-input:focus{border-color:var(--yellow);box-shadow:0 0 0 3px rgba(255,198,26,.15)}
+  .modal-select, .modal-input{width:100%;font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--ink);outline:none;transition:border .15s}
+  .modal-select:focus, .modal-input:focus{border-color:var(--yellow);box-shadow:0 0 0 3px color-mix(in srgb, var(--yellow) 15%, transparent)}
   .modal-select{appearance:none;padding-right:38px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235F5D6E' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
 
   .check-row{display:flex;align-items:flex-start;gap:12px;padding:12px 0;cursor:pointer}
   .check-row + .check-row{border-top:1px dashed var(--line)}
-  .check-row input[type=checkbox]{width:16px;height:16px;margin-top:1px;accent-color:#2563EB;flex-shrink:0;cursor:pointer}
+  .check-row input[type=checkbox]{width:16px;height:16px;margin-top:1px;accent-color:var(--amber);flex-shrink:0;cursor:pointer}
   .check-row .check-title{font-size:13px;font-weight:600;color:var(--ink)}
   .check-row .check-desc{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.5}
 
@@ -196,7 +196,7 @@
           <dt>Coverage</dt><dd>{{ ucwords(str_replace('_', ' ', $sr->coverage_type)) }}</dd>
           <dt>Source</dt><dd>{{ ucwords(str_replace('_', ' ', $sr->source)) }}</dd>
           @if ($sr->client_po_reference)
-            <dt>PO reference</dt><dd style="font-family:'DM Sans';letter-spacing:.03em">{{ $sr->client_po_reference }}</dd>
+            <dt>PO reference</dt><dd style="font-family:var(--font-body);letter-spacing:.03em">{{ $sr->client_po_reference }}</dd>
           @endif
         </dl>
       </div>
@@ -248,9 +248,9 @@
                     @endphp
                   </div>
                 </div>
-                
+
                 @if (!in_array($sr->status, ['completed', 'cancelled']))
-                
+
                 @endif
               </div>
             @endforeach
@@ -269,6 +269,45 @@
       </div>
       <div class="card-body">
         <ol class="hist">
+          @if (in_array($sr->status, ['completed', 'awaiting_invoice']) && $sr->qc_reviewed_at)
+  <li>
+    <div class="hist-dot"></div>
+    <div class="hist-body">
+      <div class="hist-title">
+        {{ $sr->status === 'completed' ? 'Review → Completed' : 'Review → Awaiting invoice' }}
+      </div>
+      <div class="hist-sub">
+        QC passed
+        @if ($sr->status === 'completed')
+          — covered under {{ str_replace('_', ' ', $sr->coverage_type) }}, no invoice needed
+        @endif
+      </div>
+      <div class="hist-when">{{ $sr->qc_reviewed_at->format('d M, H:i') }}</div>
+    </div>
+  </li>
+@endif
+
+@if ($sr->last_punch_out_at)
+  <li>
+    <div class="hist-dot"></div>
+    <div class="hist-body">
+      <div class="hist-title">In progress → Pending review</div>
+      <div class="hist-sub">Technician punched out</div>
+      <div class="hist-when">{{ $sr->last_punch_out_at->format('d M, H:i') }}</div>
+    </div>
+  </li>
+@endif
+
+@if ($sr->first_punch_in_at)
+  <li>
+    <div class="hist-dot"></div>
+    <div class="hist-body">
+      <div class="hist-title">Assigned → In progress</div>
+      <div class="hist-sub">Technician punched in</div>
+      <div class="hist-when">{{ $sr->first_punch_in_at->format('d M, H:i') }}</div>
+    </div>
+  </li>
+@endif
           @if ($sr->scheduled_eta_at && $sr->assigned_tech_user_id)
             <li>
               <div class="hist-dot"></div>
@@ -519,7 +558,7 @@
             <dt>Reason</dt><dd>{{ $sr->coverage_override_reason }}</dd>
           @endif
           @if ($sr->client_po_reference)
-            <dt>PO ref</dt><dd style="font-family:'DM Sans';letter-spacing:.03em">{{ $sr->client_po_reference }}</dd>
+            <dt>PO ref</dt><dd style="font-family:var(--font-body);letter-spacing:.03em">{{ $sr->client_po_reference }}</dd>
           @endif
         </dl>
       </div>

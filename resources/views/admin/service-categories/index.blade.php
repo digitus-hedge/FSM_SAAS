@@ -4,17 +4,17 @@
 @section('content')
 <style>
   .page-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:22px}
-  .page-head h1{font-family:'Figtree';font-size:26px;font-weight:700;letter-spacing:-.3px}
+  .page-head h1{font-family:var(--font-display);font-size:26px;font-weight:700;letter-spacing:-.3px}
   .page-head p{color:var(--muted);font-size:13px;margin-top:3px}
 
-  .btn{display:inline-flex;align-items:center;gap:6px;font-family:'DM Sans';font-size:13px;font-weight:600;padding:9px 16px;border-radius:999px;border:1px solid transparent;text-decoration:none;cursor:pointer;transition:background .15s}
+  .btn{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-body);font-size:13px;font-weight:600;padding:9px 16px;border-radius:999px;border:1px solid transparent;text-decoration:none;cursor:pointer;transition:background .15s}
   .btn-primary{background:var(--yellow);color:var(--ink)}
-  .btn-primary:hover{background:#F0B700}
+  .btn-primary:hover{background:color-mix(in srgb, var(--yellow) 85%, black 15%)}
   .btn-ghost{background:#fff;color:var(--ink);border-color:var(--line)}
   .btn-ghost:hover{background:var(--soft)}
 
   .toolbar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
-  .input{font-family:'DM Sans';font-size:13px;padding:10px 14px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--ink);outline:none;transition:border .15s}
+  .input{font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--ink);outline:none;transition:border .15s}
   .input:focus{border-color:var(--yellow)}
   .input-grow{flex:1;min-width:200px}
   .input-select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235F5D6E' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:34px}
@@ -25,7 +25,7 @@
   tbody td{padding:14px 16px;border-top:1px solid var(--line);vertical-align:middle}
   tbody tr:first-child td{border-top:0}
   tbody tr:hover{background:#FDFCF9}
-  .cell-code{font-family:'DM Sans';font-size:11px;color:var(--muted);letter-spacing:.03em;text-transform:uppercase}
+  .cell-code{font-family:var(--font-body);font-size:11px;color:var(--muted);letter-spacing:.03em;text-transform:uppercase}
   .cell-name{font-weight:600;color:var(--ink)}
   .cell-sub{color:var(--muted)}
 
@@ -65,7 +65,7 @@
   .pager-info strong{color:var(--ink);font-weight:600}
   .pager-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
   .per-page{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
-  .per-page select{font-family:'DM Sans';font-size:12px;padding:6px 24px 6px 10px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--ink);outline:none;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235F5D6E' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+  .per-page select{font-family:var(--font-body);font-size:12px;padding:6px 24px 6px 10px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--ink);outline:none;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235F5D6E' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
   .pagination-nav{display:flex;align-items:center;gap:4px}
   .pagination-nav a,.pagination-nav span{display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:32px;padding:0 10px;font-size:12px;font-weight:600;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:8px;text-decoration:none;transition:all .12s}
   .pagination-nav a:hover{background:var(--soft)}

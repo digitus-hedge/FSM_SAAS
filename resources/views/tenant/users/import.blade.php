@@ -3,60 +3,60 @@
 @section('content')
 <style>
 .imp-wrap{max-width:960px}
-.imp-wrap h1{font:700 26px 'Figtree';letter-spacing:-.4px;margin-bottom:4px}
-.lede{color:#5F5D6E;margin-bottom:24px}
+.imp-wrap h1{font:700 26px var(--font-display);letter-spacing:-.4px;margin-bottom:4px}
+.lede{color:var(--muted);margin-bottom:24px}
 .stepper{display:flex;align-items:center;gap:10px;margin-bottom:24px;flex-wrap:wrap}
-.step{display:flex;align-items:center;gap:8px;color:#5F5D6E;font-size:13px;font-weight:600}
-.step .n{width:26px;height:26px;border-radius:50%;background:#F5F4FA;color:#5F5D6E;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
-.step.done .n{background:#00866F;color:#fff}
-.step.active{color:#1B1A24}
-.step.active .n{background:#1B1A24;color:#FFC61A}
-.step .arr{color:#8B89A0}
-.panel{background:#fff;border:1px solid #E6E4EE;border-radius:18px;padding:32px}
-.panel h2{font:700 18px 'Figtree';margin-bottom:6px}
-.drop{display:block;border:2px dashed #E6E4EE;border-radius:14px;padding:48px 24px;text-align:center;background:#F5F4FA;cursor:pointer}
-.drop:hover{border-color:#FFC61A;background:#FFF4CC}
-.drop svg{width:40px;height:40px;color:#5F5D6E;margin-bottom:12px}
+.step{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;font-weight:600}
+.step .n{width:26px;height:26px;border-radius:50%;background:var(--soft);color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+.step.done .n{background:var(--green);color:#fff}
+.step.active{color:var(--ink)}
+.step.active .n{background:var(--ink);color:var(--yellow)}
+.step .arr{color:var(--subtle)}
+.panel{background:#fff;border:1px solid var(--line);border-radius:18px;padding:32px}
+.panel h2{font:700 18px var(--font-display);margin-bottom:6px}
+.drop{display:block;border:2px dashed var(--line);border-radius:14px;padding:48px 24px;text-align:center;background:var(--soft);cursor:pointer}
+.drop:hover{border-color:var(--yellow);background:var(--yellow-soft)}
+.drop svg{width:40px;height:40px;color:var(--muted);margin-bottom:12px}
 .drop .title{font-weight:700;font-size:15px;margin-bottom:4px}
-.drop .hint{color:#5F5D6E;font-size:13px;margin-bottom:14px}
+.drop .hint{color:var(--muted);font-size:13px;margin-bottom:14px}
 .drop input{display:none}
-.help{margin-top:20px;background:#F5F4FA;border-radius:12px;padding:14px 18px}
+.help{margin-top:20px;background:var(--soft);border-radius:12px;padding:14px 18px}
 .help summary{cursor:pointer;font-weight:600;font-size:13px;list-style:none;display:flex;align-items:center;gap:8px}
 .help summary::-webkit-details-marker{display:none}
-.help .chev{width:12px;height:12px;transition:transform .15s;color:#5F5D6E}
+.help .chev{width:12px;height:12px;transition:transform .15s;color:var(--muted)}
 .help[open] .chev{transform:rotate(90deg)}
-.help .fields{margin-top:12px;font-size:13px;color:#5F5D6E;display:grid;grid-template-columns:150px 1fr;gap:6px 16px}
-.help .fields b{color:#1B1A24;font-family:'JetBrains Mono',Consolas,monospace;font-size:12px}
-.help .sample{color:#2B5A8C;text-decoration:underline;font-size:12.5px;margin-left:auto}
+.help .fields{margin-top:12px;font-size:13px;color:var(--muted);display:grid;grid-template-columns:150px 1fr;gap:6px 16px}
+.help .fields b{color:var(--ink);font-family:'JetBrains Mono',Consolas,monospace;font-size:12px}
+.help .sample{color:var(--amber);text-decoration:underline;font-size:12.5px;margin-left:auto}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
-.stat{background:#F5F4FA;border-radius:12px;padding:14px 18px}
-.stat .lbl{font-size:11px;font-weight:700;color:#5F5D6E;text-transform:uppercase;letter-spacing:.08em}
-.stat .num{font:700 26px 'Figtree';margin-top:4px;line-height:1}
-.stat.ok .num{color:#00866F}
-.stat.err .num{color:#C2381B}
-.tbl{width:100%;border-collapse:collapse;font-size:13px;border:1px solid #E6E4EE;border-radius:12px;overflow:hidden}
-.tbl thead th{text-align:left;background:#F5F4FA;color:#5F5D6E;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:10px 14px}
-.tbl tbody td{padding:11px 14px;border-top:1px solid #E6E4EE;vertical-align:top}
-.tbl tr.err{background:#FDECE7}
-.tbl tr.ok td:first-child::before{content:"● ";color:#00866F}
-.tbl tr.err td:first-child::before{content:"● ";color:#C2381B}
-.err-msg{color:#C2381B;font-size:11.5px;margin-top:3px;font-weight:600}
-.role{font-family:'JetBrains Mono',Consolas,monospace;font-size:11.5px;background:#F5F4FA;padding:2px 8px;border-radius:5px;color:#8A5A00;font-weight:600;display:inline-block}
-.skip-toggle{display:flex;align-items:center;gap:10px;margin-top:16px;padding:12px 16px;background:#FFF4CC;border:1px solid #FFC61A;color:#8A5A00;border-radius:10px;font-size:13px;font-weight:600}
+.stat{background:var(--soft);border-radius:12px;padding:14px 18px}
+.stat .lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.stat .num{font:700 26px var(--font-display);margin-top:4px;line-height:1}
+.stat.ok .num{color:var(--green)}
+.stat.err .num{color:var(--red)}
+.tbl{width:100%;border-collapse:collapse;font-size:13px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.tbl thead th{text-align:left;background:var(--soft);color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:10px 14px}
+.tbl tbody td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top}
+.tbl tr.err{background:var(--red-soft)}
+.tbl tr.ok td:first-child::before{content:"● ";color:var(--green)}
+.tbl tr.err td:first-child::before{content:"● ";color:var(--red)}
+.err-msg{color:var(--red);font-size:11.5px;margin-top:3px;font-weight:600}
+.role{font-family:'JetBrains Mono',Consolas,monospace;font-size:11.5px;background:var(--soft);padding:2px 8px;border-radius:5px;color:var(--amber);font-weight:600;display:inline-block}
+.skip-toggle{display:flex;align-items:center;gap:10px;margin-top:16px;padding:12px 16px;background:var(--yellow-soft);border:1px solid var(--yellow);color:var(--amber);border-radius:10px;font-size:13px;font-weight:600}
 .skip-toggle input{width:16px;height:16px}
-.actions{display:flex;gap:10px;align-items:center;margin-top:24px;padding-top:20px;border-top:1px solid #E6E4EE;justify-content:flex-end}
-.btn-y{background:#FFC61A;color:#1B1A24;font:700 13.5px 'DM Sans';padding:11px 24px;border-radius:999px;border:0;cursor:pointer;text-decoration:none;display:inline-block}
-.btn-y:hover{background:#F0B700}
-.btn-ghost{background:transparent;border:1px solid #E6E4EE;color:#1B1A24;font-weight:600;font-size:13px;padding:10px 18px;border-radius:999px;cursor:pointer;text-decoration:none;display:inline-block}
-.btn-ghost:hover{background:#F5F4FA}
-.result-icon{width:72px;height:72px;border-radius:50%;background:#DDF7F1;color:#00866F;display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+.actions{display:flex;gap:10px;align-items:center;margin-top:24px;padding-top:20px;border-top:1px solid var(--line);justify-content:flex-end}
+.btn-y{background:var(--yellow);color:var(--ink);font:700 13.5px var(--font-body);padding:11px 24px;border-radius:999px;border:0;cursor:pointer;text-decoration:none;display:inline-block}
+.btn-y:hover{background:color-mix(in srgb, var(--yellow) 85%, black 15%)}
+.btn-ghost{background:transparent;border:1px solid var(--line);color:var(--ink);font-weight:600;font-size:13px;padding:10px 18px;border-radius:999px;cursor:pointer;text-decoration:none;display:inline-block}
+.btn-ghost:hover{background:var(--soft)}
+.result-icon{width:72px;height:72px;border-radius:50%;background:var(--green-soft);color:var(--green);display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
 .result-icon svg{width:36px;height:36px}
 .result h2{text-align:center;font-size:22px;margin-bottom:6px}
 .result .lede{text-align:center;margin-bottom:24px}
 .result-stats{display:flex;justify-content:center;gap:40px;margin-bottom:28px;flex-wrap:wrap}
 .result-stat{text-align:center}
-.result-stat .num{font:700 36px 'Figtree';line-height:1}
-.result-stat .lbl{font-size:12px;color:#5F5D6E;margin-top:4px;font-weight:600}
+.result-stat .num{font:700 36px var(--font-display);line-height:1}
+.result-stat .lbl{font-size:12px;color:var(--muted);margin-top:4px;font-weight:600}
 </style>
 
 <div class="imp-wrap">
@@ -77,7 +77,7 @@
         <p class="lede">Up to 500 rows at once. Larger files, split and upload in batches.</p>
 
         @if ($errors->any())
-            <div style="background:#FDECE7;border:1px solid #C2381B;color:#8A2718;padding:12px 16px;border-radius:10px;margin-bottom:16px">
+            <div style="background:var(--red-soft);border:1px solid var(--red);color:color-mix(in srgb, var(--red) 75%, black 25%);padding:12px 16px;border-radius:10px;margin-bottom:16px">
                 @foreach ($errors->all() as $e) <div>{{ $e }}</div> @endforeach
             </div>
         @endif
@@ -135,10 +135,10 @@
                             @endif
                         @endforeach
                     </td>
-                    <td>{{ $r['data']['phone'] ?? '—' ?: '—' }}</td>
+                    <td>{{ $r['data']['phone'] ?: '—' }}</td>
                     <td>
                         @if (! empty($r['data']['role']))
-                            <span class="role" style="{{ in_array('Role is required.', $r['errors']) || collect($r['errors'])->contains(fn($e) => str_contains($e, 'Role')) ? 'background:#FDECE7;color:#C2381B' : '' }}">{{ $r['data']['role'] }}</span>
+                            <span class="role" style="{{ collect($r['errors'])->contains(fn($e) => str_contains($e, 'Role')) ? 'background:var(--red-soft);color:var(--red)' : '' }}">{{ $r['data']['role'] }}</span>
                         @else
                             <span class="err-msg">Missing role</span>
                         @endif
@@ -180,11 +180,11 @@
         <p class="lede">Invitations have been emailed. Each link works once and expires in 7 days.</p>
 
         <div class="result-stats">
-            <div class="result-stat"><div class="num" style="color:#00866F">{{ $result['created'] }}</div><div class="lbl">Created</div></div>
-            <div class="result-stat"><div class="num" style="color:#00866F">{{ $result['invited'] }}</div><div class="lbl">Invitations sent</div></div>
-            <div class="result-stat"><div class="num" style="color:#C2381B">{{ $result['skipped'] }}</div><div class="lbl">Skipped</div></div>
+            <div class="result-stat"><div class="num" style="color:var(--green)">{{ $result['created'] }}</div><div class="lbl">Created</div></div>
+            <div class="result-stat"><div class="num" style="color:var(--green)">{{ $result['invited'] }}</div><div class="lbl">Invitations sent</div></div>
+            <div class="result-stat"><div class="num" style="color:var(--red)">{{ $result['skipped'] }}</div><div class="lbl">Skipped</div></div>
             @if (count($result['failed']))
-                <div class="result-stat"><div class="num" style="color:#C2381B">{{ count($result['failed']) }}</div><div class="lbl">Failed</div></div>
+                <div class="result-stat"><div class="num" style="color:var(--red)">{{ count($result['failed']) }}</div><div class="lbl">Failed</div></div>
             @endif
         </div>
 
@@ -201,7 +201,7 @@
 const drop = document.querySelector('.drop');
 if (drop) {
     const input = document.getElementById('file-input');
-    ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.style.borderColor='#FFC61A'; drop.style.background='#FFF4CC'; }));
+    ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.style.borderColor='var(--yellow)'; drop.style.background='var(--yellow-soft)'; }));
     ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.style.borderColor=''; drop.style.background=''; }));
     drop.addEventListener('drop', e => {
         e.preventDefault();

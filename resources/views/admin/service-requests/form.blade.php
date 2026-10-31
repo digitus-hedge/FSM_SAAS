@@ -8,12 +8,12 @@
   .breadcrumb a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line)}
   .breadcrumb a:hover{color:var(--amber);border-color:var(--yellow)}
   .page-head{margin-bottom:22px}
-  .page-head h1{font-family:'Figtree';font-size:26px;font-weight:700;letter-spacing:-.3px}
+  .page-head h1{font-family:var(--font-display);font-size:26px;font-weight:700;letter-spacing:-.3px}
   .page-head p{color:var(--muted);font-size:13px;margin-top:3px}
 
-  .btn{display:inline-flex;align-items:center;gap:6px;font-family:'DM Sans';font-size:13px;font-weight:600;padding:9px 16px;border-radius:999px;border:1px solid transparent;text-decoration:none;cursor:pointer;transition:background .15s}
-  .btn-primary{background:#2563EB;color:#fff}
-  .btn-primary:hover{background:#1D4ED8}
+  .btn{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-body);font-size:13px;font-weight:600;padding:9px 16px;border-radius:999px;border:1px solid transparent;text-decoration:none;cursor:pointer;transition:background .15s}
+  .btn-primary{background:var(--amber);color:#fff}
+  .btn-primary:hover{background:color-mix(in srgb, var(--amber) 85%, black 15%)}
   .btn-ghost{background:#fff;color:var(--ink);border-color:var(--line)}
   .btn-ghost:hover{background:var(--soft)}
 
@@ -24,9 +24,9 @@
   .section-head{padding:18px 24px 14px;background:#FCFBF8;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px}
   .section-head .num{
     width:28px;height:28px;border-radius:50%;background:var(--yellow);color:var(--ink);
-    display:flex;align-items:center;justify-content:center;font-family:'Figtree';font-size:13px;font-weight:700;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:13px;font-weight:700;flex-shrink:0;
   }
-  .section-head h3{font-family:'Figtree';font-size:14px;font-weight:700;color:var(--ink);letter-spacing:.02em;margin:0}
+  .section-head h3{font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--ink);letter-spacing:.02em;margin:0}
   .section-head .sub{font-size:11px;color:var(--muted);margin-top:2px;display:block}
   .section-body{padding:22px 24px}
 
@@ -42,15 +42,15 @@
   .field .hint{display:block;font-size:11px;color:var(--muted);margin-top:5px}
 
   .input, .textarea, .select{
-    width:100%;font-family:'DM Sans';font-size:13px;padding:11px 14px;border-radius:10px;
+    width:100%;font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:10px;
     border:1px solid var(--line);background:#fff;color:var(--ink);outline:none;transition:border .15s, box-shadow .15s;
   }
-  .input:focus, .textarea:focus, .select:focus{border-color:var(--yellow);box-shadow:0 0 0 3px rgba(255,198,26,.15)}
+  .input:focus, .textarea:focus, .select:focus{border-color:var(--yellow);box-shadow:0 0 0 3px color-mix(in srgb, var(--yellow) 15%, transparent)}
   .textarea{min-height:110px;resize:vertical;font-family:inherit}
   .select{appearance:none;padding-right:38px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235F5D6E' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
   .select:disabled{background-color:#FCFBF8;color:var(--muted);cursor:not-allowed}
 
-  .field.has-error .input, .field.has-error .textarea, .field.has-error .select{border-color:var(--red);background:#FFF7F7}
+  .field.has-error .input, .field.has-error .textarea, .field.has-error .select{border-color:var(--red);background:var(--red-soft)}
   .err-inline{display:block;font-size:11px;color:var(--red);margin-top:5px;font-weight:500}
 
   /* Priority segmented control */
@@ -304,7 +304,7 @@
                   @endphp
                 </div>
               </div>
-             
+
            <button type="button"
         class="rm remove-existing-attachment"
         title="Remove attachment"
@@ -406,7 +406,6 @@
       let html = '<option value="">Choose a site</option>';
       sites.forEach(s => {
         const sel = String(s.id) === String(selectedSiteId) ? 'selected' : '';
-        const type = s.site_type ? ` (${s.site_type.replace(/_/g, ' ')})` : '';
         html += `<option value="${s.id}" ${sel}>${s.name}</option>`;
       });
       siteSel.innerHTML = html;

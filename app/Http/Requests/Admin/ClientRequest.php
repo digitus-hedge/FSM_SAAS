@@ -13,13 +13,13 @@ class ClientRequest extends FormRequest
     }
 
     public function rules(): array
-    {
-        $clientId = $this->route('client')?->id;
-        $tenantId = Tenant::current()?->id;
+{
+    $clientId = $this->route('client')?->id;
+    $tenantId = Tenant::current()?->id;
 
-       return [
+    return [
         'client_code' => [
-            'nullable',                 // ← changed from required
+            'nullable',
             'string',
             'min:2',
             'max:40',
@@ -28,60 +28,71 @@ class ClientRequest extends FormRequest
                 ->where('tenant_id', $tenantId)
                 ->ignore($clientId),
         ],
-            'name' => [
-                'required',
-                'string',
-                'min:2',
-                'max:180',
-            ],
-            'contact_person' => [
-                'nullable',
-                'string',
-                'max:150',
-            ],
-            'email' => [
-                'nullable',
-                'email:rfc,dns',
-                'max:190',
-            ],
-            'phone' => [
-                'nullable',
-                'string',
-                'max:40',
-                'regex:/^[0-9+\-\s()]+$/',
-            ],
-            'tax_id' => [
-                'nullable',
-                'string',
-                'max:60',
-            ],
-            'payment_terms_days' => [
-                'required',
-                'integer',
-                'min:0',
-                'max:365',
-            ],
-            'asset_visibility_enabled' => [
-                'sometimes',
-                'boolean',
-            ],
-            'is_active' => [
-                'sometimes',
-                'boolean',
-            ],
-            'billing_address' => [
-                'nullable',
-                'string',
-                'max:1000',
-            ],
-            'notes' => [
-                'nullable',
-                'string',
-                'max:2000',
-            ],
-        ];
-    }
-
+        'name' => [
+            'required',
+            'string',
+            'min:2',
+            'max:180',
+            // letters, digits, spaces, and common business-name punctuation only
+            'regex:/^[\p{L}\p{N}\s.,&\'\-\/()]+$/u',
+        ],
+        'contact_person' => [
+            'nullable',
+            'string',
+            'max:150',
+            'regex:/^[\p{L}\s.,\'\-]+$/u', // letters/spaces/punctuation, no digits
+        ],
+        'email' => [
+            'nullable',
+            'email:rfc,dns',
+            'max:190',
+            Rule::unique('clients', 'email')
+                ->where('tenant_id', $tenantId)
+                ->ignore($clientId),
+        ],
+        'phone' => [
+            'nullable',
+            'string',
+            'min:7',   // added: block single/few-digit junk entries
+            'max:40',
+            'regex:/^[0-9+\-\s()]+$/',
+            Rule::unique('clients', 'phone')
+                ->where('tenant_id', $tenantId)
+                ->ignore($clientId),
+        ],
+        'tax_id' => [
+            'nullable',
+            'string',
+            'min:5',    // added: block 1-4 char junk entries
+            'max:60',
+            'regex:/^[A-Za-z0-9\-]+$/', // added: alphanumeric + dash only, no spaces/symbols
+        ],
+        'payment_terms_days' => [
+            'required',
+            'integer',
+            'min:0',
+            'max:365',
+        ],
+        'asset_visibility_enabled' => [
+            'sometimes',
+            'boolean',
+        ],
+        'is_active' => [
+            'sometimes',
+            'boolean',
+        ],
+        'billing_address' => [
+            'nullable',
+            'string',
+            'max:1000',
+        ],
+        'notes' => [
+            'nullable',
+            'string',
+            'max:2000',
+        ],
+    ];
+}
     /** Friendly field names in error messages */
     public function attributes(): array
     {
@@ -125,6 +136,14 @@ class ClientRequest extends FormRequest
 
             'billing_address.max'             => 'Billing address is too long (max 1000 characters).',
             'notes.max'                       => 'Notes are too long (max 2000 characters).',
+
+            'name.regex'                      => 'Client name contains characters that are not allowed.',
+            'contact_person.regex'            => 'Contact person can only contain letters, spaces and punctuation.',
+            'email.unique'                    => 'Another client in your workspace already uses this email.',
+            'phone.min'                       => 'Phone number looks too short.',
+            'phone.unique'                    => 'Another client in your workspace already uses this phone number.',
+            'tax_id.min'                      => 'Tax ID looks too short.',
+            'tax_id.regex'                    => 'Tax ID can only contain letters, digits and dashes.',
         ];
     }
 

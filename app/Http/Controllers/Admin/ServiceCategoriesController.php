@@ -56,47 +56,57 @@ class ServiceCategoriesController extends Controller
     }
 
     public function store(ServiceCategoryRequest $request)
-    {
-        // $category = ServiceCategory::create($request->validated());
+{
+    $data = $request->validated();
+    unset($data['code']); // always system-generated, never user input
 
-        // return redirect()->route('admin.service-categories.index')
-        //     ->with('success', "Category {$category->name} created.");
+    $category = $this->createWithUniqueCode($data);
 
+    return redirect()->route('admin.service-categories.index')
+        ->with('success', "Category {$category->name} created.");
+}
 
-        $data = $request->validated();
-
-        if (empty($data['code'])) {
-            $data['code'] = $this->nextCategoryCode();
+protected function createWithUniqueCode(array $data, int $attempts = 3): ServiceCategory
+{
+    for ($i = 0; $i < $attempts; $i++) {
+        try {
+            return \DB::transaction(function () use ($data) {
+                $data['code'] = $this->nextCategoryCode();
+                return ServiceCategory::create($data);
+            });
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->getCode() !== '23000' || $i === $attempts - 1) {
+                throw $e;
+            }
+            // duplicate code — loop again and generate a fresh one
         }
+    }
+}
 
-        $category = ServiceCategory::create($data);
+protected function nextCategoryCode(): string
+{
+    $tenantId = \App\Models\Tenant::current()?->id;
 
-        return redirect()->route('admin.service-categories.index')
-            ->with('success', "Category {$category->name} created.");
+    $query = ServiceCategory::query()
+        ->when($tenantId, fn($q) => $q->where('tenant_id', $tenantId))
+        ->where('code', 'like', 'CAT-%')
+        ->orderByDesc('id')
+        ->lockForUpdate();
+
+    if (in_array(\Illuminate\Database\Eloquent\SoftDeletes::class, class_uses_recursive(ServiceCategory::class))) {
+        $query->withTrashed();
     }
 
+    $last = $query->value('code');
 
-    protected function nextCategoryCode(): string
-    {
-        $tenantId = \App\Models\Tenant::current()?->id;
+    $n = $last && preg_match('/CAT-(\d+)/', $last, $m)
+        ? ((int) $m[1]) + 1
+        : 1;
 
-        $query = ServiceCategory::query()
-            ->when($tenantId, fn($q) => $q->where('tenant_id', $tenantId))
-            ->where('code', 'like', 'CAT-%');
+    return 'CAT-' . str_pad($n, 4, '0', STR_PAD_LEFT);
+}
 
-        // Include soft-deleted rows if the model uses SoftDeletes, so numbers never repeat
-        if (in_array(\Illuminate\Database\Eloquent\SoftDeletes::class, class_uses_recursive(ServiceCategory::class))) {
-            $query->withTrashed();
-        }
 
-        $last = $query->orderByDesc('id')->value('code');
-
-        $n = $last && preg_match('/CAT-(\d+)/', $last, $m)
-            ? ((int) $m[1]) + 1
-            : 1;
-
-        return 'CAT-' . str_pad($n, 4, '0', STR_PAD_LEFT);
-    }
 
 
     public function edit(ServiceCategory $category)
@@ -108,13 +118,16 @@ class ServiceCategoriesController extends Controller
         ]);
     }
 
-    public function update(ServiceCategoryRequest $request, ServiceCategory $category)
-    {
-        $category->update($request->validated());
+public function update(ServiceCategoryRequest $request, ServiceCategory $category)
+{
+    $data = $request->validated();
+    unset($data['code']); // immutable after creation — never changes on edit
 
-        return redirect()->route('admin.service-categories.index')
-            ->with('success', "Category {$category->name} updated.");
-    }
+    $category->update($data);
+
+    return redirect()->route('admin.service-categories.index')
+        ->with('success', "Category {$category->name} updated.");
+}
 
     public function suspend(ServiceCategory $category)
     {

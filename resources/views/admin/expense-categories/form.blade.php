@@ -5,12 +5,12 @@
 @section('content')
 <style>
   .page-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:22px}
-  .page-head h1{font-family:'Figtree';font-size:26px;font-weight:700;letter-spacing:-.3px}
+  .page-head h1{font-family:var(--font-display);font-size:26px;font-weight:700;letter-spacing:-.3px}
   .page-head p{color:var(--muted);font-size:13px;margin-top:3px}
 
-  .btn{display:inline-flex;align-items:center;gap:6px;font-family:'DM Sans';font-size:13px;font-weight:600;padding:9px 16px;border-radius:999px;border:1px solid transparent;text-decoration:none;cursor:pointer;transition:background .15s}
+  .btn{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-body);font-size:13px;font-weight:600;padding:9px 16px;border-radius:999px;border:1px solid transparent;text-decoration:none;cursor:pointer;transition:background .15s}
   .btn-primary{background:var(--yellow);color:var(--ink)}
-  .btn-primary:hover{background:#F0B700}
+  .btn-primary:hover{background:color-mix(in srgb, var(--yellow) 85%, black 15%)}
   .btn-ghost{background:#fff;color:var(--ink);border-color:var(--line)}
   .btn-ghost:hover{background:var(--soft)}
 
@@ -18,7 +18,7 @@
 
   .section{margin-bottom:28px}
   .section:last-of-type{margin-bottom:0}
-  .section-title{font-family:'Figtree';font-size:13px;font-weight:700;color:var(--ink);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+  .section-title{font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--ink);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
   .section-sub{font-size:12px;color:var(--muted);margin-bottom:16px}
 
   .field{margin-bottom:16px}
@@ -28,10 +28,10 @@
   .field .hint{display:block;font-size:11px;color:var(--muted);margin-top:5px}
 
   .input, .textarea{
-    width:100%;font-family:'DM Sans';font-size:13px;padding:10px 14px;border-radius:10px;
+    width:100%;font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:10px;
     border:1px solid var(--line);background:#fff;color:var(--ink);outline:none;transition:border .15s, box-shadow .15s;
   }
-  .input:focus, .textarea:focus{border-color:var(--yellow);box-shadow:0 0 0 3px rgba(255,198,26,.15)}
+  .input:focus, .textarea:focus{border-color:var(--yellow);box-shadow:0 0 0 3px color-mix(in srgb, var(--yellow) 15%, transparent)}
   .textarea{min-height:80px;resize:vertical;font-family:inherit}
 
   /* Input with currency prefix */
@@ -43,7 +43,7 @@
   .input-wrap .input{padding-left:46px}
 
   /* Field error */
-  .field.has-error .input, .field.has-error .textarea{border-color:var(--red);background:#FFF7F7}
+  .field.has-error .input, .field.has-error .textarea{border-color:var(--red);background:var(--red-soft)}
   .err-inline{display:block;font-size:11px;color:var(--red);margin-top:5px;font-weight:500}
 
   /* Toggle rows */
@@ -106,16 +106,17 @@
       @error('name') <small class="err-inline">{{ $message }}</small> @enderror
     </div>
 
+    @php($currencyCode = auth()->user()->tenant?->currency_code ?? 'AED')
     <div class="field {{ $errors->has('default_unit_rate') ? 'has-error' : '' }}">
       <label for="default_unit_rate" class="lbl">Default unit rate</label>
       <div class="input-wrap">
-      <span class="prefix">{{ auth()->user()->tenant->currency_code ?? 'AED' }}</span>
+      <span class="prefix">{{ $currencyCode }}</span>
         <input type="number" id="default_unit_rate" name="default_unit_rate"
                step="0.01" min="0"
                value="{{ old('default_unit_rate', $category->default_unit_rate) }}" class="input"
                placeholder="0.00">
       </div>
-      <small class="hint">Base currency: AED</small>
+      <small class="hint">Base currency: {{ $currencyCode }}</small>
       @error('default_unit_rate') <small class="err-inline">{{ $message }}</small> @enderror
     </div>
   </div>

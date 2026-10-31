@@ -19,19 +19,19 @@
 <style>
   .crumb{font-size:13px;color:#5F5D6E;margin-bottom:12px}
   .crumb a{color:#0F0F17;text-decoration:underline;text-underline-offset:3px}
-  .crumb a:hover{color:#2F5BEA}
+  .crumb a:hover{color:var(--amber)}
 
   .page-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:12px}
-  .page-head h1{font-family:'Figtree',sans-serif;font-size:34px;font-weight:800;line-height:1.08;letter-spacing:-.02em;margin:0;color:#0F0F17}
+  .page-head h1{font-family:var(--font-display),sans-serif;font-size:34px;font-weight:800;line-height:1.08;letter-spacing:-.02em;margin:0;color:#0F0F17}
   .meta-row{display:flex;gap:8px;align-items:center;margin-top:12px;margin-bottom:24px}
-  .code-pill{display:inline-block;font-family:'DM Sans';font-size:12.5px;font-weight:600;color:#2F5BEA;background:#E6ECFE;padding:5px 11px;border-radius:7px}
+  .code-pill{display:inline-block;font-family:var(--font-body);font-size:12.5px;font-weight:600;color:var(--amber);background:var(--yellow-soft);padding:5px 11px;border-radius:7px}
   .status{display:inline-flex;align-items:center;font-size:12.5px;font-weight:700;padding:5px 12px;border-radius:999px}
   .status-ok{background:#E6F7EC;color:#1D7A3A}
   .status-off{background:#F2F1F6;color:#5F5D6E}
 
-  .btn{display:inline-flex;align-items:center;gap:8px;border-radius:12px;padding:11px 20px;font-family:'DM Sans';font-size:14px;font-weight:700;border:1px solid transparent;cursor:pointer;text-decoration:none;transition:all .12s;white-space:nowrap}
-  .btn-primary{background:#2F5BEA;color:#fff}
-  .btn-primary:hover{background:#2749C8}
+  .btn{display:inline-flex;align-items:center;gap:8px;border-radius:12px;padding:11px 20px;font-family:var(--font-body);font-size:14px;font-weight:700;border:1px solid transparent;cursor:pointer;text-decoration:none;transition:all .12s;white-space:nowrap}
+  .btn-primary{background:var(--amber);color:#fff}
+  .btn-primary:hover{background:color-mix(in srgb, var(--amber) 85%, black 15%)}
   .btn-ghost{background:#fff;color:#0F0F17;border-color:#E5E4EC}
   .btn-ghost:hover{border-color:#0F0F17}
   .btn-danger-out{background:#fff;color:#C7372F;border-color:#F0C7C7}
@@ -48,8 +48,8 @@
   .fld:last-child{margin-bottom:0}
   .fld label{font-weight:600;font-size:14px;margin-bottom:8px;color:#0F0F17}
   .req{color:#C7372F}
-  .inp,.sel,.txt{width:100%;font-family:'DM Sans';font-size:14px;padding:12px 14px;border-radius:10px;border:1px solid #E5E4EC;background:#fff;color:#0F0F17;outline:none;transition:border .15s, box-shadow .15s;box-sizing:border-box}
-  .inp:focus,.sel:focus,.txt:focus{border-color:#2F5BEA;box-shadow:0 0 0 3px rgba(47,91,234,.15)}
+  .inp,.sel,.txt{width:100%;font-family:var(--font-body);font-size:14px;padding:12px 14px;border-radius:10px;border:1px solid #E5E4EC;background:#fff;color:#0F0F17;outline:none;transition:border .15s, box-shadow .15s;box-sizing:border-box}
+  .inp:focus,.sel:focus,.txt:focus{border-color:var(--amber);box-shadow:0 0 0 3px color-mix(in srgb, var(--amber) 15%, transparent)}
   .inp.err,.txt.err{border-color:#C7372F;background:#FFF7F7}
   .inp::placeholder,.txt::placeholder{color:#9A98A7}
   .txt{min-height:88px;resize:vertical;font-family:inherit}
@@ -70,7 +70,7 @@
   /* Plain checkbox row (not switch-row) */
   .check-row{display:flex;align-items:flex-start;gap:10px;margin:4px 0 20px;cursor:pointer}
   .check-row input[type=checkbox]{appearance:none;width:18px;height:18px;border:1.5px solid #D1CFDA;border-radius:5px;cursor:pointer;position:relative;flex-shrink:0;margin-top:1px;background:#fff}
-  .check-row input:checked{background:#2F5BEA;border-color:#2F5BEA}
+  .check-row input:checked{background:var(--amber);border-color:var(--amber)}
   .check-row input:checked::after{content:'';position:absolute;left:5px;top:1px;width:5px;height:10px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
   .check-row .ck-ttl{font-size:13.5px;font-weight:700;color:#0F0F17}
   .check-row .ck-sub{font-size:12px;color:#5F5D6E;margin-top:2px}
@@ -79,8 +79,8 @@
   .formact{display:flex;gap:10px;align-items:center;margin-top:24px;flex-wrap:wrap}
 
   /* Aside: People for this site */
-  .aside h3{font-family:'Figtree';font-size:16px;font-weight:700;margin:0 0 16px;color:#0F0F17;display:flex;align-items:center;gap:8px}
-  .aside h3 svg{color:#2F5BEA;width:18px;height:18px}
+  .aside h3{font-family:var(--font-display);font-size:16px;font-weight:700;margin:0 0 16px;color:#0F0F17;display:flex;align-items:center;gap:8px}
+  .aside h3 svg{color:var(--amber);width:18px;height:18px}
   .person{padding:12px 0;border-bottom:1px solid #EEEDF3}
   .person:last-of-type{border-bottom:0}
   .person-name{font-weight:700;font-size:14px;color:#0F0F17}
@@ -137,17 +137,6 @@
         @error('client_id')<div class="errtxt">{{ $message }}</div>@enderror
       </div>
 
-      {{-- CODE --}}
-      <div class="fld">
-        <label for="site_code">Code</label>
-        <input id="site_code" name="site_code" value="{{ old('site_code', $site->site_code) }}"
-               maxlength="40" pattern="[A-Za-z0-9_\-]+"
-               placeholder="Made automatically"
-               class="inp @error('site_code') err @enderror"
-               style="text-transform:uppercase;letter-spacing:.04em">
-        @error('site_code')<div class="errtxt">{{ $message }}</div>@enderror
-      </div>
-
       {{-- NAME --}}
       <div class="fld">
         <label for="name">Name <span class="req">*</span></label>
@@ -161,6 +150,7 @@
         <label for="address">Address</label>
         <textarea id="address" name="address" rows="3" maxlength="1000"
                   class="txt @error('address') err @enderror">{{ old('address', $site->address) }}</textarea>
+        @error('address')<div class="errtxt">{{ $message }}</div>@enderror
       </div>
 
       {{-- CITY --}}
@@ -168,6 +158,7 @@
         <label for="city">City</label>
         <input id="city" name="city" value="{{ old('city', $site->city) }}" maxlength="100"
                class="inp @error('city') err @enderror">
+        @error('city')<div class="errtxt">{{ $message }}</div>@enderror
       </div>
 
       {{-- LOCATION (map) --}}
@@ -188,7 +179,7 @@
            autocomplete="off"
            style="padding-right:40px">
     <button type="button" id="place-search-btn"
-            style="position:absolute;right:6px;top:6px;background:#2F5BEA;color:#fff;border:0;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">
+            style="position:absolute;right:6px;top:6px;background:var(--amber);color:#fff;border:0;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">
       Search
     </button>
     <div id="place-results"
@@ -201,8 +192,9 @@
 
 
 
+        <div class="hint" style="margin-top:10px;margin-bottom:6px">Click the map to drop a pin, drag it to fine-tune, or search a place above. The shaded circle shows the geofence radius technicians must be inside to check in.</div>
         <div class="map-tools">
-      <button type="button" class="btn btn-ghost btn-sm" id="geo-locate">Find my location</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="geo-locate">Find my location</button>
           <button type="button" class="btn btn-ghost btn-sm" id="geo-remove">Remove pin</button>
         </div>
 
@@ -211,14 +203,16 @@
             <label for="lat">Latitude</label>
             <input type="number" id="lat" name="lat" step="0.0000001" min="-90" max="90"
                    value="{{ old('lat', $site->lat) }}" class="inp @error('lat') err @enderror">
+            @error('lat')<div class="errtxt">{{ $message }}</div>@enderror
           </div>
           <div class="fld" style="margin-bottom:12px">
             <label for="lng">Longitude</label>
             <input type="number" id="lng" name="lng" step="0.0000001" min="-180" max="180"
                    value="{{ old('lng', $site->lng) }}" class="inp @error('lng') err @enderror">
+            @error('lng')<div class="errtxt">{{ $message }}</div>@enderror
           </div>
         </div>
-
+        
         <div class="paste-row">
           <input type="text" id="paste-coords" class="inp" placeholder="Paste coordinates, for example 25.2048, 55.2708">
           <button type="button" class="btn btn-ghost btn-sm" id="paste-apply">Apply</button>
@@ -260,12 +254,15 @@
           <label for="contact_name">Site contact name</label>
           <input id="contact_name" name="contact_name" value="{{ old('contact_name', $site->contact_name) }}"
                  maxlength="150" class="inp @error('contact_name') err @enderror">
+          @error('contact_name')<div class="errtxt">{{ $message }}</div>@enderror
         </div>
         <div class="fld">
           <label for="contact_phone">Site contact phone</label>
-          <input id="contact_phone" name="contact_phone" value="{{ old('contact_phone', $site->contact_phone) }}"
-                 maxlength="40" placeholder="+971501234567"
-                 class="inp @error('contact_phone') err @enderror">
+          <input type="tel" id="contact_phone" name="contact_phone" value="{{ old('contact_phone', $site->contact_phone) }}"
+                 maxlength="40" placeholder="+971501234567" inputmode="tel" pattern="[0-9+\-\s()]*"
+                 class="inp @error('contact_phone') err @enderror"
+                 oninput="this.value = this.value.replace(/[^0-9+\-\s()]/g, '')">
+          @error('contact_phone')<div class="errtxt">{{ $message }}</div>@enderror
         </div>
       </div>
 
@@ -274,7 +271,9 @@
         <label for="access_instructions">Access instructions</label>
         <textarea id="access_instructions" name="access_instructions" rows="4" maxlength="2000"
                   class="txt @error('access_instructions') err @enderror">{{ old('access_instructions', $site->access_instructions) }}</textarea>
-        <div class="hint">Shown to the technician on the job.</div>
+        @error('access_instructions')<div class="errtxt">{{ $message }}</div>@else
+          <div class="hint">Shown to the technician on the job.</div>
+        @enderror
       </div>
 
       {{-- ACTIONS --}}
@@ -361,26 +360,69 @@
 <script>
 (function () {
   // ===== Map =====
-  const defaultCenter = [25.2048, 55.2708]; // Dubai — change if your tenant is elsewhere
+  const defaultCenter = [10.8505, 76.2711]; // Kerala (state center) — used when no location is saved yet
+  const defaultZoom    = 8;
+
   const initLat = parseFloat(document.getElementById('lat').value);
   const initLng = parseFloat(document.getElementById('lng').value);
   const hasInit = !isNaN(initLat) && !isNaN(initLng);
   const start   = hasInit ? [initLat, initLng] : defaultCenter;
 
-  const map = L.map('site-map').setView(start, hasInit ? 15 : 11);
+  const map = L.map('site-map', { scrollWheelZoom: false }).setView(start, hasInit ? 16 : defaultZoom);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '© OpenStreetMap contributors'
   }).addTo(map);
 
+  // Click-to-enable scroll zoom, so scrolling the page doesn't accidentally zoom the map
+  const scrollHint = document.createElement('div');
+  scrollHint.textContent = 'Click the map to enable scroll zoom';
+  scrollHint.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(27,26,36,.35);color:#fff;font-size:13px;font-weight:600;z-index:500;cursor:pointer;text-align:center;padding:10px';
+  document.getElementById('site-map').style.position = 'relative';
+  document.getElementById('site-map').appendChild(scrollHint);
+  document.getElementById('site-map').addEventListener('click', function enableZoom() {
+    map.scrollWheelZoom.enable();
+    scrollHint.remove();
+  }, { once: true });
+
   let marker = null;
+  let geoCircle = null;
+
+  function currentRadius() {
+    const r = parseInt(document.getElementById('geofence_radius_meters').value, 10);
+    return isNaN(r) ? 250 : r;
+  }
+
   function setMarker(latlng) {
-    if (marker) marker.setLatLng(latlng);
-    else marker = L.marker(latlng, { draggable: true }).addTo(map).on('dragend', e => writeLatLng(e.target.getLatLng()));
+    if (marker) {
+      marker.setLatLng(latlng);
+    } else {
+      marker = L.marker(latlng, { draggable: true })
+        .addTo(map)
+        .bindTooltip('Drag to fine-tune', { permanent: false, direction: 'top' })
+        .on('dragend', e => { writeLatLng(e.target.getLatLng()); updateCircle(e.target.getLatLng()); });
+    }
+    if (!geoCircle) {
+      geoCircle = L.circle(latlng, {
+        radius: currentRadius(),
+        color: '#8A5A00',
+        weight: 1.5,
+        fillColor: '#FFC61A',
+        fillOpacity: 0.15
+      }).addTo(map);
+    } else {
+      geoCircle.setLatLng(latlng);
+    }
     writeLatLng(latlng);
   }
+
+  function updateCircle(latlng) {
+    if (geoCircle) geoCircle.setLatLng(latlng || marker.getLatLng()).setRadius(currentRadius());
+  }
+
   function clearMarker() {
-    if (marker) { map.removeLayer(marker); marker = null; }
+    if (marker)   { map.removeLayer(marker);   marker   = null; }
+    if (geoCircle){ map.removeLayer(geoCircle); geoCircle = null; }
     document.getElementById('lat').value = '';
     document.getElementById('lng').value = '';
   }
@@ -389,62 +431,58 @@
     document.getElementById('lng').value = ll.lng.toFixed(7);
   }
 
+  // Live-update the circle as the radius field changes, so the picker can SEE the coverage area
+  document.getElementById('geofence_radius_meters').addEventListener('input', () => updateCircle());
+
   if (hasInit) setMarker(start);
-  map.on('click', e => { setMarker(e.latlng); });
+  map.on('click', e => {
+    setMarker(e.latlng);
+    map.flyTo(e.latlng, Math.max(map.getZoom(), 16), { duration: 0.6 });
+  });
 
-  // "Use my current location"
- document.getElementById('geo-locate').addEventListener('click', async () => {
-  const isSecure = location.protocol === 'https:'
-                || location.hostname === 'localhost'
-                || location.hostname === '127.0.0.1';
+    // "Use my current location"
+  document.getElementById('geo-locate').addEventListener('click', async () => {
+    const isSecure = location.protocol === 'https:'
+                  || location.hostname === 'localhost'
+                  || location.hostname === '127.0.0.1';
 
-  // === Try browser GPS first (HTTPS / localhost only) ===
-  if (navigator.geolocation && isSecure) {
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        const lat = pos.coords.latitude, lng = pos.coords.longitude;
-        setMarker({ lat, lng });
-        map.setView([lat, lng], 16);
-        setTimeout(() => map.invalidateSize(), 50);
-      },
-      err => Swal.fire({ icon: 'warning', title: 'Could not get precise location', text: err.message, confirmButtonText: 'OK' })
-    );
-    return;
-  }
+    if (navigator.geolocation && isSecure) {
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          const lat = pos.coords.latitude, lng = pos.coords.longitude;
+          setMarker({ lat, lng });
+          map.flyTo([lat, lng], 16, { duration: 0.8 });
+          setTimeout(() => map.invalidateSize(), 50);
+        },
+        err => Swal.fire({ icon: 'warning', title: 'Could not get precise location', text: err.message, confirmButtonText: 'OK' })
+      );
+      return;
+    }
 
-  // === Fallback: coarse IP location ===
-  try {
-    const r = await fetch('https://ipapi.co/json/');
-    const d = await r.json();
-    if (! d.latitude || ! d.longitude) throw new Error('No coords in response');
+    try {
+      const r = await fetch('https://ipapi.co/json/');
+      const d = await r.json();
+      if (! d.latitude || ! d.longitude) throw new Error('No coords in response');
 
-    const lat = parseFloat(d.latitude), lng = parseFloat(d.longitude);
+      const lat = parseFloat(d.latitude), lng = parseFloat(d.longitude);
+      setMarker({ lat, lng });
+      map.flyTo([lat, lng], 13, { duration: 0.8 });
+      setTimeout(() => map.invalidateSize(), 50);
 
-    // Pan + place marker FIRST, then show toast (so Leaflet actually renders)
-    setMarker({ lat, lng });
-    map.setView([lat, lng], 13);
-    setTimeout(() => map.invalidateSize(), 50);
-
-    Swal.fire({
-      toast: true,
-      position: 'top-end',
-      icon: 'info',
-      title: 'Using approximate location',
-      html: '<small>' + (d.city || '?') + ', ' + (d.country_name || '?') + '. Drag the pin or paste coordinates for precise GPS.</small>',
-      showConfirmButton: false,
-      timer: 4000,
-      timerProgressBar: true,
-    });
-  } catch (e) {
-    Swal.fire({
-      icon: 'info',
-      title: 'Location unavailable',
-      text: 'Click on the map to drop a pin manually, or paste coordinates in the box below.',
-      confirmButtonText: 'OK'
-    });
-  }
-});
-
+      Swal.fire({
+        toast: true, position: 'top-end', icon: 'info',
+        title: 'Using approximate location',
+        html: '<small>' + (d.city || '?') + ', ' + (d.country_name || '?') + '. Drag the pin or paste coordinates for precise GPS.</small>',
+        showConfirmButton: false, timer: 4000, timerProgressBar: true,
+      });
+    } catch (e) {
+      Swal.fire({
+        icon: 'info', title: 'Location unavailable',
+        text: 'Click on the map to drop a pin manually, or paste coordinates in the box below.',
+        confirmButtonText: 'OK'
+      });
+    }
+  });
   // "Remove pin"
   document.getElementById('geo-remove').addEventListener('click', clearMarker);
 
@@ -483,7 +521,10 @@ async function searchPlace(q) {
   searchResults.style.display = 'block';
 
   try {
-    const url = 'https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=8&q=' + encodeURIComponent(q.trim());
+   const url = 'https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=8'
+          + '&countrycodes=in'
+          + '&viewbox=74.86,12.48,77.42,8.18&bounded=0'
+          + '&q=' + encodeURIComponent(q.trim());
     const r = await fetch(url, { headers: { 'Accept-Language': 'en' } });
     const data = await r.json();
 

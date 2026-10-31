@@ -4,8 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>@yield('title', 'Platform Console') — AIYWAH FSM</title>
+@php
+    $brandTenant = \App\Models\Tenant::current();
+    $brandFont   = \App\Models\BrandFont::where('key', $brandTenant?->font_key ?? 'dm_sans')->first();
+    $brandColor  = $brandTenant?->primary_color ?? '#FFC61A';
+    $googleParam = $brandFont->google_param ?? 'DM+Sans:wght@400;500;700&family=Figtree:wght@600;700';
+    $fontBody    = $brandFont->body_family ?? 'DM Sans';
+    $fontDisplay = $brandFont->display_family ?? 'Figtree';
+@endphp
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Figtree:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family={{ $googleParam }}&display=swap" rel="stylesheet">
 
 @php
     if (!function_exists('term_title')) {
@@ -22,25 +30,42 @@
 :root{
   --bg:#FBFAF6; --ink:#1B1A24; --muted:#5F5D6E; --subtle:#8B89A0;
   --line:#E6E4EE; --soft:#F5F4FA;
-  --yellow:#FFC61A; --yellow-soft:#FFF4CC; --amber:#8A5A00;
+  --yellow:{{ $brandColor }}; --yellow-soft:color-mix(in srgb, {{ $brandColor }} 18%, white); --amber:color-mix(in srgb, {{ $brandColor }} 60%, black 25%);
   --green:#00866F; --green-soft:#DDF7F1; --red:#C2381B; --red-soft:#FDECE7;
+  --font-body:{{ $fontBody }}; --font-display:{{ $fontDisplay }};
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-serif;font-size:14px;line-height:1.5}
-.shell{display:grid;grid-template-columns:244px 1fr;min-height:100vh}
+html, body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-ui,sans-serif;font-size:14px;line-height:1.5}
+.shell{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
 
 
 /* SIDEBAR */
-.side{background:#fff;border-right:1px solid var(--line);padding:18px 12px;display:flex;flex-direction:column;gap:2px;min-height:100vh}
-.brand{display:flex;align-items:center;gap:10px;padding:4px 10px 18px;color:var(--ink);font-family:'Figtree';font-size:17px;font-weight:700;letter-spacing:-.3px;text-decoration:none}
-.brand .logo{width:32px;height:32px;border-radius:9px;background:var(--ink);color:var(--yellow);display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
-.brand small{display:block;font-family:'DM Sans';font-size:10.5px;font-weight:400;color:var(--muted);letter-spacing:0;margin-top:1px}
-
+.side{
+  background:#fff;
+  border-right:1px solid var(--line);
+  padding:20px 14px;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  position:sticky;
+  top:0;
+  height:100vh;
+  overflow-y:auto;
+  box-shadow:1px 0 0 rgba(27,26,36,.02);
+}
+.side::-webkit-scrollbar{width:0}
+.side::-webkit-scrollbar-thumb{background:var(--line);border-radius:999px}
+.side::-webkit-scrollbar-thumb:hover{background:var(--subtle)}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 10px 18px;color:var(--ink);font-family:var(--font-display);font-size:17px;font-weight:700;letter-spacing:-.3px;text-decoration:none}
+.brand .logo{width:32px;height:32px;border-radius:9px;background:linear-gradient(145deg,#232130,var(--ink));color:var(--yellow);display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;box-shadow:0 2px 6px rgba(27,26,36,.18)}
+.brand small{display:block;font-family:var(--font-body);font-size:10.5px;font-weight:400;color:var(--muted);letter-spacing:0;margin-top:1px}
 .nav-label{font-size:10.5px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.08em;padding:14px 14px 6px}
 
 .nav-item{display:flex;align-items:center;gap:11px;font-size:13.5px;padding:9px 12px;border-radius:10px;color:var(--ink);text-decoration:none;transition:background .12s}
 .nav-item:hover{background:var(--soft)}
-.nav-item.active{background:var(--yellow-soft);color:var(--amber);font-weight:600}
+.nav-item.active{background:var(--yellow-soft);color:var(--amber);font-weight:600;position:relative}
+.nav-item.active::before{content:"";position:absolute;left:-12px;top:50%;transform:translateY(-50%);width:3px;height:16px;background:var(--amber);border-radius:0 3px 3px 0}
 .nav-item svg{flex-shrink:0;color:var(--muted);width:17px;height:17px}
 .nav-item.active svg{color:var(--amber)}
 
@@ -63,32 +88,35 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
 .nav-children .nav-item.disabled{color:var(--subtle);cursor:not-allowed;pointer-events:none}
 
 .side .foot{margin-top:auto;padding-top:14px;border-top:1px solid var(--line)}
-.account{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;text-decoration:none;color:var(--ink)}
-.account:hover{background:var(--soft)}
-.avatar{width:34px;height:34px;border-radius:50%;background:var(--yellow-soft);color:var(--amber);font-weight:700;font-size:12.5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'Figtree'}
+.account{display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;background:var(--soft);margin-bottom:8px}
+.avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(145deg,var(--yellow),#F0B700);color:var(--ink);font-weight:800;font-size:12.5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--font-display);box-shadow:0 2px 5px rgba(255,198,26,.35)}
 .account .meta{min-width:0;flex:1}
-.account .name{color:var(--ink);font-size:13px;font-weight:600;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.account .sub{color:var(--muted);font-size:11px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.foot-links{display:flex;gap:14px;padding:10px 12px 2px;font-size:12px}
-.foot-links a,.foot-links button{background:none;border:0;color:var(--muted);cursor:pointer;padding:0;font:inherit;text-decoration:none}
-.foot-links a:hover,.foot-links button:hover{color:var(--ink);text-decoration:underline}
-.foot-links .tfa-on{color:var(--green);font-weight:600}
+.account .name{color:var(--ink);font-size:13px;font-weight:700;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.account .sub{color:var(--muted);font-size:11px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+
+.foot-row{display:flex;align-items:center;gap:6px;padding:0 2px}
+.foot-link{flex:1;display:flex;align-items:center;gap:6px;padding:7px 8px;border-radius:8px;color:var(--muted);text-decoration:none;font-size:12px;background:none;border:0;cursor:pointer;font:inherit;white-space:nowrap}
+.foot-link:hover{background:var(--soft);color:var(--ink)}
+.foot-link svg{width:13px;height:13px;flex-shrink:0}
+.foot-link.tfa-on{color:var(--green);font-weight:600}
+.foot-link.signout{color:var(--red);justify-content:center;border:1px solid var(--red-soft);margin-top:4px}
+.foot-link.signout:hover{background:var(--red-soft)}
 
 .content{padding:28px 44px 48px;overflow:hidden}
 
 /* SweetAlert2 */
-.swal2-popup{font-family:'DM Sans',system-ui,sans-serif!important;border-radius:16px!important;padding:28px!important}
-.swal2-title{font-family:'Figtree'!important;font-size:20px!important;font-weight:700!important;color:var(--ink)!important}
+.swal2-popup{font-family:var(--font-body),system-ui,sans-serif!important;border-radius:16px!important;padding:28px!important}
+.swal2-title{font-family:var(--font-display)!important;font-size:20px!important;font-weight:700!important;color:var(--ink)!important}
 .swal2-html-container{font-size:13px!important;color:var(--muted)!important;margin-top:6px!important}
-.swal2-confirm.swal2-styled{background:var(--yellow)!important;color:var(--ink)!important;font-family:'DM Sans'!important;font-weight:600!important;font-size:13px!important;border-radius:999px!important;padding:10px 20px!important;box-shadow:none!important}
+.swal2-confirm.swal2-styled{background:var(--yellow)!important;color:var(--ink)!important;font-family:var(--font-body)!important;font-weight:600!important;font-size:13px!important;border-radius:999px!important;padding:10px 20px!important;box-shadow:none!important}
 .swal2-confirm.swal2-styled:hover{background:#F0B700!important}
-.swal2-cancel.swal2-styled{background:#fff!important;color:var(--ink)!important;border:1px solid var(--line)!important;font-family:'DM Sans'!important;font-weight:600!important;font-size:13px!important;border-radius:999px!important;padding:10px 20px!important}
+.swal2-cancel.swal2-styled{background:#fff!important;color:var(--ink)!important;border:1px solid var(--line)!important;font-family:var(--font-body)!important;font-weight:600!important;font-size:13px!important;border-radius:999px!important;padding:10px 20px!important}
 .swal2-icon.swal2-error{border-color:var(--red)!important;color:var(--red)!important}
 .swal2-icon.swal2-success{border-color:var(--green)!important;color:var(--green)!important}
 .swal2-icon.swal2-warning{border-color:var(--yellow)!important;color:var(--amber)!important}
 .swal2-icon.swal2-error [class^='swal2-x-mark-line']{background-color:var(--red)!important}
 .swal2-icon.swal2-success [class^='swal2-success-line']{background-color:var(--green)!important}
-.swal2-toast{font-family:'DM Sans'!important;border-radius:12px!important;box-shadow:0 8px 24px rgba(0,0,0,.08)!important;border:1px solid var(--line)!important}
+.swal2-toast{font-family:var(--font-body)!important;border-radius:12px!important;box-shadow:0 8px 24px rgba(0,0,0,.08)!important;border:1px solid var(--line)!important}
 .swal2-toast .swal2-title{font-size:13px!important;color:var(--ink)!important}
 .swal-btn-red.swal2-confirm.swal2-styled{background:var(--red)!important;color:#fff!important}
 .swal-btn-red.swal2-confirm.swal2-styled:hover{background:#A52E15!important}
@@ -111,7 +139,8 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
 
     $opsOpen    = request()->routeIs('admin.clients.*')
                || request()->routeIs('admin.sites.*')
-               || request()->routeIs('admin.service-categories.*');
+               || request()->routeIs('admin.service-categories.*')
+               || request()->routeIs('admin.team-lead-categories.*');
 
     $setupOpen  = request()->routeIs('admin.sla-policies.*')
                || request()->routeIs('admin.tax-rates.*')
@@ -169,6 +198,9 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
                     @if ($u->canDo('category.manage'))
                         <a href="{{ route('admin.service-categories.index') }}" class="nav-item {{ request()->routeIs('admin.service-categories.*') ? 'active' : '' }}">Service Categories</a>
                     @endif
+                    @if ($u->canDo('category.manage'))
+                        <a href="{{ route('admin.team-lead-categories.index') }}" class="nav-item {{ request()->routeIs('admin.team-lead-categories.*') ? 'active' : '' }}">Team Lead categories</a>
+                    @endif
                 </div>
             </details>
         @endif
@@ -215,6 +247,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
                     <a href="{{ route('admin.tenant-business-hours.index') }}" class="nav-item {{ request()->routeIs('admin.tenant-business-hours.*') ? 'active' : '' }}">Business Hours and Holidays</a>
 
                     <a href="{{ route('admin.terminology.index') }}" class="nav-item {{ request()->routeIs('admin.terminology.*') ? 'active' : '' }}">Terminology</a>
+                    <a href="{{ route('admin.branding.index') }}" class="nav-item {{ request()->routeIs('admin.branding.*') ? 'active' : '' }}">Branding</a>
                 </div>
             </details>
         @endif
@@ -311,20 +344,25 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
                 </div>
             </div>
         </div>
-        <div class="foot-links">
-            <a href="{{ route('two-factor.setup') }}">
-                @if ($u->two_factor_confirmed_at ?? false)
-                    <span class="tfa-on">● 2FA on</span>
-                @else
-                    Turn on 2FA
-                @endif
+
+        <div class="foot-row">
+            <a href="{{ route('two-factor.setup') }}" class="foot-link {{ ($u->two_factor_confirmed_at ?? false) ? 'tfa-on' : '' }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                {{ ($u->two_factor_confirmed_at ?? false) ? '2FA on' : '2FA off' }}
             </a>
-            <a href="{{ route('profile.devices.index') }}">Devices</a>
-            <form method="POST" action="{{ $isPlatform ? route('platform.logout') : route('logout') }}" style="margin-left:auto;display:inline">
-                @csrf
-                <button type="submit">Sign out</button>
-            </form>
+            <a href="{{ route('profile.devices.index') }}" class="foot-link">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                Devices
+            </a>
         </div>
+
+        <form method="POST" action="{{ $isPlatform ? route('platform.logout') : route('logout') }}">
+            @csrf
+            <button type="submit" class="foot-link signout" style="width:100%">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Sign out
+            </button>
+        </form>
     </div>
 </nav>
 
