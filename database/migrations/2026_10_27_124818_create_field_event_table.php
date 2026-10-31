@@ -65,8 +65,8 @@ return new class extends Migration
                 ->references('id')->on('users')
                 ->restrictOnDelete();
 
-            $table->foreign('device_id')
-                ->references('id')->on('devices')
+                    $table->foreign('device_id')
+                ->references('id')->on('user_devices')
                 ->nullOnDelete();
 
             $table->foreign('service_request_id')

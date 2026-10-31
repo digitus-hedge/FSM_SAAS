@@ -18,13 +18,13 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\ForcePasswordChange::class,
             \App\Http\Middleware\TouchDevice::class,
             \App\Http\Middleware\RouteTechnicianMobile::class,
-
         ]);
 
         $middleware->alias([
-            'platform.admin'      => \App\Http\Middleware\EnsurePlatformAdmin::class,
-            'tenant.role'         => \App\Http\Middleware\EnsureTenantRole::class,
-            'platform.2fa'        => \App\Http\Middleware\EnsurePlatformTwoFactor::class,   // ← added
+            'platform.admin' => \App\Http\Middleware\EnsurePlatformAdmin::class,
+            'tenant.role'    => \App\Http\Middleware\EnsureTenantRole::class,
+            'platform.2fa'   => \App\Http\Middleware\EnsurePlatformTwoFactor::class,
+            'role'           => \App\Http\Middleware\EnsureRole::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

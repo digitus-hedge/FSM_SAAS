@@ -3,136 +3,123 @@
 namespace App\Http\Controllers\Technician;
 
 use App\Http\Controllers\Controller;
-use App\Models\ServiceRequest;
-use App\Models\GeofenceOverrideRequest;
 use App\Models\FieldEventLog;
+use App\Models\GeofenceOverrideRequest;
+use App\Models\ServiceRequest;
 use App\Models\User;
 use Illuminate\Http\Request;
 
 class TeamController extends Controller
 {
-    private function assertTeamLead(): void
+    private function teamMemberIds(): array
     {
-        abort_unless(auth()->user()->role?->code === 'team_lead', 403);
+        return User::where('team_lead_id', auth()->id())->pluck('id')->all();
     }
 
-    /** User ids of technicians who report to the signed-in team lead. */
-    private function teamTechIds(): array
+    private function authorizeTeamSr(ServiceRequest $sr): void
     {
-        // ASSUMPTION: users.team_lead_id points at this team lead's user id.
-        // Change this one line if your schema links teams differently.
-        return User::where('team_lead_id', auth()->id())->pluck('id')->all();
+        abort_unless($sr->team_lead_user_id === auth()->id(), 403);
     }
 
     public function index(Request $request)
     {
-        $this->assertTeamLead();
-        $tab = $request->input('tab', 'jobs');
-        $techIds = $this->teamTechIds();
+        $tab = $request->get('tab', 'jobs');
+        $teamIds = $this->teamMemberIds();
 
-        $jobs = $action = $overrides = $conflicts = collect();
-        $counts = ['action' => 0, 'overrides' => 0, 'conflicts' => 0];
+        $jobsByTech = collect();
+        $needsAction = collect();
+        $overrides = collect();
+        $conflicts = collect();
 
         if ($tab === 'jobs') {
-            $jobs = ServiceRequest::whereIn('assigned_tech_user_id', $techIds)
-                ->whereNotIn('status', ['completed', 'cancelled'])
-                ->with(['client:id,name', 'site:id,name', 'assignedTech:id,name'])
+            $jobs = ServiceRequest::with(['client', 'site', 'assignedTech'])
+                ->whereIn('assigned_tech_user_id', $teamIds)
+                ->whereIn('status', ['assigned', 'in_progress', 'rework'])
                 ->orderBy('scheduled_eta_at')
-                ->get()
-                ->groupBy('assigned_tech_user_id');
+                ->get();
+            $jobsByTech = $jobs->groupBy(fn ($j) => $j->assignedTech?->name ?? 'Unassigned');
         }
 
         if ($tab === 'action') {
-            $action = ServiceRequest::where(function ($q) use ($techIds) {
-                    $q->where('status', 'pending')               // needs approval (not yet assigned to the team)
-                      ->orWhere(function ($q2) use ($techIds) {
-                          $q2->where('status', 'approved')        // approved, needs a technician assigned
-                             ->orWhereIn('assigned_tech_user_id', $techIds);
-                      });
-                })
-                ->whereIn('status', ['pending', 'approved'])
-                ->with(['client:id,name', 'site:id,name'])
-                ->orderByRaw("FIELD(priority,'emergency','critical','high','medium','low')")
+            $needsAction = ServiceRequest::with(['client', 'site'])
+                ->where('team_lead_user_id', auth()->id())
+                ->whereIn('status', ['pending', 'quoted', 'approved'])
+                ->orderBy('scheduled_eta_at')
                 ->get();
         }
 
-        if ($tab === 'overrides' || $request->boolean('counts_only')) {
-            $overrides = GeofenceOverrideRequest::whereIn('technician_user_id', $techIds)
+        if ($tab === 'ovr') {
+            $overrides = GeofenceOverrideRequest::with(['serviceRequest', 'technician'])
+                ->whereHas('serviceRequest', fn ($q) => $q->where('team_lead_user_id', auth()->id()))
                 ->where('status', 'pending')
-                ->with(['serviceRequest:id,sr_number,title'])
-                ->latest('requested_at_device')
-                ->get();
+                ->orderByDesc('id')->get();
         }
 
-        if ($tab === 'conflicts' || $request->boolean('counts_only')) {
-            $conflicts = FieldEventLog::whereIn('user_id', $techIds)
+        if ($tab === 'conf') {
+            $conflicts = FieldEventLog::with(['serviceRequest', 'user'])
                 ->where('result', 'conflict_rejected')
                 ->whereNull('reviewed_at')
-                ->with(['serviceRequest:id,sr_number,title', 'user:id,name'])
-                ->latest('synced_to_server_at')
-                ->get();
+                ->whereHas('serviceRequest', fn ($q) => $q->where('team_lead_user_id', auth()->id()))
+                ->orderByDesc('id')->get();
         }
 
-        $counts = [
-            'action'    => ServiceRequest::whereIn('status', ['pending', 'approved'])
-                            ->where(fn($q) => $q->where('status', 'pending')->orWhereIn('assigned_tech_user_id', $techIds))
-                            ->count(),
-            'overrides' => GeofenceOverrideRequest::whereIn('technician_user_id', $techIds)->where('status', 'pending')->count(),
-            'conflicts' => FieldEventLog::whereIn('user_id', $techIds)->where('result', 'conflict_rejected')->whereNull('reviewed_at')->count(),
-        ];
+        $needsActionCount = ServiceRequest::where('team_lead_user_id', auth()->id())
+            ->whereIn('status', ['pending', 'quoted', 'approved'])->count();
+        $overrideCount = GeofenceOverrideRequest::whereHas('serviceRequest', fn ($q) => $q->where('team_lead_user_id', auth()->id()))->where('status', 'pending')->count();
+        $conflictCount = FieldEventLog::where('result', 'conflict_rejected')->whereNull('reviewed_at')
+            ->whereHas('serviceRequest', fn ($q) => $q->where('team_lead_user_id', auth()->id()))->count();
 
-        return view('technician.team.index', compact('tab', 'jobs', 'action', 'overrides', 'conflicts', 'counts'));
+        $teamMembers = User::whereIn('id', $teamIds)->get();
+
+        return view('technician.team.index', compact(
+            'tab', 'jobsByTech', 'needsAction', 'overrides', 'conflicts',
+            'needsActionCount', 'overrideCount', 'conflictCount', 'teamMembers'
+        ));
     }
 
-    public function approveOverride(Request $request, GeofenceOverrideRequest $override)
+    public function approve(ServiceRequest $serviceRequest)
     {
-        $this->assertTeamLead();
-        abort_unless(in_array($override->technician_user_id, $this->teamTechIds(), true), 403);
+        $this->authorizeTeamSr($serviceRequest);
+        abort_unless(in_array($serviceRequest->status, ['pending', 'quoted']), 422);
+        $serviceRequest->update(['status' => 'approved', 'approved_by_user_id' => auth()->id()]);
+        return back()->with('success', 'Approved.');
+    }
 
-        $override->update([
-            'status'               => 'approved',
-            'decided_by_user_id'   => auth()->id(),
-            'decided_at'           => now(),
-            'valid_until'          => now()->addHours(2),
-        ]);
+    public function reject(Request $request, ServiceRequest $serviceRequest)
+    {
+        $this->authorizeTeamSr($serviceRequest);
+        $data = $request->validate(['reason' => ['required', 'string', 'max:500']]);
+        $serviceRequest->update(['status' => 'cancelled', 'cancellation_reason' => $data['reason']]);
+        return back()->with('success', 'Rejected.');
+    }
 
-        return redirect()->route('technician.team.index', ['tab' => 'overrides'])
-            ->with('success', 'Override approved. The technician can punch in now.');
+    public function assign(Request $request, ServiceRequest $serviceRequest)
+    {
+        $this->authorizeTeamSr($serviceRequest);
+        $data = $request->validate(['assigned_tech_user_id' => ['required', 'in:' . implode(',', $this->teamMemberIds())]]);
+        $serviceRequest->update(['assigned_tech_user_id' => $data['assigned_tech_user_id'], 'status' => 'assigned']);
+        return back()->with('success', 'Assigned.');
+    }
+
+    public function approveOverride(GeofenceOverrideRequest $override)
+    {
+        abort_unless($override->serviceRequest?->team_lead_user_id === auth()->id(), 403);
+        $override->update(['status' => 'approved', 'decided_by_user_id' => auth()->id(), 'decided_at' => now(), 'valid_until' => now()->addHours(2)]);
+        return back()->with('success', 'Override approved.');
     }
 
     public function rejectOverride(Request $request, GeofenceOverrideRequest $override)
     {
-        $this->assertTeamLead();
-        abort_unless(in_array($override->technician_user_id, $this->teamTechIds(), true), 403);
-
-        $data = $request->validate(['note' => 'required|string|min:3|max:255']);
-
-        $override->update([
-            'status'             => 'rejected',
-            'decided_by_user_id' => auth()->id(),
-            'decided_at'         => now(),
-            'decision_note'      => $data['note'],
-        ]);
-
-        return redirect()->route('technician.team.index', ['tab' => 'overrides'])
-            ->with('success', 'Override rejected.');
+        abort_unless($override->serviceRequest?->team_lead_user_id === auth()->id(), 403);
+        $data = $request->validate(['decision_note' => ['nullable', 'string', 'max:255']]);
+        $override->update(['status' => 'rejected', 'decided_by_user_id' => auth()->id(), 'decided_at' => now(), 'decision_note' => $data['decision_note'] ?? null]);
+        return back()->with('success', 'Override rejected.');
     }
 
-    public function markConflictReviewed(FieldEventLog $log)
+    public function reviewConflict(FieldEventLog $log)
     {
-        $this->assertTeamLead();
-        abort_unless(in_array($log->user_id, $this->teamTechIds(), true), 403);
-
-        $log->update(['reviewed_at' => now(), 'reviewed_by_user_id' => auth()->id()]);
-
-        return redirect()->route('technician.team.index', ['tab' => 'conflicts'])
-            ->with('success', 'Marked reviewed.');
-    }
-
-    public function storeNew(Request $request)
-    {
-        $this->assertTeamLead();
-        // Reuses the office create form rather than guessing its validation here.
-        return redirect()->route('service-requests.create');
+        abort_unless($log->serviceRequest?->team_lead_user_id === auth()->id(), 403);
+        $log->update(['reviewed_by_user_id' => auth()->id(), 'reviewed_at' => now()]);
+        return back()->with('success', 'Marked reviewed.');
     }
 }

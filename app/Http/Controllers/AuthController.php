@@ -2,12 +2,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\Tenant;
-use App\Services\Audit\AuditLogger;   // ← added
+use App\Services\Audit\AuditLogger;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\RateLimiter; 
+use Illuminate\Support\Facades\RateLimiter;
+
 class AuthController extends Controller
 {
-    public function __construct(private AuditLogger $audit) {}   // ← added
+    private const FIELD_CODES = ['field_technician', 'team_lead'];
+
+    public function __construct(private AuditLogger $audit) {}
 
     public function showLogin(Request $request)
     {
@@ -55,7 +58,7 @@ class AuthController extends Controller
             ->first();
 
         if (! $user || ! \Illuminate\Support\Facades\Hash::check($data['password'], $user->password)) {
-            RateLimiter::hit($ipKey, 15 * 60);        // ← ADD THIS LINE
+            RateLimiter::hit($ipKey, 15 * 60);
 
             if ($user) {
                 $user->increment('failed_login_count');
@@ -122,8 +125,7 @@ class AuthController extends Controller
             return redirect()->route('password.change');
         }
 
-         return redirect()->intended($this->redirectAfterSignIn($user)->getTargetUrl());
-        
+        return redirect()->intended($this->redirectAfterSignIn($user)->getTargetUrl());
     }
 
     public function logout(Request $request)
@@ -171,7 +173,6 @@ class AuthController extends Controller
             'must_change_password' => false,
         ]);
 
-        // ↓ added
         $this->audit->log('auth.password_changed', [
             'item_type' => \App\Models\User::class,
             'item_id'   => $user->id,
@@ -181,55 +182,144 @@ class AuthController extends Controller
     }
 
     public function showAcceptInvitation(string $token)
-{
-    $link = app(\App\Services\Auth\SecureLinkService::class)->find($token, 'user_invite');
+    {
+        $link = app(\App\Services\Auth\SecureLinkService::class)->find($token, 'user_invite');
 
-    if (! $link) {
-        return view('auth.link-invalid');
+        if (! $link) {
+            return view('auth.link-invalid');
+        }
+
+        return view('auth.accept-invitation', compact('token', 'link'));
     }
 
-    return view('auth.accept-invitation', compact('token', 'link'));
-}
+    public function acceptInvitation(\Illuminate\Http\Request $request, string $token)
+    {
+        $data = $request->validate([
+            'new'    => ['required', 'string', 'min:10'],
+            'repeat' => ['required', 'same:new'],
+        ], [
+            'new.min'     => 'Use at least 10 characters.',
+            'repeat.same' => 'The two passwords do not match.',
+        ]);
 
-public function acceptInvitation(\Illuminate\Http\Request $request, string $token)
-{
-    $data = $request->validate([
-        'new'    => ['required', 'string', 'min:10'],
-        'repeat' => ['required', 'same:new'],
-    ], [
-        'new.min'     => 'Use at least 10 characters.',
-        'repeat.same' => 'The two passwords do not match.',
-    ]);
+        $linkService = app(\App\Services\Auth\SecureLinkService::class);
+        $link = $linkService->find($token, 'user_invite');
 
-    $linkService = app(\App\Services\Auth\SecureLinkService::class);
-    $link = $linkService->find($token, 'user_invite');
+        if (! $link) {
+            return view('auth.link-invalid');
+        }
 
-    if (! $link) {
-        return view('auth.link-invalid');
+        $user = $link->user;
+        $user->update([
+            'password'             => \Illuminate\Support\Facades\Hash::make($data['new']),
+            'must_change_password' => false,
+            'last_sign_in_at'      => now(),
+        ]);
+
+        $linkService->consume($link, $request->ip());
+        \Illuminate\Support\Facades\Auth::guard('web')->login($user);
+
+        $this->audit->log('auth.sign_in', [
+            'item_type' => \App\Models\User::class,
+            'item_id'   => $user->id,
+        ]);
+
+        return $this->redirectAfterSignIn($user)->with('success', 'Welcome. Your account is ready.');
     }
 
-    $user = $link->user;
-    $user->update([
-        'password'             => \Illuminate\Support\Facades\Hash::make($data['new']),
-        'must_change_password' => false,
-        'last_sign_in_at'      => now(),
-    ]);
+    // ── Field View (Technician / Team Lead) sign-in — same guard, same User model,
+    // same audit/device/lockout logic as above, just a second entry point for field roles. ──
 
-    $linkService->consume($link, $request->ip());
-    \Illuminate\Support\Facades\Auth::guard('web')->login($user);
+    public function showFieldLogin(Request $request)
+    {
+        $tenant = Tenant::current();
+        abort_unless($tenant, 404);
+        return view('auth.field-login', compact('tenant'));
+    }
 
-    $this->audit->log('auth.sign_in', [
-        'item_type' => \App\Models\User::class,
-        'item_id'   => $user->id,
-    ]);
+    public function showFieldTeamLeadLogin(Request $request)
+    {
+        $tenant = Tenant::current();
+        abort_unless($tenant, 404);
+        return view('auth.field-login-team-lead', compact('tenant'));
+    }
 
-    return $this->redirectAfterSignIn($user)->with('success', 'Welcome. Your account is ready.');
-}
+    public function fieldLogin(Request $request)
+    {
+        $ipKey = 'field-login-ip:' . $request->ip();
+        if (RateLimiter::tooManyAttempts($ipKey, 20)) {
+            $mins = max(1, (int) ceil(RateLimiter::availableIn($ipKey) / 60));
+            return back()->withErrors(['identifier' => "Too many attempts. Try again in {$mins} minutes."]);
+        }
+
+        $data = $request->validate([
+            'identifier' => ['required', 'string', 'max:190'],
+            'password'   => ['required', 'string'],
+        ], [
+            'identifier.required' => 'Email, phone or password is incorrect.',
+            'password.required'   => 'Email, phone or password is incorrect.',
+        ]);
+
+        $tenant = Tenant::current();
+        if (! $tenant || ! $tenant->isActive()) {
+            return back()->withErrors(['identifier' => 'Email, phone or password is incorrect.'])->onlyInput('identifier');
+        }
+
+        $user = \App\Models\User::where('tenant_id', $tenant->id)
+            ->where(fn ($q) => $q->where('email', $data['identifier'])->orWhere('phone', $data['identifier']))
+            ->first();
+
+        if (! $user || ! \Illuminate\Support\Facades\Hash::check($data['password'], $user->password)) {
+            RateLimiter::hit($ipKey, 15 * 60);
+            if ($user) {
+                $user->increment('failed_login_count');
+                if ($user->failed_login_count >= 5) {
+                    $user->update(['locked_until' => now()->addMinutes(15)]);
+                    $this->audit->log('auth.locked', [
+                        'tenant_id' => $tenant->id,
+                        'item_type' => \App\Models\User::class,
+                        'item_id'   => $user->id,
+                    ]);
+                }
+            }
+            $this->audit->log('auth.sign_in_failed', [
+                'tenant_id' => $tenant->id,
+                'new'       => ['identifier_tried' => '[redacted]'],
+            ]);
+            return back()->withErrors(['identifier' => 'Email, phone or password is incorrect.'])->onlyInput('identifier');
+        }
+
+        if (! in_array($user->role?->code, self::FIELD_CODES, true)) {
+            return back()->withErrors(['identifier' => 'This account signs in from the office login, not here.'])->onlyInput('identifier');
+        }
+
+        if ($user->locked_until && $user->locked_until->isFuture()) {
+            $mins = max(1, $user->locked_until->diffInMinutes(now()));
+            return back()->withErrors(['identifier' => "Too many attempts. Try again in {$mins} minutes."]);
+        }
+
+        if (! $user->isActive()) {
+            return back()->withErrors(['identifier' => 'This account is turned off or locked. Ask your company admin.']);
+        }
+
+        \Illuminate\Support\Facades\Auth::guard('web')->login($user, $request->boolean('remember'));
+        $user->update(['last_sign_in_at' => now(), 'failed_login_count' => 0]);
+        app(\App\Services\Auth\DeviceService::class)->register($user, $request);
+        $this->audit->log('auth.sign_in', [
+            'item_type' => \App\Models\User::class,
+            'item_id'   => $user->id,
+        ]);
+
+        if ($user->must_change_password) {
+            return redirect()->route('password.change');
+        }
+
+        return redirect()->intended(route('technician.jobs.index'));
+    }
 
     private function redirectAfterSignIn(\App\Models\User $user)
     {
-        $fieldCodes = ['technician', 'team_lead'];
-        if (in_array($user->role?->code, $fieldCodes, true)) {
+        if (in_array($user->role?->code, self::FIELD_CODES, true)) {
             return redirect()->route('technician.jobs.index');
         }
         return redirect()->route('tenant.dashboard');

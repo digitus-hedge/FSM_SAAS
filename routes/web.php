@@ -21,7 +21,6 @@ use App\Http\Controllers\Admin\QuotesController;
 use App\Http\Controllers\PublicQuoteController;
 
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\Technician\JobsController;
 
 use App\Http\Controllers\Web\PlatformAuthView;
 use App\Http\Controllers\Tenant\MembersController;
@@ -31,7 +30,10 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\InvoicesController;
 use App\Http\Controllers\PublicInvoiceController;
 use App\Http\Controllers\Client\ClientAuthController;
+use App\Http\Controllers\FieldLoginController;
+use App\Http\Controllers\Technician\JobsController;
 use App\Http\Controllers\Technician\TeamController;
+
 /*
 |--------------------------------------------------------------------------
 | Platform admin sign-in (platform_users table — owner@aiywah.app, etc.)
@@ -52,6 +54,14 @@ Route::get('/login',   [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login',  [AuthController::class, 'login'])->name('login.attempt');
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 
+Route::get('/login/technician', [FieldLoginController::class, 'showTechnician'])->name('login.technician');
+Route::get('/login/team-lead',  [FieldLoginController::class, 'showTeamLead'])->name('login.team-lead');
+
+Route::get('/login/technician', [FieldLoginController::class, 'showTechnician'])->name('login.technician');
+Route::get('/login/team-lead',  [FieldLoginController::class, 'showTeamLead'])->name('login.team-lead');
+Route::get('/field/login',           [AuthController::class, 'showFieldLogin'])->name('field.login');
+Route::get('/field/login/team-lead', [AuthController::class, 'showFieldTeamLeadLogin'])->name('field.login.team-lead');
+Route::post('/field/login',          [AuthController::class, 'fieldLogin'])->name('field.login.attempt');
 /*
 |--------------------------------------------------------------------------
 | Root — redirect to the right dashboard or login
@@ -240,48 +250,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/save-all',  [SlaPoliciesController::class, 'saveAll'])->name('save-all');
     });
 
-   Route::middleware(['auth'])->prefix('technician')->name('technician.')->group(function () {
-    Route::get('/',                           fn () => redirect()->route('technician.jobs.index'));
-    Route::get('/jobs',                       [JobsController::class, 'index'])->name('jobs.index');
-    Route::get('/jobs/all',                   [JobsController::class, 'all'])->name('jobs.all');
-    Route::get('/jobs/{job}',                 [JobsController::class, 'show'])->name('jobs.show');
-
-    Route::get('/team',                        [TeamController::class, 'index'])->name('team.index');
-    Route::post('/team/new',                   [TeamController::class, 'storeNew'])->name('team.new');
-    Route::post('/team/overrides/{override}/approve', [TeamController::class, 'approveOverride'])->name('team.overrides.approve');
-    Route::post('/team/overrides/{override}/reject',  [TeamController::class, 'rejectOverride'])->name('team.overrides.reject');
-    Route::post('/team/conflicts/{log}/reviewed',      [TeamController::class, 'markConflictReviewed'])->name('team.conflicts.reviewed');
-
-    Route::post('/jobs/{job}/accept',         [JobsController::class, 'accept'])->name('jobs.accept');
-    Route::post('/jobs/{job}/change-time',    [JobsController::class, 'changeTime'])->name('jobs.change-time');
-    Route::post('/jobs/{job}/punch-in',       [JobsController::class, 'punchIn'])->name('jobs.punch-in');
-    Route::get('/jobs/{job}/punched-in',      [JobsController::class, 'punchedIn'])->name('jobs.punched-in');
-    Route::post('/jobs/{job}/punch-out',      [JobsController::class, 'punchOut'])->name('jobs.punch-out');
-    Route::get('/jobs/{job}/punch-out',       [JobsController::class, 'punchOutReview'])->name('jobs.punch-out-review');
-    Route::post('/jobs/{job}/hold',           [JobsController::class, 'hold'])->name('jobs.hold');
-    Route::post('/jobs/{job}/geofence-override', [JobsController::class, 'requestGeofenceOverride'])->name('jobs.geofence-override');
-    Route::post('/jobs/{job}/resume',         [JobsController::class, 'resume'])->name('jobs.resume');
-
-    Route::get('/jobs/{job}/punched-out', [JobsController::class, 'punchedOut'])->name('jobs.punched-out');
-
-    Route::get('/jobs/{job}/photos',          [JobsController::class, 'photos'])->name('jobs.photos');
-    Route::post('/jobs/{job}/photos',         [JobsController::class, 'storePhoto'])->name('jobs.photos.store');
-    Route::delete('/jobs/{job}/photos/{photo}', [JobsController::class, 'deletePhoto'])->name('jobs.photos.delete');
-    Route::post('/jobs/{job}/photos/{photo}/replace', [JobsController::class, 'replacePhoto'])->name('jobs.photos.replace');
-    Route::get('/jobs/{job}/notes',           [JobsController::class, 'notes'])->name('jobs.notes');
-    Route::post('/jobs/{job}/notes',          [JobsController::class, 'storeNote'])->name('jobs.notes.store');
-    Route::get('/jobs/{job}/expenses',        [JobsController::class, 'expenses'])->name('jobs.expenses');
-    Route::get('/jobs/{job}/expenses/create', [JobsController::class, 'createExpense'])->name('jobs.expenses.create');
-    Route::post('/jobs/{job}/expenses',       [JobsController::class, 'storeExpense'])->name('jobs.expenses.store');
-    Route::get('/jobs/{job}/signature',       [JobsController::class, 'signature'])->name('jobs.signature');
-    Route::post('/jobs/{job}/signature',      [JobsController::class, 'storeSignature'])->name('jobs.signature.store');
-
-    Route::get('/jobs/{job}/counts',          [JobsController::class, 'liveCounts'])->name('jobs.counts');
-
-    Route::get('/notifications',              [JobsController::class, 'notifications'])->name('notifications');
-    Route::get('/sync',                       [JobsController::class, 'sync'])->name('sync');
-    Route::get('/profile',                    [JobsController::class, 'profile'])->name('profile');
-});
+ 
     // Tax Rates
     Route::prefix('admin/tax-rates')->name('admin.tax-rates.')->group(function () {
         Route::get('/',                       [TaxRatesController::class, 'index'])->name('index');
@@ -457,4 +426,45 @@ Route::prefix('service-requests')->name('service-requests.')->group(function () 
     Route::post('/{service_request}/change-priority', [ServiceRequestController::class, 'changePriority'])->name('change-priority');
     // Route::delete('/{service_request}/attachments/{filename}', [ServiceRequestController::class, 'deleteAttachment'])
     //     ->name('attachments.delete');
+});
+
+Route::prefix('technician')->middleware(['auth'])->name('technician.')->group(function () {
+    Route::get('/jobs', [JobsController::class, 'index'])->name('jobs.index');
+    Route::get('/jobs/all', [JobsController::class, 'all'])->name('jobs.all');
+    Route::get('/jobs/counts', [JobsController::class, 'liveCounts'])->name('jobs.counts');
+    Route::get('/jobs/{serviceRequest}', [JobsController::class, 'show'])->name('jobs.show');
+
+    Route::post('/jobs/{serviceRequest}/accept', [JobsController::class, 'accept'])->name('jobs.accept');
+    Route::post('/jobs/{serviceRequest}/change-time', [JobsController::class, 'changeTime'])->name('jobs.change-time');
+    Route::post('/jobs/{serviceRequest}/punch-in', [JobsController::class, 'punchIn'])->name('jobs.punch-in');
+    Route::post('/jobs/{serviceRequest}/hold', [JobsController::class, 'hold'])->name('jobs.hold');
+    Route::post('/jobs/{serviceRequest}/resume', [JobsController::class, 'resume'])->name('jobs.resume');
+    Route::post('/jobs/{serviceRequest}/punch-out', [JobsController::class, 'punchOut'])->name('jobs.punch-out');
+    Route::post('/jobs/{serviceRequest}/geofence-override', [JobsController::class, 'requestGeofenceOverride'])->name('jobs.geofence-override');
+
+    Route::get('/jobs/{serviceRequest}/photos', [JobsController::class, 'photos'])->name('jobs.photos');
+    Route::post('/jobs/{serviceRequest}/photos', [JobsController::class, 'storePhoto'])->name('jobs.photos.store');
+    Route::delete('/jobs/{serviceRequest}/photos/{attachment}', [JobsController::class, 'deletePhoto'])->name('jobs.photos.delete');
+
+    Route::get('/jobs/{serviceRequest}/notes', [JobsController::class, 'notes'])->name('jobs.notes');
+    Route::post('/jobs/{serviceRequest}/notes', [JobsController::class, 'storeNote'])->name('jobs.notes.store');
+
+    Route::get('/jobs/{serviceRequest}/expenses', [JobsController::class, 'expenses'])->name('jobs.expenses');
+    Route::get('/jobs/{serviceRequest}/expenses/create', [JobsController::class, 'createExpense'])->name('jobs.expenses.create');
+    Route::post('/jobs/{serviceRequest}/expenses', [JobsController::class, 'storeExpense'])->name('jobs.expenses.store');
+
+    Route::get('/jobs/{serviceRequest}/signature', [JobsController::class, 'signature'])->name('jobs.signature');
+    Route::post('/jobs/{serviceRequest}/signature', [JobsController::class, 'storeSignature'])->name('jobs.signature.store');
+
+    Route::get('/notifications', [JobsController::class, 'notifications'])->name('notifications');
+    Route::get('/profile', [JobsController::class, 'profile'])->name('profile');
+
+        Route::get('/team', [TeamController::class, 'index'])->name('team.index');
+    Route::post('/team/{serviceRequest}/approve', [TeamController::class, 'approve'])->name('team.approve');
+    Route::post('/team/{serviceRequest}/reject', [TeamController::class, 'reject'])->name('team.reject');
+    Route::post('/team/{serviceRequest}/assign', [TeamController::class, 'assign'])->name('team.assign');
+    Route::post('/team/overrides/{override}/approve', [TeamController::class, 'approveOverride'])->name('team.overrides.approve');
+    Route::post('/team/overrides/{override}/reject', [TeamController::class, 'rejectOverride'])->name('team.overrides.reject');
+    Route::post('/team/conflicts/{log}/reviewed', [TeamController::class, 'reviewConflict'])->name('team.conflicts.reviewed');
+
 });
