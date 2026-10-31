@@ -128,7 +128,7 @@
         @if ($client->is_active)
           <span class="status status-ok">Active</span>
         @else
-          <span class="status status-off">Suspended</span>
+          <span class="status status-off">Inactive</span>
         @endif
       </div>
     @endif
@@ -164,7 +164,7 @@
     <button type="button" class="tab-btn" data-tab="sites">
       Sites <span class="tab-count">({{ $client->sites_count ?? $client->sites->count() }})</span>
     </button>
-    <button type="button" class="tab-btn" data-tab="users">Client users</button>
+    <!-- <button type="button" class="tab-btn" data-tab="users">Client users</button> -->
   </div>
 @endif
 
@@ -435,7 +435,7 @@
 </div>
 
 {{-- ========== CLIENT USERS TAB ========== --}}
-<div class="tabpane" id="pane-users">
+<!-- <div class="tabpane" id="pane-users">
   <div class="card">
     <div class="section-head">
       <div>
@@ -446,7 +446,7 @@
     </div>
     <div class="empty-list">Client-portal users will appear here once the portal module is enabled.</div>
   </div>
-</div>
+</div> -->
 @endif
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.all.min.js"></script>

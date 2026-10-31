@@ -140,8 +140,20 @@ class InvoicesController extends Controller
             'lines.*.unit_rate'     => 'required|numeric|min:0',
             'lines.*.tax_rate_id'   => 'nullable|integer|exists:tax_rates,id',
         ], [
-            'lines.*.description.min' => 'Enter a description of 2 to 255 characters.',
-            'lines.*.description.max' => 'Enter a description of 2 to 255 characters.',
+            // 'lines.*.description.min' => 'Enter a description of 2 to 255 characters.',
+            // 'lines.*.description.max' => 'Enter a description of 2 to 255 characters.',
+
+            'due_date.required'              => 'Pick a due date.',
+            'due_date.date'                  => 'Due date is invalid.',
+            'lines.*.description.required'   => 'Description is required.',
+            'lines.*.description.min'        => 'Enter a description of 2 to 255 characters.',
+            'lines.*.description.max'        => 'Enter a description of 2 to 255 characters.',
+            'lines.*.quantity.required'      => 'Quantity is required.',
+            'lines.*.quantity.numeric'       => 'Quantity must be a number.',
+            'lines.*.quantity.min'           => 'Quantity must be at least 0.01.',
+            'lines.*.unit_rate.required'     => 'Rate is required.',
+            'lines.*.unit_rate.numeric'      => 'Rate must be a number.',
+            'lines.*.unit_rate.min'          => 'Rate must be 0 or more.',
         ]);
 
         $subtotal = 0;
@@ -322,12 +334,12 @@ class InvoicesController extends Controller
 
             $sr = $invoice->serviceRequest;
             if ($sr) {
-    // When the invoice goes out, the job itself is done — advance the SR status.
-    $sr->update([
-        'status'         => 'completed',
-        // 'billing_status' => 'invoiced',   // (keeps your existing cascade)
-    ]);
-}
+                // When the invoice goes out, the job itself is done — advance the SR status.
+                $sr->update([
+                    'status'         => 'completed',
+                    // 'billing_status' => 'invoiced',   // (keeps your existing cascade)
+                ]);
+            }
         });
 
         return redirect()->route('admin.invoices.show', $invoice)
@@ -384,8 +396,7 @@ class InvoicesController extends Controller
         if ($invoice->status === 'approved') {
             $invoice->update(['status' => 'sent', 'sent_at' => now()]);
 
-            $sr->update(['billing_status' => 'invoiced','status' => 'completed']);
-            
+            $sr->update(['billing_status' => 'invoiced', 'status' => 'completed']);
         }
         InvoiceEvent::log($invoice->id, 'sent', 'Sent to ' . implode(', ', $request->recipients));
 
@@ -438,7 +449,6 @@ class InvoicesController extends Controller
                     }
                 }
             }
-
         });
 
         return redirect()->route('admin.invoices.show', $invoice)->with('success', 'Payment recorded.');

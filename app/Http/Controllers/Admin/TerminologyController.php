@@ -5,6 +5,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Models\TenantTerminology;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class TerminologyController extends Controller
 {
@@ -51,6 +52,7 @@ class TerminologyController extends Controller
             if ($singular === $default[0] && $plural === $default[1]) {
                 TenantTerminology::where('tenant_id', $tenantId)
                     ->where('term_key', $key)->delete();
+                $this->clearTermCache($tenantId, $key);
                 continue;
             }
 
@@ -58,6 +60,9 @@ class TerminologyController extends Controller
                 ['tenant_id' => $tenantId, 'term_key' => $key],
                 ['singular' => $singular, 'plural' => $plural],
             );
+
+            // Bust the cache so the term() helper picks up the new value next request
+            $this->clearTermCache($tenantId, $key);
         }
 
         return back()->with('success', 'Terminology saved.');
@@ -67,9 +72,24 @@ class TerminologyController extends Controller
     {
         abort_unless(array_key_exists($key, TenantTerminology::DEFAULTS), 404);
 
-        TenantTerminology::where('tenant_id', Tenant::current()?->id)
+        $tenantId = Tenant::current()?->id;
+
+        TenantTerminology::where('tenant_id', $tenantId)
             ->where('term_key', $key)->delete();
 
+        $this->clearTermCache($tenantId, $key);
+
         return response()->json(['ok' => true]);
+    }
+
+    /**
+     * Clear both singular and plural cache keys for a given term.
+     */
+    protected function clearTermCache(?int $tenantId, string $key): void
+    {
+        if (! $tenantId) return;
+
+        Cache::forget("term:{$tenantId}:{$key}:singular");
+        Cache::forget("term:{$tenantId}:{$key}:plural");
     }
 }

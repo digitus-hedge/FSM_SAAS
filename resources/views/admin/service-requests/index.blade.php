@@ -1,5 +1,5 @@
 @extends('layouts.admin')
-@section('title', 'Requests')
+@section('title', 'Service Requests')
 
 @section('content')
 <style>
@@ -92,7 +92,7 @@
 
 <div class="page-head">
   <div>
-    <h1>Requests</h1>
+    <h1>Service Requests</h1>
     <p>All service requests from clients — the core workflow for your field team.</p>
   </div>
   <a href="{{ route('service-requests.create') }}" class="btn btn-primary">

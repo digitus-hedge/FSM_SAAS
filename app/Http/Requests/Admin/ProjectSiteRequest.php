@@ -47,6 +47,7 @@ class ProjectSiteRequest extends FormRequest
             'contact_phone'          => 'nullable|string|max:40',
             'access_instructions'    => 'nullable|string|max:2000',
             'is_active'              => 'sometimes|boolean',
+            'always_enforce_geofence' => 'sometimes|boolean',
         ];
     }
 
@@ -97,6 +98,7 @@ class ProjectSiteRequest extends FormRequest
                 ? null
                 : $this->input('client_id'),
             'is_active' => $this->has('is_active') ? $this->boolean('is_active') : true,
+            'always_enforce_geofence' => $this->boolean('always_enforce_geofence'),   // ← added
         ]);
     }
 }

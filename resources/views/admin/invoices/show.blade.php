@@ -91,10 +91,19 @@
     <form method="POST" action="{{ route('admin.invoices.approve', $invoice) }}" style="display:inline">@csrf
       <button class="btn">Approve</button>
     </form>
-    <form method="POST" action="{{ route('admin.invoices.send-back', $invoice) }}" style="display:inline" onsubmit="return (this.reason.value=prompt('Reason for sending back?','')) !== null">@csrf
+
+    <!-- <form method="POST" action="{{ route('admin.invoices.send-back', $invoice) }}" style="display:inline" onsubmit="return (this.reason.value=prompt('Reason for sending back?','')) !== null">@csrf
       <input type="hidden" name="reason">
       <button class="btn ghost">Send back</button>
-    </form>
+    </form> -->
+
+
+    <button type="button" class="btn ghost" onclick="openSendBack()">Send back</button>
+<form id="sendback-form" method="POST" action="{{ route('admin.invoices.send-back', $invoice) }}" style="display:none">
+  @csrf
+  <input type="hidden" name="reason" id="sendback-reason">
+</form>
+
   @endif
 
   @if ($invoice->status === 'approved')
@@ -108,10 +117,11 @@
 
   @if (in_array($invoice->status, ['sent','partially_paid','overdue']))
     <button class="btn blue" onclick="document.getElementById('pay-modal').style.display='flex'">Record payment</button>
-    <form method="POST" action="{{ route('admin.invoices.write-off', $invoice) }}" style="display:inline" onsubmit="return (this.reason.value=prompt('Reason for write-off?','')) !== null">@csrf
-      <input type="hidden" name="reason">
-      <button class="btn ghost">Write off balance</button>
-    </form>
+   <button type="button" class="btn ghost" onclick="openWriteOff()">Write off balance</button>
+<form id="writeoff-form" method="POST" action="{{ route('admin.invoices.write-off', $invoice) }}" style="display:none">
+  @csrf
+  <input type="hidden" name="reason" id="writeoff-reason">
+</form>
     <form method="POST" action="{{ route('admin.invoices.send', $invoice) }}" style="display:inline">@csrf
       @foreach (($invoice->client?->contacts ?? []) as $c)
         <input type="hidden" name="recipients[]" value="{{ $c->name }}">
@@ -130,10 +140,14 @@
 
   @if ($invoice->status !== 'void')
     <span style="margin-left:auto"></span>
-    <form method="POST" action="{{ route('admin.invoices.void', $invoice) }}" style="display:inline" onsubmit="return (this.reason.value=prompt('Reason for voiding?','')) !== null && confirm('Void this invoice? This cannot be undone.')">@csrf
-      <input type="hidden" name="reason">
-      <button class="btn danger">Void</button>
-    </form>
+
+  <button type="button" class="btn danger" onclick="openVoid()">Void</button>
+<form id="void-form" method="POST" action="{{ route('admin.invoices.void', $invoice) }}" style="display:none">
+  @csrf
+  <input type="hidden" name="reason" id="void-reason">
+</form>
+
+    
   @endif
 </div>
 
@@ -186,10 +200,11 @@
                 <td class="r">AED {{ number_format($p->amount, 3) }}</td>
                 <td style="text-align:right">
                   @if (! $p->reversed_at)
-                    <form method="POST" action="{{ route('admin.invoices.payment.reverse', $p) }}" style="display:inline" onsubmit="return (this.reason.value=prompt('Reason for reversal?','')) !== null">@csrf
-                      <input type="hidden" name="reason">
-                      <button class="btn ghost" style="padding:4px 10px;font-size:11px">Reverse</button>
-                    </form>
+                    <button type="button" class="btn ghost" style="padding:4px 10px;font-size:11px" onclick="openReverse({{ $p->id }}, '{{ $p->payment_number }}')">Reverse</button>
+<form id="reverse-form-{{ $p->id }}" method="POST" action="{{ route('admin.invoices.payment.reverse', $p) }}" style="display:none">
+  @csrf
+  <input type="hidden" name="reason" id="reverse-reason-{{ $p->id }}">
+</form>
                   @endif
                 </td>
               </tr>
@@ -255,4 +270,120 @@
     </form>
   </div>
 </div>
+
+<script>
+const INV_NUMBER = @json($invoice->invoice_number);
+
+/* ===== SEND BACK ===== */
+function openSendBack() {
+  Swal.fire({
+    title: 'Send back',
+    html: '<div style="color:#5F5D6E;font-size:13.5px;margin-bottom:4px">Finance will see the reason.</div>',
+    input: 'textarea',
+    inputLabel: 'Reason',
+    inputPlaceholder: '',
+    inputAttributes: { 'aria-label': 'Reason', style: 'min-height:120px;resize:vertical' },
+    showCancelButton: true,
+    confirmButtonText: 'Send back',
+    cancelButtonText: 'Cancel',
+    reverseButtons: true,
+    customClass: { confirmButton: 'swal-btn-blue' },
+    inputValidator: v => (!v || !v.trim()) ? 'Please give a reason.' : (v.trim().length < 3 ? 'At least 3 characters.' : null),
+    width: 520,
+  }).then(r => {
+    if (r.isConfirmed) {
+      document.getElementById('sendback-reason').value = r.value.trim();
+      document.getElementById('sendback-form').submit();
+    }
+  });
+}
+
+/* ===== WRITE OFF ===== */
+function openWriteOff() {
+  Swal.fire({
+    icon: 'warning',
+    title: 'Write off balance',
+    html: '<div style="color:#5F5D6E;font-size:13.5px;margin-bottom:4px">The remaining balance will be marked as written off.</div>',
+    input: 'textarea',
+    inputLabel: 'Reason',
+    inputPlaceholder: 'e.g. Client declared bankruptcy',
+    inputAttributes: { style: 'min-height:120px;resize:vertical' },
+    showCancelButton: true,
+    confirmButtonText: 'Write off',
+    cancelButtonText: 'Cancel',
+    reverseButtons: true,
+    customClass: { confirmButton: 'swal-btn-amber' },
+    inputValidator: v => (!v || !v.trim()) ? 'Please give a reason.' : (v.trim().length < 3 ? 'At least 3 characters.' : null),
+    width: 520,
+  }).then(r => {
+    if (r.isConfirmed) {
+      document.getElementById('writeoff-reason').value = r.value.trim();
+      document.getElementById('writeoff-form').submit();
+    }
+  });
+}
+
+/* ===== VOID ===== */
+function openVoid() {
+  Swal.fire({
+    icon: 'error',
+    title: 'Void ' + INV_NUMBER,
+    html: '<div style="color:#C2381B;font-size:13.5px;margin-bottom:4px;font-weight:600">This cannot be undone.</div>',
+    input: 'textarea',
+    inputLabel: 'Reason',
+    inputPlaceholder: 'e.g. Issued in error',
+    inputAttributes: { style: 'min-height:120px;resize:vertical' },
+    showCancelButton: true,
+    confirmButtonText: 'Void invoice',
+    cancelButtonText: 'Cancel',
+    reverseButtons: true,
+    customClass: { confirmButton: 'swal-btn-red' },
+    inputValidator: v => (!v || !v.trim()) ? 'Please give a reason.' : (v.trim().length < 3 ? 'At least 3 characters.' : null),
+    width: 520,
+  }).then(r => {
+    if (r.isConfirmed) {
+      document.getElementById('void-reason').value = r.value.trim();
+      document.getElementById('void-form').submit();
+    }
+  });
+}
+
+/* ===== REVERSE PAYMENT ===== */
+function openReverse(paymentId, paymentNumber) {
+  Swal.fire({
+    icon: 'warning',
+    title: 'Reverse ' + paymentNumber,
+    html: '<div style="color:#5F5D6E;font-size:13.5px;margin-bottom:4px">The payment will be marked as reversed and the invoice balance will go back up.</div>',
+    input: 'textarea',
+    inputLabel: 'Reason',
+    inputPlaceholder: 'e.g. Bounced cheque',
+    inputAttributes: { style: 'min-height:110px;resize:vertical' },
+    showCancelButton: true,
+    confirmButtonText: 'Reverse payment',
+    cancelButtonText: 'Cancel',
+    reverseButtons: true,
+    customClass: { confirmButton: 'swal-btn-red' },
+    inputValidator: v => (!v || !v.trim()) ? 'Please give a reason.' : (v.trim().length < 3 ? 'At least 3 characters.' : null),
+    width: 520,
+  }).then(r => {
+    if (r.isConfirmed) {
+      document.getElementById('reverse-reason-' + paymentId).value = r.value.trim();
+      document.getElementById('reverse-form-' + paymentId).submit();
+    }
+  });
+}
+</script>
+
+<style>
+  .swal-btn-blue{background:#2F5BEA !important;color:#fff !important;border-radius:999px !important;padding:10px 22px !important;font-weight:700 !important}
+  .swal-btn-amber{background:#F0B700 !important;color:#1B1A24 !important;border-radius:999px !important;padding:10px 22px !important;font-weight:700 !important}
+  .swal-btn-red{background:#C2381B !important;color:#fff !important;border-radius:999px !important;padding:10px 22px !important;font-weight:700 !important}
+  .swal2-popup{border-radius:16px !important;padding:24px !important}
+  .swal2-title{font-family:'Figtree',sans-serif !important;font-weight:800 !important;font-size:19px !important;text-align:left !important;padding:0 0 2px !important}
+  .swal2-html-container{text-align:left !important;padding:0 !important;margin-top:0 !important}
+  .swal2-input-label{text-align:left !important;font-weight:700 !important;font-size:13px !important;color:#1B1A24 !important;margin-top:14px !important}
+  .swal2-textarea{border:1.5px solid #2F5BEA !important;border-radius:10px !important;font-family:inherit !important;font-size:14px !important;padding:12px 14px !important;box-shadow:0 0 0 3px rgba(47,91,234,.12) !important}
+  .swal2-actions{justify-content:flex-end !important;margin-top:18px !important}
+  .swal2-cancel.swal2-styled{background:#fff !important;color:#1B1A24 !important;border:1px solid #E6E4EE !important;border-radius:999px !important;padding:10px 22px !important;font-weight:600 !important}
+</style>
 @endsection

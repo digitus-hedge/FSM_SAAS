@@ -64,6 +64,84 @@
   .hours-cell{display:flex;align-items:center;min-height:38px}
 </style>
 
+
+<style>
+  /* Red asterisk for required fields */
+  .req-star {
+    color: #C2381B;
+    font-weight: 800;
+    font-size: 15px;
+    margin-left: 2px;
+  }
+
+  /* Form inside SweetAlert */
+  .swal-form {
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 4px 2px 2px;
+  }
+  .swal-form label {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    color: #1B1A24;
+    margin-bottom: 6px;
+  }
+  .swal-form input {
+    width: 100%;
+    border: 1.5px solid #E6E4EE;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .swal-form input:focus {
+    border-color: #2F5BEA;
+    box-shadow: 0 0 0 3px rgba(47,91,234,.12);
+  }
+  .swal-form input.has-err {
+    border-color: #C2381B !important;
+    box-shadow: 0 0 0 3px rgba(194,56,27,.14) !important;
+  }
+
+  /* Validation message with red icon */
+  .swal2-validation-message {
+    background: #FDECE8 !important;
+    color: #C2381B !important;
+    border-radius: 10px !important;
+    font-weight: 600 !important;
+    padding: 10px 14px !important;
+  }
+  .swal2-validation-message .val-ico {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    background: #C2381B;
+    color: #fff;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 800;
+    margin-right: 8px;
+  }
+  .swal2-validation-message::before {
+    display: none !important; /* hide default swal icon, we use our own */
+  }
+
+  .swal-btn-blue {
+    background: #2F5BEA !important;
+    color: #fff !important;
+    border-radius: 999px !important;
+    padding: 10px 22px !important;
+    font-weight: 700 !important;
+  }
+</style>
+
 <div class="page-head">
   <h1>Business hours and holidays</h1>
   <p>Hours and holidays count only for SLA policies that use business hours. Time zone: {{ config('app.timezone') }}.</p>
@@ -223,17 +301,45 @@ function openHolidayModal(h = null) {
     title: edit ? 'Edit holiday' : 'Add holiday',
     html: `
       <div class="swal-form">
-        <div><label>Name *</label><input id="h-name" type="text" value="${esc(h?.name)}" placeholder="e.g. National Day"></div>
-        <div><label>Date *</label><input id="h-date" type="date" value="${esc(h?.holiday_date)}"></div>
+        <div>
+          <label>Name <span class="req-star">*</span></label>
+          <input id="h-name" type="text" value="${esc(h?.name)}" placeholder="e.g. National Day">
+        </div>
+        <div>
+          <label>Date <span class="req-star">*</span></label>
+          <input id="h-date" type="date" value="${esc(h?.holiday_date)}">
+        </div>
       </div>`,
-    showCancelButton: true, confirmButtonText: 'Save', cancelButtonText: 'Cancel',
-    reverseButtons: true, focusConfirm: false,
+    showCancelButton: true,
+    confirmButtonText: 'Save',
+    cancelButtonText: 'Cancel',
+    reverseButtons: true,
+    focusConfirm: false,
+    customClass: { confirmButton: 'swal-btn-blue' },
+    width: 480,
     didOpen: () => document.getElementById('h-name').focus(),
     preConfirm: () => {
       const name = document.getElementById('h-name').value.trim();
       const date = document.getElementById('h-date').value;
-      if (!name) { Swal.showValidationMessage('Name is required'); return false; }
-      if (!date) { Swal.showValidationMessage('Date is required'); return false; }
+      const nameEl = document.getElementById('h-name');
+      const dateEl = document.getElementById('h-date');
+
+      // Clear previous error states
+      nameEl.classList.remove('has-err');
+      dateEl.classList.remove('has-err');
+
+      if (!name) {
+        nameEl.classList.add('has-err');
+        Swal.showValidationMessage('<span class="val-ico">⚠</span> Name is required');
+        nameEl.focus();
+        return false;
+      }
+      if (!date) {
+        dateEl.classList.add('has-err');
+        Swal.showValidationMessage('<span class="val-ico">⚠</span> Date is required');
+        dateEl.focus();
+        return false;
+      }
       return { name, holiday_date: date };
     }
   }).then(async r => {

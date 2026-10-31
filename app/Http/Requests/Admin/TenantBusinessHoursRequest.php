@@ -16,7 +16,19 @@ class TenantBusinessHoursRequest extends FormRequest
             'hours.*.weekday'       => ['required', 'integer', 'between:0,6'],
             'hours.*.is_open'       => ['nullable', 'boolean'],
             'hours.*.opens_at'      => ['nullable', 'required_if:hours.*.is_open,1', 'date_format:H:i'],
-            'hours.*.closes_at'     => ['nullable', 'required_if:hours.*.is_open,1', 'date_format:H:i', 'after:hours.*.opens_at'],
+           'hours.*.closes_at' => [
+    'nullable',
+    'required_if:hours.*.is_open,1',
+    'date_format:H:i',
+    function ($attribute, $value, $fail) {
+        if (!$value) return;
+        $idx     = explode('.', $attribute)[1] ?? null;      // e.g. "0"
+        $opens   = $this->input("hours.$idx.opens_at");
+        if ($opens && $value <= $opens && $value !== '23:59') {
+            $fail('Closing time must be after opening time.');
+        }
+    },
+],
         ];
     }
 

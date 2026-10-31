@@ -29,7 +29,7 @@ class ClientsController extends Controller
         ->search($request->input('q'))
         ->when($status !== 'all', fn ($q) =>
             $q->where('is_active', $status === 'active'))
-        ->orderBy('name')
+        ->orderByDesc('id')
         ->paginate($perPage)
         ->withQueryString();
 

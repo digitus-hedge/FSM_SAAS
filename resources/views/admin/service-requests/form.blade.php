@@ -407,7 +407,7 @@
       sites.forEach(s => {
         const sel = String(s.id) === String(selectedSiteId) ? 'selected' : '';
         const type = s.site_type ? ` (${s.site_type.replace(/_/g, ' ')})` : '';
-        html += `<option value="${s.id}" ${sel}>${s.name}${type}</option>`;
+        html += `<option value="${s.id}" ${sel}>${s.name}</option>`;
       });
       siteSel.innerHTML = html;
       siteSel.disabled = false;

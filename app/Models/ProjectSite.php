@@ -22,6 +22,7 @@ class ProjectSite extends Model
         'lat',
         'lng',
         'geofence_radius_meters',
+        'always_enforce_geofence',   // ← added
         'contact_name',
         'contact_phone',
         'access_instructions',
@@ -30,6 +31,7 @@ class ProjectSite extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
+        'always_enforce_geofence' => 'boolean',   // ← added
         'lat'       => 'decimal:7',
         'lng'       => 'decimal:7',
     ];

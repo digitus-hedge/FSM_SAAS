@@ -72,7 +72,11 @@
     <p>Everyone you do work for.</p>
   </div>
   <div style="display:flex;gap:10px">
-    <a href="#" class="btn btn-ghost">Import</a>
+    <!-- <a href="#" class="btn btn-ghost">Import</a> -->
+    <a href="{{ route('admin.clients.import.show') }}" class="btn btn-ghost">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+  Import
+</a>
     <a href="{{ route('admin.clients.create') }}" class="btn btn-primary">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
       New client
@@ -132,7 +136,7 @@
               @if ($client->is_active)
                 <span class="status status-ok">Active</span>
               @else
-                <span class="status status-off">Suspended</span>
+                <span class="status status-off">Inactive</span>
               @endif
             </td>
           </tr>

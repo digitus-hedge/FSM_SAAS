@@ -230,7 +230,7 @@
     @endif
 </td>
         
-            <td style="text-align:right" onclick="event.stopPropagation()">
+            <td style="text-align:right;" onclick="event.stopPropagation()">
     @php
     $draft = $sr->quotes()->where('status','draft')->latest('id')->first();
     @endphp

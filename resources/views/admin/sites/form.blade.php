@@ -171,13 +171,38 @@
       </div>
 
       {{-- LOCATION (map) --}}
-      <div class="fld">
+
+      <!-- <div class="fld">
         <label>Location</label>
         <div class="map-wrap">
           <div id="site-map"></div>
-        </div>
+        </div> -->
+
+        <div class="fld">
+  <label>Location</label>
+
+  {{-- PLACE SEARCH --}}
+  <div style="position:relative;margin-bottom:10px">
+    <input type="text" id="place-search" class="inp"
+           placeholder="Search a place, e.g. Bluewave Cafe Airport Road Dubai"
+           autocomplete="off"
+           style="padding-right:40px">
+    <button type="button" id="place-search-btn"
+            style="position:absolute;right:6px;top:6px;background:#2F5BEA;color:#fff;border:0;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">
+      Search
+    </button>
+    <div id="place-results"
+         style="position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #E5E4EC;border-radius:10px;margin-top:4px;max-height:260px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.08);z-index:1000;display:none"></div>
+  </div>
+
+  <div class="map-wrap">
+    <div id="site-map"></div>
+  </div>
+
+
+
         <div class="map-tools">
-          <button type="button" class="btn btn-ghost btn-sm" id="geo-locate">Use my current location</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="geo-locate">Find my location</button>
           <button type="button" class="btn btn-ghost btn-sm" id="geo-remove">Remove pin</button>
         </div>
 
@@ -368,13 +393,57 @@
   map.on('click', e => { setMarker(e.latlng); });
 
   // "Use my current location"
-  document.getElementById('geo-locate').addEventListener('click', () => {
-    if (!navigator.geolocation) return alert('Geolocation is not supported by this browser.');
+ document.getElementById('geo-locate').addEventListener('click', async () => {
+  const isSecure = location.protocol === 'https:'
+                || location.hostname === 'localhost'
+                || location.hostname === '127.0.0.1';
+
+  // === Try browser GPS first (HTTPS / localhost only) ===
+  if (navigator.geolocation && isSecure) {
     navigator.geolocation.getCurrentPosition(
-      pos => { const ll = { lat: pos.coords.latitude, lng: pos.coords.longitude }; map.setView(ll, 16); setMarker(ll); },
-      err => alert('Could not get location: ' + err.message)
+      pos => {
+        const lat = pos.coords.latitude, lng = pos.coords.longitude;
+        setMarker({ lat, lng });
+        map.setView([lat, lng], 16);
+        setTimeout(() => map.invalidateSize(), 50);
+      },
+      err => Swal.fire({ icon: 'warning', title: 'Could not get precise location', text: err.message, confirmButtonText: 'OK' })
     );
-  });
+    return;
+  }
+
+  // === Fallback: coarse IP location ===
+  try {
+    const r = await fetch('https://ipapi.co/json/');
+    const d = await r.json();
+    if (! d.latitude || ! d.longitude) throw new Error('No coords in response');
+
+    const lat = parseFloat(d.latitude), lng = parseFloat(d.longitude);
+
+    // Pan + place marker FIRST, then show toast (so Leaflet actually renders)
+    setMarker({ lat, lng });
+    map.setView([lat, lng], 13);
+    setTimeout(() => map.invalidateSize(), 50);
+
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'info',
+      title: 'Using approximate location',
+      html: '<small>' + (d.city || '?') + ', ' + (d.country_name || '?') + '. Drag the pin or paste coordinates for precise GPS.</small>',
+      showConfirmButton: false,
+      timer: 4000,
+      timerProgressBar: true,
+    });
+  } catch (e) {
+    Swal.fire({
+      icon: 'info',
+      title: 'Location unavailable',
+      text: 'Click on the map to drop a pin manually, or paste coordinates in the box below.',
+      confirmButtonText: 'OK'
+    });
+  }
+});
 
   // "Remove pin"
   document.getElementById('geo-remove').addEventListener('click', clearMarker);
@@ -400,6 +469,94 @@
 
   // Fix map tile loading when inside hidden/async layouts
   setTimeout(() => map.invalidateSize(), 150);
+
+
+  // ===== Place search (Nominatim / OpenStreetMap) =====
+const searchInput  = document.getElementById('place-search');
+const searchBtn    = document.getElementById('place-search-btn');
+const searchResults = document.getElementById('place-results');
+
+async function searchPlace(q) {
+  if (! q || q.trim().length < 2) return;
+
+  searchResults.innerHTML = '<div style="padding:12px 14px;color:#5F5D6E;font-size:13px">Searching…</div>';
+  searchResults.style.display = 'block';
+
+  try {
+    const url = 'https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=8&q=' + encodeURIComponent(q.trim());
+    const r = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+    const data = await r.json();
+
+    if (! data.length) {
+      searchResults.innerHTML = '<div style="padding:12px 14px;color:#5F5D6E;font-size:13px">No places found.</div>';
+      return;
+    }
+
+    searchResults.innerHTML = data.map((p, i) => `
+      <div class="pres" data-idx="${i}"
+           style="padding:10px 14px;border-bottom:1px solid #F2F1F6;cursor:pointer;font-size:13.5px">
+        <div style="font-weight:600;color:#0F0F17">${p.display_name.split(',').slice(0,2).join(', ')}</div>
+        <div style="color:#5F5D6E;font-size:12px;margin-top:2px">${p.display_name}</div>
+      </div>
+    `).join('');
+
+    // Store results on the container so clicks can find them
+    searchResults._data = data;
+
+    searchResults.querySelectorAll('.pres').forEach(row => {
+      row.addEventListener('mouseenter', () => row.style.background = '#F8F7FB');
+      row.addEventListener('mouseleave', () => row.style.background = '');
+      row.addEventListener('click', () => {
+        const pick = searchResults._data[parseInt(row.dataset.idx)];
+        const lat = parseFloat(pick.lat), lng = parseFloat(pick.lon);
+        setMarker({ lat, lng });
+        map.setView([lat, lng], 17);
+        setTimeout(() => map.invalidateSize(), 50);
+
+        // Auto-fill address / city when empty
+        const addrInput = document.getElementById('address');
+        const cityInput = document.getElementById('city');
+        if (addrInput && ! addrInput.value.trim()) {
+          addrInput.value = pick.display_name;
+        }
+        if (cityInput && ! cityInput.value.trim()) {
+          const city = pick.address?.city
+                    || pick.address?.town
+                    || pick.address?.village
+                    || pick.address?.state
+                    || '';
+          if (city) cityInput.value = city;
+        }
+
+        searchResults.style.display = 'none';
+        searchInput.value = pick.display_name.split(',').slice(0,2).join(', ');
+      });
+    });
+  } catch (e) {
+    searchResults.innerHTML = '<div style="padding:12px 14px;color:#C7372F;font-size:13px">Search failed. Try again.</div>';
+  }
+}
+
+// Fire on Enter + button click + 400ms after typing stops
+searchBtn.addEventListener('click', () => searchPlace(searchInput.value));
+searchInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); searchPlace(searchInput.value); } });
+
+let searchDebounce;
+searchInput.addEventListener('input', () => {
+  clearTimeout(searchDebounce);
+  const v = searchInput.value;
+  if (v.trim().length < 3) { searchResults.style.display = 'none'; return; }
+  searchDebounce = setTimeout(() => searchPlace(v), 400);
+});
+
+// Hide results when clicking outside
+document.addEventListener('click', e => {
+  if (! e.target.closest('#place-search') && ! e.target.closest('#place-search-btn') && ! e.target.closest('#place-results')) {
+    searchResults.style.display = 'none';
+  }
+});
+
+
 })();
 
 // Deactivate / Reactivate buttons submit the hidden forms via SweetAlert confirm

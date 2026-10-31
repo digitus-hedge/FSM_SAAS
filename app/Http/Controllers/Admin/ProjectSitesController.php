@@ -32,7 +32,7 @@ class ProjectSitesController extends Controller
             $q->where('client_id', $request->input('client_id')))
             ->when($request->filled('status'), fn($q) =>
             $q->where('is_active', $request->input('status') === 'active'))
-            ->orderBy('name')
+            ->orderByDesc('id')
             ->paginate($perPage)
             ->withQueryString();
 

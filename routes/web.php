@@ -15,8 +15,9 @@ use App\Http\Controllers\Admin\ServiceRequestController;
 use App\Http\Controllers\Admin\TenantHolidayController;
 use App\Http\Controllers\Admin\TenantBusinessHourController;
 use App\Http\Controllers\Admin\ExpenseReviewController;
-
 use App\Http\Controllers\Admin\RequestsReviewController;
+use App\Http\Controllers\Admin\ClientImportController;
+use App\Http\Controllers\Admin\ProjectSiteImportController;
 use App\Http\Controllers\Admin\QuotesController;
 use App\Http\Controllers\PublicQuoteController;
 
@@ -104,8 +105,8 @@ Route::post('/invitation/{token}', [AuthController::class, 'acceptInvitation'])-
 
 
 
-Route::get ('/q/{token}',          [PublicQuoteController::class, 'show'])->name('public.quote.show');
-Route::get ('/q/{token}/pdf',      [PublicQuoteController::class, 'pdf'])->name('public.quote.pdf');
+Route::get('/q/{token}',          [PublicQuoteController::class, 'show'])->name('public.quote.show');
+Route::get('/q/{token}/pdf',      [PublicQuoteController::class, 'pdf'])->name('public.quote.pdf');
 Route::post('/q/{token}/accept',   [PublicQuoteController::class, 'accept'])->name('public.quote.accept');
 Route::post('/q/{token}/reject',   [PublicQuoteController::class, 'reject'])->name('public.quote.reject');
 
@@ -115,15 +116,15 @@ Route::get('/i/{token}/pdf', [PublicInvoiceController::class, 'pdf'])->name('pub
 
 // Invoices
 Route::prefix('admin/invoices')->name('admin.invoices.')->group(function () {
-    Route::get ('/',                            [InvoicesController::class, 'index'])->name('index');
-    Route::get ('/build/{sr}',                  [InvoicesController::class, 'build'])->name('build');
-    Route::get ('/upload/{sr}',                 [InvoicesController::class, 'uploadForm'])->name('upload');
+    Route::get('/',                            [InvoicesController::class, 'index'])->name('index');
+    Route::get('/build/{sr}',                  [InvoicesController::class, 'build'])->name('build');
+    Route::get('/upload/{sr}',                 [InvoicesController::class, 'uploadForm'])->name('upload');
     Route::post('/save/{sr}',                   [InvoicesController::class, 'saveBuilt'])->name('save-built');
     Route::post('/upload/{sr}',                 [InvoicesController::class, 'storeUpload'])->name('store-upload');
-    Route::get ('/{invoice}',                   [InvoicesController::class, 'show'])->name('show');
-    Route::get ('/{invoice}/pdf',               [InvoicesController::class, 'pdf'])->name('pdf');
-    Route::get ('/{invoice}/edit',              [InvoicesController::class, 'edit'])->name('edit');
-    Route::put ('/{invoice}',                   [InvoicesController::class, 'update'])->name('update');
+    Route::get('/{invoice}',                   [InvoicesController::class, 'show'])->name('show');
+    Route::get('/{invoice}/pdf',               [InvoicesController::class, 'pdf'])->name('pdf');
+    Route::get('/{invoice}/edit',              [InvoicesController::class, 'edit'])->name('edit');
+    Route::put('/{invoice}',                   [InvoicesController::class, 'update'])->name('update');
     Route::post('/{invoice}/submit',            [InvoicesController::class, 'submit'])->name('submit');
     Route::post('/{invoice}/approve',           [InvoicesController::class, 'approve'])->name('approve');
     Route::post('/{invoice}/send-back',         [InvoicesController::class, 'sendBack'])->name('send-back');
@@ -137,10 +138,10 @@ Route::prefix('admin/invoices')->name('admin.invoices.')->group(function () {
 
 // Client portal sign-in (public, on tenant subdomain)
 Route::prefix('client')->name('client.')->group(function () {
-    Route::get ('/sign-in',         [ClientAuthController::class, 'showSignIn'])->name('sign-in');
+    Route::get('/sign-in',         [ClientAuthController::class, 'showSignIn'])->name('sign-in');
     Route::post('/sign-in',         [ClientAuthController::class, 'requestLink'])->name('sign-in.request');
-    Route::get ('/sign-in/sent',    [ClientAuthController::class, 'showSent'])->name('sign-in.sent');
-    Route::get ('/sign-in/{token}', [ClientAuthController::class, 'verifyLink'])->name('sign-in.verify');
+    Route::get('/sign-in/sent',    [ClientAuthController::class, 'showSent'])->name('sign-in.sent');
+    Route::get('/sign-in/{token}', [ClientAuthController::class, 'verifyLink'])->name('sign-in.verify');
 });
 
 Route::middleware(['auth'])->group(function () {
@@ -159,7 +160,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Client portal (authenticated client user)
     Route::prefix('portal')->name('portal.')->group(function () {
-        Route::get ('/',         [ClientAuthController::class, 'dashboard'])->name('dashboard');
+        Route::get('/',         [ClientAuthController::class, 'dashboard'])->name('dashboard');
         Route::post('/sign-out', [ClientAuthController::class, 'signOut'])->name('sign-out');
     });
     // Users (was Members) — Company Admins only
@@ -194,6 +195,14 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{client}/reactivate',  [ClientsController::class, 'reactivate'])->name('reactivate');
         Route::delete('/{client}',           [ClientsController::class, 'destroy'])->name('destroy');
 
+
+        Route::prefix('import')->name('import.')->group(function () {
+            Route::get('/',              [ClientImportController::class, 'show'])->name('show');
+            Route::post('/',              [ClientImportController::class, 'store'])->name('store');
+            Route::get('/sample.csv',    [ClientImportController::class, 'sample'])->name('sample');
+        });
+
+
         Route::prefix('{client}/contacts')->name('contacts.')->group(function () {
             Route::post('/',                          [ClientContactsController::class, 'store'])->name('store');
             Route::put('/{contact}',                  [ClientContactsController::class, 'update'])->name('update');
@@ -213,6 +222,13 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{site}/suspend',       [ProjectSitesController::class, 'suspend'])->name('suspend');
         Route::post('/{site}/reactivate',    [ProjectSitesController::class, 'reactivate'])->name('reactivate');
         Route::delete('/{site}',             [ProjectSitesController::class, 'destroy'])->name('destroy');
+
+
+        Route::prefix('import')->name('import.')->group(function () {
+            Route::get('/',           [ProjectSiteImportController::class, 'show'])->name('show');
+            Route::post('/',           [ProjectSiteImportController::class, 'store'])->name('store');
+            Route::get('/sample.csv', [ProjectSiteImportController::class, 'sample'])->name('sample');
+        });
     });
 
 
@@ -250,7 +266,52 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/save-all',  [SlaPoliciesController::class, 'saveAll'])->name('save-all');
     });
 
+<<<<<<< Updated upstream
  
+=======
+    Route::middleware(['auth'])->prefix('technician')->name('technician.')->group(function () {
+        Route::get('/',                           fn() => redirect()->route('technician.jobs.index'));
+        Route::get('/jobs',                       [JobsController::class, 'index'])->name('jobs.index');
+        Route::get('/jobs/all',                   [JobsController::class, 'all'])->name('jobs.all');
+        Route::get('/jobs/{job}',                 [JobsController::class, 'show'])->name('jobs.show');
+
+        Route::get('/team',                        [TeamController::class, 'index'])->name('team.index');
+        Route::post('/team/new',                   [TeamController::class, 'storeNew'])->name('team.new');
+        Route::post('/team/overrides/{override}/approve', [TeamController::class, 'approveOverride'])->name('team.overrides.approve');
+        Route::post('/team/overrides/{override}/reject',  [TeamController::class, 'rejectOverride'])->name('team.overrides.reject');
+        Route::post('/team/conflicts/{log}/reviewed',      [TeamController::class, 'markConflictReviewed'])->name('team.conflicts.reviewed');
+
+        Route::post('/jobs/{job}/accept',         [JobsController::class, 'accept'])->name('jobs.accept');
+        Route::post('/jobs/{job}/change-time',    [JobsController::class, 'changeTime'])->name('jobs.change-time');
+        Route::post('/jobs/{job}/punch-in',       [JobsController::class, 'punchIn'])->name('jobs.punch-in');
+        Route::get('/jobs/{job}/punched-in',      [JobsController::class, 'punchedIn'])->name('jobs.punched-in');
+        Route::post('/jobs/{job}/punch-out',      [JobsController::class, 'punchOut'])->name('jobs.punch-out');
+        Route::get('/jobs/{job}/punch-out',       [JobsController::class, 'punchOutReview'])->name('jobs.punch-out-review');
+        Route::post('/jobs/{job}/hold',           [JobsController::class, 'hold'])->name('jobs.hold');
+        Route::post('/jobs/{job}/geofence-override', [JobsController::class, 'requestGeofenceOverride'])->name('jobs.geofence-override');
+        Route::post('/jobs/{job}/resume',         [JobsController::class, 'resume'])->name('jobs.resume');
+
+        Route::get('/jobs/{job}/punched-out', [JobsController::class, 'punchedOut'])->name('jobs.punched-out');
+
+        Route::get('/jobs/{job}/photos',          [JobsController::class, 'photos'])->name('jobs.photos');
+        Route::post('/jobs/{job}/photos',         [JobsController::class, 'storePhoto'])->name('jobs.photos.store');
+        Route::delete('/jobs/{job}/photos/{photo}', [JobsController::class, 'deletePhoto'])->name('jobs.photos.delete');
+        Route::post('/jobs/{job}/photos/{photo}/replace', [JobsController::class, 'replacePhoto'])->name('jobs.photos.replace');
+        Route::get('/jobs/{job}/notes',           [JobsController::class, 'notes'])->name('jobs.notes');
+        Route::post('/jobs/{job}/notes',          [JobsController::class, 'storeNote'])->name('jobs.notes.store');
+        Route::get('/jobs/{job}/expenses',        [JobsController::class, 'expenses'])->name('jobs.expenses');
+        Route::get('/jobs/{job}/expenses/create', [JobsController::class, 'createExpense'])->name('jobs.expenses.create');
+        Route::post('/jobs/{job}/expenses',       [JobsController::class, 'storeExpense'])->name('jobs.expenses.store');
+        Route::get('/jobs/{job}/signature',       [JobsController::class, 'signature'])->name('jobs.signature');
+        Route::post('/jobs/{job}/signature',      [JobsController::class, 'storeSignature'])->name('jobs.signature.store');
+
+        Route::get('/jobs/{job}/counts',          [JobsController::class, 'liveCounts'])->name('jobs.counts');
+
+        Route::get('/notifications',              [JobsController::class, 'notifications'])->name('notifications');
+        Route::get('/sync',                       [JobsController::class, 'sync'])->name('sync');
+        Route::get('/profile',                    [JobsController::class, 'profile'])->name('profile');
+    });
+>>>>>>> Stashed changes
     // Tax Rates
     Route::prefix('admin/tax-rates')->name('admin.tax-rates.')->group(function () {
         Route::get('/',                       [TaxRatesController::class, 'index'])->name('index');
@@ -330,21 +391,20 @@ Route::prefix('admin/requests-review')->name('admin.requests-review.')->group(fu
     Route::get('/{sr}',  [RequestsReviewController::class, 'show'])->name('show');
     Route::post('/{sr}/qc-pass',  [RequestsReviewController::class, 'qcPass'])->name('qc-pass');
     Route::post('/{sr}/cancel',   [RequestsReviewController::class, 'cancel'])->name('cancel');
-
 });
 
 // Quotes
 Route::prefix('admin/quotes')->name('admin.quotes.')->group(function () {
-    Route::get ('/',                    [QuotesController::class, 'index'])->name('index');  // ← NEW
+    Route::get('/',                    [QuotesController::class, 'index'])->name('index');  // ← NEW
 
-    Route::get ('/build/{sr}',          [QuotesController::class, 'build'])->name('build');          // start/edit builder
-    Route::get ('/upload/{sr}',         [QuotesController::class, 'uploadForm'])->name('upload');    // upload PDF form
+    Route::get('/build/{sr}',          [QuotesController::class, 'build'])->name('build');          // start/edit builder
+    Route::get('/upload/{sr}',         [QuotesController::class, 'uploadForm'])->name('upload');    // upload PDF form
     Route::post('/save/{sr}',           [QuotesController::class, 'saveBuilt'])->name('save-built'); // save builder draft
     Route::post('/upload/{sr}',         [QuotesController::class, 'storeUpload'])->name('store-upload'); // save upload
-    Route::get ('/{quote}',             [QuotesController::class, 'show'])->name('show');
-    Route::get ('/{quote}/pdf',         [QuotesController::class, 'pdf'])->name('pdf');
-    Route::get ('/{quote}/edit',        [QuotesController::class, 'edit'])->name('edit');
-    Route::put ('/{quote}',             [QuotesController::class, 'update'])->name('update');
+    Route::get('/{quote}',             [QuotesController::class, 'show'])->name('show');
+    Route::get('/{quote}/pdf',         [QuotesController::class, 'pdf'])->name('pdf');
+    Route::get('/{quote}/edit',        [QuotesController::class, 'edit'])->name('edit');
+    Route::put('/{quote}',             [QuotesController::class, 'update'])->name('update');
     Route::post('/{quote}/send',        [QuotesController::class, 'send'])->name('send');
     Route::post('/{quote}/revise',      [QuotesController::class, 'revise'])->name('revise');
 });
@@ -352,7 +412,7 @@ Route::prefix('admin/quotes')->name('admin.quotes.')->group(function () {
 
 // Expenses to review
 Route::prefix('admin/expenses-review')->name('admin.expenses-review.')->group(function () {
-    Route::get ('/',                              [ExpenseReviewController::class, 'index'])->name('index');
+    Route::get('/',                              [ExpenseReviewController::class, 'index'])->name('index');
     Route::post('/{expense}/approve',             [ExpenseReviewController::class, 'approve'])->name('approve');
     Route::post('/{expense}/reject',              [ExpenseReviewController::class, 'reject'])->name('reject');
 });

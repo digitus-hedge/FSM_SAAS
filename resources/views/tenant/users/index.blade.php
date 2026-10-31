@@ -24,6 +24,41 @@ function copyText(text, btn) {
     document.body.removeChild(ta);
 }
 </script>
+
+<style>
+    .btn-ghost{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  padding:9px 18px;
+  background:#fff;
+  color:var(--ink);
+  border:1px solid var(--line);
+  border-radius:10px;
+  font-family:'DM Sans', system-ui, sans-serif;
+  font-size:13.5px;
+  font-weight:600;
+  text-decoration:none;
+  cursor:pointer;
+  line-height:1.2;
+  transition:background .12s, border-color .12s, color .12s;
+}
+.btn-ghost:hover{
+  background:var(--soft);
+  border-color:#C7C4D5;
+  color:var(--ink);
+}
+.btn-ghost:focus{
+  outline:none;
+  box-shadow:0 0 0 3px rgba(47,91,234,.15);
+  border-color:var(--accent);
+}
+.btn-ghost svg{
+  width:14px;height:14px;flex-shrink:0;
+}
+</style>
+
+
     <h1 style="font:700 24px 'Figtree';letter-spacing:-.3px;margin-bottom:6px">Users</h1>
     <p class="muted" style="color:#5F5D6E;margin-bottom:20px">
         Everyone who signs in to this company.
@@ -70,7 +105,14 @@ function copyText(text, btn) {
         </select>
         <button type="submit" style="background:#FFC61A;color:#1B1A24;border:0;padding:9px 18px;border-radius:999px;font-weight:600;cursor:pointer">Filter</button>
         <a href="{{ route('tenant.users.create') }}" style="margin-left:auto;background:#1B1A24;color:#fff;padding:9px 18px;border-radius:999px;text-decoration:none;font-weight:600;font-size:13px">+ New user</a>
-        <a href="{{ route('tenant.users.import.show') }}" class="btn-ghost" style="margin-right:8px">Import CSV</a>
+      <a href="{{ route('tenant.users.import.show') }}" class="btn-ghost" style="margin-right:8px">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+    <polyline points="17 8 12 3 7 8"/>
+    <line x1="12" y1="3" x2="12" y2="15"/>
+  </svg>
+  Import CSV
+</a>
     </form>
 
     <div style="background:#fff;border:1px solid #E6E4EE;border-radius:16px;overflow:hidden">

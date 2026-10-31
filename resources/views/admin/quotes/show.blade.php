@@ -2,6 +2,14 @@
 @section('title', $quote->quote_number)
 
 @section('content')
+
+@php
+  $srInvoice = $quote->service_request_id
+      ? \App\Models\Invoice::where('service_request_id', $quote->service_request_id)
+          ->orderByDesc('id')->first()
+      : null;
+@endphp
+
 <style>
   .crumb{color:var(--muted);font-size:13px;margin-bottom:4px}
   .crumb a{color:var(--ink);text-decoration:underline}
@@ -58,34 +66,56 @@
       <div class="sub">Valid until {{ $quote->valid_until->format('d M Y') }}</div>
     @endif
   </div>
-  <div class="actions">
-    @if (in_array($quote->status, ['sent','rejected','superseded']))
-      <form method="POST" action="{{ route('admin.quotes.revise', $quote) }}" style="margin:0">@csrf
-        <button type="submit" class="btn">Revise</button>
-      </form>
-      <button type="button" class="btn" onclick="openSendSheet()">Resend</button>
-      <a href="{{ route('admin.quotes.pdf', $quote) }}" target="_blank" class="btn">Download PDF</a>
+  @php
+  $srInvoice = $quote->service_request_id
+      ? \App\Models\Invoice::where('service_request_id', $quote->service_request_id)
+          ->orderByDesc('id')->first()
+      : null;
+@endphp
 
-      @elseif ($quote->status === 'accepted')
-    <a href="{{ route('admin.invoices.build', $quote->service_request_id) }}"
-       class="btn primary">
+<div class="actions">
+
+  {{-- SENT / REJECTED / SUPERSEDED → Revise + Resend --}}
+  @if (in_array($quote->status, ['sent','rejected','superseded']))
+    <form method="POST" action="{{ route('admin.quotes.revise', $quote) }}" style="margin:0">
+      @csrf
+      <button type="submit" class="btn">Revise</button>
+    </form>
+    <button type="button" class="btn" onclick="openSendSheet()">Resend</button>
+  @endif
+
+  {{-- ACCEPTED → Start / View invoice --}}
+  @if ($quote->status === 'accepted')
+    @if ($srInvoice)
+      <!-- <a href="{{ route('admin.invoices.show', $srInvoice) }}" class="btn">
+        View invoice {{ $srInvoice->invoice_number }}
+      </a> -->
+    @else
+      <a href="{{ route('admin.invoices.build', $quote->service_request_id) }}" class="btn primary">
         Start invoice from this quote
-    </a>
-
-    <a href="{{ route('admin.quotes.pdf', $quote) }}"
-       target="_blank"
-       class="btn">
-        Download PDF
-    </a>
-
-
-    @elseif ($quote->status === 'draft')
-      @if ($quote->source === 'builder')
-        <a href="{{ route('admin.quotes.edit', $quote) }}" class="btn">Edit</a>
-      @endif
-      <button type="button" class="btn" style="background:#2F5BEA;color:#fff;border-color:#2F5BEA" onclick="openSendSheet()">Send</button>
+      </a>
     @endif
-  </div>
+  @endif
+
+  {{-- DRAFT → Edit (builder only) + Send --}}
+  @if ($quote->status === 'draft')
+    @if ($quote->source === 'builder')
+      <a href="{{ route('admin.quotes.edit', $quote) }}" class="btn">Edit</a>
+    @endif
+    <button type="button" class="btn"
+            style="background:#2F5BEA;color:#fff;border-color:#2F5BEA"
+            onclick="openSendSheet()">
+      Send
+    </button>
+  @endif
+
+  {{-- DOWNLOAD PDF — always visible on every status --}}
+  <a href="{{ route('admin.quotes.pdf', $quote) }}" target="_blank" class="btn">
+    Download PDF
+  </a>
+
+</div>
+
 </div>
 
 {{-- UPLOADED PDF BANNER --}}

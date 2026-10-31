@@ -106,6 +106,23 @@ class QuotesController extends Controller
     {
         $this->guard();
 
+        // $data = $request->validate([
+        //     'valid_until'           => 'required|date',
+        //     'terms'                 => 'nullable|string|max:2000',
+        //     'discount_type'         => 'required|in:none,percent,amount',
+        //     'discount_value'        => 'nullable|numeric|min:0',
+        //     'lines'                 => 'required|array|min:1',
+        //     'lines.*.description'   => 'required|string|min:2|max:255',
+        //     'lines.*.quantity'      => 'required|numeric|min:0.01',
+        //     'lines.*.unit'          => 'nullable|string|max:20',
+        //     'lines.*.unit_rate'     => 'required|numeric|min:0',
+        //     'lines.*.tax_rate_id'   => 'nullable|integer|exists:tax_rates,id',
+        // ], [
+        //     'lines.*.description.min' => 'Enter a description of 2 to 255 characters.',
+        //     'lines.*.description.max' => 'Enter a description of 2 to 255 characters.',
+        // ]);
+
+
         $data = $request->validate([
             'valid_until'           => 'required|date',
             'terms'                 => 'nullable|string|max:2000',
@@ -118,8 +135,16 @@ class QuotesController extends Controller
             'lines.*.unit_rate'     => 'required|numeric|min:0',
             'lines.*.tax_rate_id'   => 'nullable|integer|exists:tax_rates,id',
         ], [
-            'lines.*.description.min' => 'Enter a description of 2 to 255 characters.',
-            'lines.*.description.max' => 'Enter a description of 2 to 255 characters.',
+            'valid_until.required'          => 'Pick a valid-until date.',
+            'lines.*.description.required'  => 'Description is required.',
+            'lines.*.description.min'       => 'Enter a description of 2 to 255 characters.',
+            'lines.*.description.max'       => 'Enter a description of 2 to 255 characters.',
+            'lines.*.quantity.required'     => 'Quantity is required.',
+            'lines.*.quantity.numeric'      => 'Quantity must be a number.',
+            'lines.*.quantity.min'          => 'Quantity must be at least 0.01.',
+            'lines.*.unit_rate.required'    => 'Rate is required.',
+            'lines.*.unit_rate.numeric'     => 'Rate must be a number.',
+            'lines.*.unit_rate.min'         => 'Rate must be 0 or more.',
         ]);
 
         // Compute totals server-side

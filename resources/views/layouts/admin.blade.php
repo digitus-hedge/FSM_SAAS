@@ -6,6 +6,18 @@
 <title>@yield('title', 'Platform Console') — AIYWAH FSM</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Figtree:wght@600;700&display=swap" rel="stylesheet">
+
+@php
+    if (!function_exists('term_title')) {
+        function term_title($key, $form = 'plural') {
+            $row = \DB::table('tenant_terminology')
+                ->where('tenant_id', auth()->user()->tenant_id)
+                ->where('term_key', $key)->first();
+            return ucwords($row?->{$form} ?? str_replace('_',' ',$key));
+        }
+    }
+@endphp
+
 <style>
 :root{
   --bg:#FBFAF6; --ink:#1B1A24; --muted:#5F5D6E; --subtle:#8B89A0;
@@ -16,6 +28,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-serif;font-size:14px;line-height:1.5}
 .shell{display:grid;grid-template-columns:244px 1fr;min-height:100vh}
+
 
 /* SIDEBAR */
 .side{background:#fff;border-right:1px solid var(--line);padding:18px 12px;display:flex;flex-direction:column;gap:2px;min-height:100vh}
@@ -151,10 +164,10 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
                         <a href="{{ route('admin.clients.index') }}" class="nav-item {{ request()->routeIs('admin.clients.*') ? 'active' : '' }}">Clients</a>
                     @endif
                     @if ($u->canDo('site.manage'))
-                        <a href="{{ route('admin.sites.index') }}" class="nav-item {{ request()->routeIs('admin.sites.*') ? 'active' : '' }}">Project sites</a>
+                        <a href="{{ route('admin.sites.index') }}" class="nav-item {{ request()->routeIs('admin.sites.*') ? 'active' : '' }}">Sites</a>
                     @endif
                     @if ($u->canDo('category.manage'))
-                        <a href="{{ route('admin.service-categories.index') }}" class="nav-item {{ request()->routeIs('admin.service-categories.*') ? 'active' : '' }}">Service categories</a>
+                        <a href="{{ route('admin.service-categories.index') }}" class="nav-item {{ request()->routeIs('admin.service-categories.*') ? 'active' : '' }}">Service Categories</a>
                     @endif
                 </div>
             </details>
@@ -197,12 +210,11 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
                     <a href="{{ route('admin.tax-rates.index') }}" class="nav-item {{ request()->routeIs('admin.tax-rates.*') ? 'active' : '' }}">Tax rates</a>
                     <a href="{{ route('admin.hold-reasons.index') }}" class="nav-item {{ request()->routeIs('admin.hold-reasons.*') ? 'active' : '' }}">Hold reasons</a>
                     <a href="{{ route('admin.expense-categories.index') }}" class="nav-item {{ request()->routeIs('admin.expense-categories.*') ? 'active' : '' }}">Expense categories</a>
-                    <a href="{{ route('admin.tenant-holidays.index') }}" class="nav-item {{ request()->routeIs('admin.tenant-holidays.*') ? 'active' : '' }}">Holidays</a>
-                    <a href="{{ route('admin.vendors.index') }}" class="nav-item {{ request()->routeIs('admin.vendors.*') ? 'active' : '' }}">Vendors</a>
+                    <!-- <a href="{{ route('admin.tenant-holidays.index') }}" class="nav-item {{ request()->routeIs('admin.tenant-holidays.*') ? 'active' : '' }}">Holidays</a> -->
+                    <!-- <a href="{{ route('admin.vendors.index') }}" class="nav-item {{ request()->routeIs('admin.vendors.*') ? 'active' : '' }}">Vendors</a> -->
                     <a href="{{ route('admin.tenant-business-hours.index') }}" class="nav-item {{ request()->routeIs('admin.tenant-business-hours.*') ? 'active' : '' }}">Business Hours and Holidays</a>
 
-                   <a href="{{ route('admin.terminology.index') }}"
-   class="nav-item {{ request()->routeIs('admin.terminology.*') ? 'active' : '' }}">Terminology</a>
+                    <a href="{{ route('admin.terminology.index') }}" class="nav-item {{ request()->routeIs('admin.terminology.*') ? 'active' : '' }}">Terminology</a>
                 </div>
             </details>
         @endif
@@ -217,7 +229,9 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-
                     <line x1="16" y1="17" x2="8" y2="17"/>
                     <polyline points="10 9 9 9 8 9"/>
                 </svg>
-                Requests
+                Service Requests
+
+                <!-- {{ term_title('service_request') }} -->
             </a>
         @endif
 

@@ -33,6 +33,17 @@
 .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink);font-weight:600}
 .btn.sm{padding:7px 14px;font-size:12px;width:auto}
 .err{background:#FDECE7;border:1px solid #C2381B;color:#8A2718;padding:12px 16px;border-radius:10px;margin-bottom:16px;font-size:13px}
+
+
+.line-row{align-items:flex-start}
+.line-row .cell{display:flex;flex-direction:column;gap:3px;min-width:0}
+.line-row .cell input,
+.line-row .cell select{width:100%}
+.line-row input.has-err,
+.line-row select.has-err{border-color:#C2381B;background:#FFF7F7}
+.line-row input.has-err:focus{box-shadow:0 0 0 3px rgba(194,56,27,.15)}
+.line-err{color:#C2381B;font-size:11.5px;font-weight:600;line-height:1.3;margin-top:1px}
+
 </style>
 
 <div class="crumb"><a href="{{ route('admin.invoices.index') }}">Invoices</a> / {{ $invoice->invoice_number }}</div>
@@ -54,9 +65,11 @@
         <div class="line-headers">
           <div>Description</div><div class="r">Qty</div><div>Unit</div><div class="r">Rate</div><div>Tax rate</div><div class="r">Line total</div><div></div>
         </div>
+       
         <div id="lines">
           @foreach (($invoice->items->isEmpty() ? collect([(object)['description'=>'','quantity'=>1,'unit'=>'','unit_rate'=>0,'tax_rate_id'=>null]]) : $invoice->items) as $i => $it)
-            <div class="line-row">
+           
+          <!-- <div class="line-row">
               <input name="lines[{{ $i }}][description]" value="{{ old('lines.'.$i.'.description', $it->description) }}" required>
               <input name="lines[{{ $i }}][quantity]"    value="{{ old('lines.'.$i.'.quantity', $it->quantity) }}"    required style="text-align:right" oninput="recomputeAll()">
               <input name="lines[{{ $i }}][unit]"        value="{{ old('lines.'.$i.'.unit', $it->unit) }}">
@@ -69,7 +82,82 @@
               </select>
               <div class="line-total" data-total>0.000</div>
               <button type="button" class="del" onclick="this.closest('.line-row').remove();recomputeAll()">×</button>
-            </div>
+            </div> -->
+
+
+            <div class="line-row">
+  {{-- Description --}}
+  <div class="cell">
+    <input type="text"
+           name="lines[{{ $i }}][description]"
+           value="{{ old('lines.'.$i.'.description', $it->description) }}"
+           placeholder="Description"
+            minlength="2" maxlength="255"
+           class="@error('lines.'.$i.'.description') has-err @enderror">
+    @error('lines.'.$i.'.description')
+      <div class="line-err">{{ $message }}</div>
+    @enderror
+  </div>
+
+  {{-- Quantity --}}
+  <div class="cell">
+    <input type="number"
+           step="0.01" min="0.01"
+           name="lines[{{ $i }}][quantity]"
+           value="{{ old('lines.'.$i.'.quantity', $it->quantity) }}"
+           placeholder="1"
+           
+           style="text-align:right"
+           oninput="recomputeAll()"
+           class="@error('lines.'.$i.'.quantity') has-err @enderror">
+    @error('lines.'.$i.'.quantity')
+      <div class="line-err">{{ $message }}</div>
+    @enderror
+  </div>
+
+  {{-- Unit (optional) --}}
+  <div class="cell">
+    <input type="text"
+           name="lines[{{ $i }}][unit]"
+           value="{{ old('lines.'.$i.'.unit', $it->unit) }}"
+           placeholder="pc">
+  </div>
+
+  {{-- Unit rate --}}
+  <div class="cell">
+    <input type="number"
+           step="0.001" min="0"
+           name="lines[{{ $i }}][unit_rate]"
+           value="{{ old('lines.'.$i.'.unit_rate', $it->unit_rate) }}"
+           placeholder="0.000"
+           
+           style="text-align:right"
+           oninput="recomputeAll()"
+           class="@error('lines.'.$i.'.unit_rate') has-err @enderror">
+    @error('lines.'.$i.'.unit_rate')
+      <div class="line-err">{{ $message }}</div>
+    @enderror
+  </div>
+
+  {{-- Tax rate --}}
+  <div class="cell">
+    <select name="lines[{{ $i }}][tax_rate_id]" onchange="recomputeAll()">
+      <option value="">— None —</option>
+      @foreach ($taxRates as $tr)
+        <option value="{{ $tr->id }}" data-pct="{{ $tr->rate_percent }}"
+                @selected((int) old('lines.'.$i.'.tax_rate_id', $it->tax_rate_id) === $tr->id)>
+          {{ $tr->name }} ({{ $tr->rate_percent }}%)
+        </option>
+      @endforeach
+    </select>
+  </div>
+
+  <div class="line-total" data-total style="padding-top:12px">0.000</div>
+
+  <button type="button" class="del" onclick="this.closest('.line-row').remove();recomputeAll()" style="align-self:flex-start;margin-top:4px">×</button>
+</div>
+
+
           @endforeach
         </div>
         <button type="button" class="btn ghost sm" style="margin-top:12px" onclick="addLine()">+ Add line</button>
