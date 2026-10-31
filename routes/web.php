@@ -266,9 +266,6 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/save-all',  [SlaPoliciesController::class, 'saveAll'])->name('save-all');
     });
 
-<<<<<<< Updated upstream
- 
-=======
     Route::middleware(['auth'])->prefix('technician')->name('technician.')->group(function () {
         Route::get('/',                           fn() => redirect()->route('technician.jobs.index'));
         Route::get('/jobs',                       [JobsController::class, 'index'])->name('jobs.index');
@@ -311,7 +308,6 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/sync',                       [JobsController::class, 'sync'])->name('sync');
         Route::get('/profile',                    [JobsController::class, 'profile'])->name('profile');
     });
->>>>>>> Stashed changes
     // Tax Rates
     Route::prefix('admin/tax-rates')->name('admin.tax-rates.')->group(function () {
         Route::get('/',                       [TaxRatesController::class, 'index'])->name('index');
