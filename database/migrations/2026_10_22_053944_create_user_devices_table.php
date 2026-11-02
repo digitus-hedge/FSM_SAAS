@@ -17,7 +17,7 @@ return new class extends Migration {
             $table->string('user_agent', 500)->nullable();
             $table->string('session_id', 120)->nullable();   // tags THIS device
             $table->timestamp('last_used_at')->nullable();
-            $table->timestamp('trusted_until');
+            $table->timestamp('trusted_until')->nullable();
             $table->timestamp('revoked_at')->nullable();
             $table->timestamps();
 
