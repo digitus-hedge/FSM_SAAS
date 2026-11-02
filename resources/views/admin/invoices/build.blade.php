@@ -4,35 +4,35 @@
 <style>
 .crumb{color:var(--muted);font-size:13px;margin-bottom:10px}
 .crumb a{color:var(--ink);text-decoration:none;font-weight:600}
-.page-h1{font-family:'Figtree';font-size:24px;font-weight:800;margin-bottom:6px}
+.page-h1{font-family:var(--font-display);font-size:24px;font-weight:800;margin-bottom:6px}
 .page-sub{color:var(--muted);font-size:14px;margin-bottom:16px}
 .build-grid{display:grid;grid-template-columns:1fr 320px;gap:16px}
 @media (max-width:900px){.build-grid{grid-template-columns:1fr}}
 .panel{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:16px}
-.panel-h{padding:14px 18px;border-bottom:1px solid var(--line);font-family:'Figtree';font-weight:700;font-size:14px}
+.panel-h{padding:14px 18px;border-bottom:1px solid var(--line);font-family:var(--font-display);font-weight:700;font-size:14px}
 .panel-b{padding:16px 18px}
 .fld{display:flex;flex-direction:column;gap:4px;margin-bottom:14px}
 .fld label{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
 .fld input,.fld select,.fld textarea{height:42px;padding:0 14px;border:1px solid var(--line);border-radius:10px;font-family:inherit;font-size:14px;background:#fff}
 .fld textarea{min-height:80px;padding:12px 14px;height:auto}
-.fld input:focus,.fld select:focus,.fld textarea:focus{outline:none;border-color:#FFC61A;box-shadow:0 0 0 3px #FFF4CC}
+.fld input:focus,.fld select:focus,.fld textarea:focus{outline:none;border-color:var(--yellow);box-shadow:0 0 0 3px var(--yellow-soft)}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .line-row{display:grid;grid-template-columns:1fr 70px 70px 100px 130px 100px 32px;gap:8px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
 .line-row:first-of-type{border-top:0}
 .line-row input,.line-row select{height:36px;padding:0 10px;border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:13px;font-variant-numeric:tabular-nums}
 .line-row .line-total{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
-.line-row .del{background:none;border:0;color:#C2381B;cursor:pointer;font-size:18px}
+.line-row .del{background:none;border:0;color:var(--red);cursor:pointer;font-size:18px}
 .line-headers{display:grid;grid-template-columns:1fr 70px 70px 100px 130px 100px 32px;gap:8px;padding:8px 0;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:700}
 .line-headers .r{text-align:right}
 .tot-row{display:flex;justify-content:space-between;padding:8px 18px;font-size:14px;font-variant-numeric:tabular-nums}
 .tot-row.sub{border-top:1px solid var(--line);padding-top:12px}
-.tot-row.tot{font-family:'Figtree';font-weight:800;font-size:17px;border-top:2px solid var(--ink);padding:14px 18px}
-.btn{display:inline-flex;align-items:center;gap:6px;background:#FFC61A;color:#1B1A24;font-weight:700;font-size:13px;padding:11px 20px;border-radius:999px;border:0;cursor:pointer;font-family:inherit;text-decoration:none;width:100%;justify-content:center}
-.btn:hover{background:#F0B700}
+.tot-row.tot{font-family:var(--font-display);font-weight:800;font-size:17px;border-top:2px solid var(--ink);padding:14px 18px}
+.btn{display:inline-flex;align-items:center;gap:6px;background:var(--yellow);color:var(--ink);font-weight:700;font-size:13px;padding:11px 20px;border-radius:999px;border:0;cursor:pointer;font-family:inherit;text-decoration:none;width:100%;justify-content:center}
+.btn:hover{background:color-mix(in srgb, var(--yellow) 85%, black 15%)}
 .btn.dark{background:#1B1A24;color:#FBFAF6}
 .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink);font-weight:600}
 .btn.sm{padding:7px 14px;font-size:12px;width:auto}
-.err{background:#FDECE7;border:1px solid #C2381B;color:#8A2718;padding:12px 16px;border-radius:10px;margin-bottom:16px;font-size:13px}
+.err{background:var(--red-soft);border:1px solid var(--red);color:var(--red);padding:12px 16px;border-radius:10px;margin-bottom:16px;font-size:13px}
 
 
 .line-row{align-items:flex-start}
@@ -40,11 +40,15 @@
 .line-row .cell input,
 .line-row .cell select{width:100%}
 .line-row input.has-err,
-.line-row select.has-err{border-color:#C2381B;background:#FFF7F7}
-.line-row input.has-err:focus{box-shadow:0 0 0 3px rgba(194,56,27,.15)}
-.line-err{color:#C2381B;font-size:11.5px;font-weight:600;line-height:1.3;margin-top:1px}
+.line-row select.has-err{border-color:var(--red);background:var(--red-soft)}
+.line-row input.has-err:focus{box-shadow:0 0 0 3px color-mix(in srgb, var(--red) 15%, transparent)}
+.line-err{color:var(--red);font-size:11.5px;font-weight:600;line-height:1.3;margin-top:1px}
 
 </style>
+
+@php
+  $currencyCode = auth()->user()->tenant?->currency_code ?? 'AED';
+@endphp
 
 <div class="crumb"><a href="{{ route('admin.invoices.index') }}">Invoices</a> / {{ $invoice->invoice_number }}</div>
 <h1 class="page-h1">{{ $invoice->invoice_number }} · Edit</h1>
@@ -65,10 +69,10 @@
         <div class="line-headers">
           <div>Description</div><div class="r">Qty</div><div>Unit</div><div class="r">Rate</div><div>Tax rate</div><div class="r">Line total</div><div></div>
         </div>
-       
+
         <div id="lines">
           @foreach (($invoice->items->isEmpty() ? collect([(object)['description'=>'','quantity'=>1,'unit'=>'','unit_rate'=>0,'tax_rate_id'=>null]]) : $invoice->items) as $i => $it)
-           
+
           <!-- <div class="line-row">
               <input name="lines[{{ $i }}][description]" value="{{ old('lines.'.$i.'.description', $it->description) }}" required>
               <input name="lines[{{ $i }}][quantity]"    value="{{ old('lines.'.$i.'.quantity', $it->quantity) }}"    required style="text-align:right" oninput="recomputeAll()">
@@ -92,7 +96,7 @@
            name="lines[{{ $i }}][description]"
            value="{{ old('lines.'.$i.'.description', $it->description) }}"
            placeholder="Description"
-            minlength="2" maxlength="255"
+            minlength="2" maxlength="255" required
            class="@error('lines.'.$i.'.description') has-err @enderror">
     @error('lines.'.$i.'.description')
       <div class="line-err">{{ $message }}</div>
@@ -106,7 +110,7 @@
            name="lines[{{ $i }}][quantity]"
            value="{{ old('lines.'.$i.'.quantity', $it->quantity) }}"
            placeholder="1"
-           
+           required
            style="text-align:right"
            oninput="recomputeAll()"
            class="@error('lines.'.$i.'.quantity') has-err @enderror">
@@ -130,7 +134,7 @@
            name="lines[{{ $i }}][unit_rate]"
            value="{{ old('lines.'.$i.'.unit_rate', $it->unit_rate) }}"
            placeholder="0.000"
-           
+           required
            style="text-align:right"
            oninput="recomputeAll()"
            class="@error('lines.'.$i.'.unit_rate') has-err @enderror">
@@ -178,7 +182,7 @@
                 <option value="amount"  @selected(old('discount_type', $invoice->discount_type)==='amount')>Amount</option>
               </select>
             </div>
-            <div class="fld"><label>Value</label><input name="discount_value" value="{{ old('discount_value', $invoice->discount_value) }}" style="text-align:right" oninput="recomputeAll()"></div>
+            <div class="fld"><label>Value</label><input type="number" step="0.01" min="0" name="discount_value" value="{{ old('discount_value', $invoice->discount_value) }}" style="text-align:right" oninput="recomputeAll()"></div>
           </div>
           <div class="fld"><label>Notes</label><textarea name="notes" maxlength="2000">{{ old('notes', $invoice->notes) }}</textarea></div>
         </div>
@@ -186,10 +190,10 @@
 
       <div class="panel">
         <div class="panel-h">Totals</div>
-        <div class="tot-row sub"><span>Subtotal</span><span>AED <span id="tot-sub">0.000</span></span></div>
+        <div class="tot-row sub"><span>Subtotal</span><span>{{ $currencyCode }} <span id="tot-sub">0.000</span></span></div>
         <div class="tot-row"><span>Discount</span><span>— <span id="tot-disc">0.000</span></span></div>
-        <div class="tot-row"><span>Tax</span><span>AED <span id="tot-tax">0.000</span></span></div>
-        <div class="tot-row tot"><span>Total</span><span>AED <span id="tot-tot">0.000</span></span></div>
+        <div class="tot-row"><span>Tax</span><span>{{ $currencyCode }} <span id="tot-tax">0.000</span></span></div>
+        <div class="tot-row tot"><span>Total</span><span>{{ $currencyCode }} <span id="tot-tot">0.000</span></span></div>
       </div>
 
       <div style="display:flex;flex-direction:column;gap:8px">

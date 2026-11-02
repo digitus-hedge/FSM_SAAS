@@ -3,7 +3,7 @@
 
 @section('content')
 <style>
-  .page-h1{font-family:'Figtree';font-size:28px;font-weight:800;margin-bottom:6px}
+  .page-h1{font-family:var(--font-display);font-size:28px;font-weight:800;margin-bottom:6px}
   .page-sub{color:var(--muted);font-size:14px;margin-bottom:22px}
   .tab-strip{display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:22px;}
   .tab-strip a{padding:12px 20px;color:var(--muted);text-decoration:none;font-weight:600;border-bottom:2px solid transparent;position:relative;top:1px;white-space:nowrap}
@@ -17,8 +17,8 @@
   table.q tr:last-child td{border-bottom:0}
   table.q tbody tr{cursor:pointer;transition:background .1s}
   table.q tbody tr:hover{background:#F8F7FB}
-  .qnum{font-family:'Figtree';font-weight:800}
-  .total{font-family:'Figtree';font-weight:700;white-space:nowrap}
+  .qnum{font-family:var(--font-display);font-weight:800}
+  .total{font-family:var(--font-display);font-weight:700;white-space:nowrap}
   .pill{display:inline-block;padding:4px 10px;border-radius:999px;font-size:11.5px;font-weight:700}
   .p-draft{background:#F0EFF5;color:#5A5869}
   .p-sent{background:#EDE9FE;color:#5B3BB8}
@@ -53,7 +53,7 @@
 .sim-panel.open{display:flex}
 
   .sim-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line);background:#fff;flex-shrink:0}
-.sim-head h3{font-family:'Figtree';font-weight:800;font-size:15px;margin:0}
+.sim-head h3{font-family:var(--font-display);font-weight:800;font-size:15px;margin:0}
 .sim-head .x{background:none;border:0;font-size:22px;cursor:pointer;color:var(--muted);padding:0 6px;line-height:1}
 
   .sim-picker{padding:10px 14px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:6px;flex-shrink:0}
@@ -85,8 +85,8 @@
 }
 .sim-picker select:focus{
   outline:none;
-  border-color:var(--accent);
-  box-shadow:0 0 0 3px rgba(47,91,234,.15);
+  border-color:var(--yellow);
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--yellow) 15%, transparent);
 }
 
 /* Smaller, tighter labels for the pickers */
@@ -110,6 +110,10 @@
   .sim-empty{color:var(--muted);text-align:center;padding:40px 20px;background:#fff;border-radius:12px;font-size:13.5px}
 </style>
 
+@php
+  $currencyCode = auth()->user()->tenant?->currency_code ?? 'AED';
+@endphp
+
 <h1 class="page-h1">Quotes</h1>
 <p class="page-sub">Quotes for requests that were sent for a quote.</p>
 
@@ -125,7 +129,7 @@
 <div class="card">
   @if ($items->isEmpty())
     <div class="empty">
-      <div style="font-family:'Figtree';font-weight:700;font-size:16px;color:var(--ink);margin-bottom:4px">Nothing here.</div>
+      <div style="font-family:var(--font-display);font-weight:700;font-size:16px;color:var(--ink);margin-bottom:4px">Nothing here.</div>
       <div>No quotes in this tab.</div>
     </div>
   @else
@@ -152,7 +156,7 @@
             <td class="qnum">{{ $q->quote_number }}</td>
             <td>{{ $q->serviceRequest?->sr_number ?? '—' }}</td>
             <td>{{ $q->client?->name ?? '—' }}</td>
-            <td class="total">AED {{ number_format($q->total, 2) }}</td>
+            <td class="total">{{ $currencyCode }} {{ number_format($q->total, 2) }}</td>
             <td>{{ $q->valid_until?->format('d M Y') ?? '—' }}</td>
             <td><span class="pill p-{{ $q->status }}">{{ ucfirst($q->status) }}</span></td>
             <td style="color:var(--muted)">{{ $q->updated_at->diffForHumans() }}</td>
@@ -207,10 +211,9 @@
     <option value="{{ $qNum }}">{{ $qNum }}@if ($clientName) · {{ $clientName }}@endif</option>
   @endforeach
 </select>
-</select>
 
       <div class="lbl">Recipient</div>
-      <select id="sim-recipient" onchange="simLoad()"></select>
+      <select id="sim-recipient" onchange="simShowMessage()"></select>
     @endif
   </div>
 
@@ -221,14 +224,14 @@
       <strong id="sim-msg-channel" style="font-size:14px">—</strong>
       <span id="sim-msg-time" style="color:var(--muted);font-size:12px">—</span>
     </div>
-    <div id="sim-msg-title" style="font-family:'Figtree';font-weight:800;font-size:14px;margin:6px 0;line-height:1.3">
+    <div id="sim-msg-title" style="font-family:var(--font-display);font-weight:800;font-size:14px;margin:6px 0;line-height:1.3">
       Your quote
     </div>
     <div id="sim-msg-body" style="font-size:13.5px;color:var(--ink);line-height:1.5;margin-bottom:14px">
       Loading…
     </div>
     <button type="button" id="sim-view-btn" onclick="simViewQuote()"
-            style="background:#2F5BEA;color:#fff;padding:10px 22px;border-radius:999px;border:0;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;display:inline-block">
+            style="background:var(--amber);color:#fff;padding:10px 22px;border-radius:999px;border:0;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;display:inline-block">
       View quote
     </button>
     <div id="sim-msg-foot" style="color:var(--muted);font-size:11.5px;margin-top:10px">—</div>
@@ -275,6 +278,7 @@ $recentTokens = \App\Models\QuoteToken::with([
 
 <script>
   const SIM_TOKENS = @json($simTokens);
+  const CURRENCY_CODE = @json($currencyCode);
 
   function simOpen() {
     document.getElementById('sim-panel').classList.add('open');
@@ -321,7 +325,7 @@ $recentTokens = \App\Models\QuoteToken::with([
     document.getElementById('sim-msg-title').textContent   = `Your quote for service request ${t.sr_number}`;
     document.getElementById('sim-msg-body').textContent    =
       `A quote for your service request ${t.sr_number} is ready. ` +
-      `The total is AED ${t.total} and it is valid until ${t.valid_until}. ` +
+      `The total is ${CURRENCY_CODE} ${t.total} and it is valid until ${t.valid_until}. ` +
       `Please review it and let us know your decision.`;
     document.getElementById('sim-msg-foot').textContent    = t.channel_note;
 

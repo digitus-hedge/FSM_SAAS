@@ -1,3 +1,12 @@
+@php
+  $tenant = $invoice->tenant
+         ?? $invoice->serviceRequest?->tenant
+         ?? \App\Models\Tenant::find($invoice->tenant_id ?? null);
+
+  $senderName   = $tenant?->name ?? config('app.name');
+  $currencyCode = $tenant?->currency_code ?? 'AED';
+  $primaryColor = $tenant?->primary_color ?? '#FFC61A';
+@endphp
 <!doctype html>
 <html>
 <head>
@@ -7,6 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Figtree:wght@600;700&display=swap" rel="stylesheet">
   <style>
+    :root{ --accent: {{ $primaryColor }}; }
     *{box-sizing:border-box;margin:0;padding:0}
     body{background:#FBFAF6;color:#1B1A24;font-family:'DM Sans',system-ui,sans-serif;font-size:14px;line-height:1.5}
     .wrap{max-width:720px;margin:0 auto;padding:40px 20px 60px}
@@ -20,15 +30,15 @@
     td.r{text-align:right}
     .tot{display:flex;justify-content:space-between;padding:8px 0;font-variant-numeric:tabular-nums}
     .tot.big{font-family:'Figtree';font-weight:800;font-size:18px;border-top:2px solid #1B1A24;padding-top:12px;margin-top:8px}
-    .btn{display:inline-block;background:#FFC61A;color:#1B1A24;font-weight:700;padding:12px 28px;border-radius:999px;text-decoration:none;font-size:14px}
-    .btn:hover{background:#F0B700}
+    .btn{display:inline-block;background:var(--accent);color:#1B1A24;font-weight:700;padding:12px 28px;border-radius:999px;text-decoration:none;font-size:14px}
+    .btn:hover{background:color-mix(in srgb, var(--accent) 85%, black 15%)}
   </style>
 </head>
 <body>
 <div class="wrap">
   <h1>Invoice {{ $invoice->invoice_number }}</h1>
   <div class="meta">
-    From <b>Your Company</b> · For <b>{{ $invoice->client?->name }}</b><br>
+    From <b>{{ $senderName }}</b> · For <b>{{ $invoice->client?->name }}</b><br>
     @if ($invoice->due_date) Due <b>{{ $invoice->due_date->format('d M Y') }}</b> · @endif
     Request <b>{{ $invoice->serviceRequest?->sr_number }}</b>
   </div>
@@ -45,12 +55,12 @@
     </table>
 
     <div style="margin-top:16px">
-      <div class="tot"><span>Subtotal</span><span>AED {{ number_format($invoice->subtotal, 3) }}</span></div>
+      <div class="tot"><span>Subtotal</span><span>{{ $currencyCode }} {{ number_format($invoice->subtotal, 3) }}</span></div>
       @if ($invoice->discount_total > 0)
-        <div class="tot"><span>Discount</span><span>— {{ number_format($invoice->discount_total, 3) }}</span></div>
+        <div class="tot"><span>Discount</span><span>— {{ $currencyCode }} {{ number_format($invoice->discount_total, 3) }}</span></div>
       @endif
-      <div class="tot"><span>Tax</span><span>AED {{ number_format($invoice->tax_total, 3) }}</span></div>
-      <div class="tot big"><span>Total</span><span>AED {{ number_format($invoice->total, 3) }}</span></div>
+      <div class="tot"><span>Tax</span><span>{{ $currencyCode }} {{ number_format($invoice->tax_total, 3) }}</span></div>
+      <div class="tot big"><span>Total</span><span>{{ $currencyCode }} {{ number_format($invoice->total, 3) }}</span></div>
     </div>
   </div>
 

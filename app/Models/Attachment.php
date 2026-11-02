@@ -54,18 +54,10 @@ class Attachment extends Model
 
     /* ---------- Accessors ---------- */
 
-   public function getUrlAttribute(): string
+  public function getUrlAttribute(): string
 {
-    // Removed attachment: no file URL available.
     if (empty($this->storage_path)) {
         return '';
-    }
-
-    if ($this->attachable_type === \App\Models\ServiceRequest::class) {
-        return route('service-requests.file', [
-            'service_request' => $this->attachable_id,
-            'filename' => basename($this->storage_path),
-        ]);
     }
 
     return \Storage::disk('public')->url($this->storage_path);

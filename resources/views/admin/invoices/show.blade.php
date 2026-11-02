@@ -1,15 +1,18 @@
 @extends('layouts.admin')
 @section('title', $invoice->invoice_number)
 @section('content')
+@php
+  $currencyCode = auth()->user()->tenant?->currency_code ?? 'AED';
+@endphp
 <style>
 .crumb{color:var(--muted);font-size:13px;margin-bottom:10px}
 .crumb a{color:var(--ink);text-decoration:none;font-weight:600}
 .hero{background:#fff;border:1px solid var(--line);border-radius:14px;padding:24px;margin-bottom:16px;display:grid;grid-template-columns:1fr auto;gap:20px}
-.hero h1{font-family:'Figtree';font-size:22px;font-weight:800;margin-bottom:2px}
+.hero h1{font-family:var(--font-display);font-size:22px;font-weight:800;margin-bottom:2px}
 .hero .meta{color:var(--muted);font-size:13px;margin-top:8px;display:flex;gap:14px;flex-wrap:wrap}
 .hero .meta b{color:var(--ink);font-weight:600}
 .hero-totals{text-align:right;min-width:180px}
-.hero-totals .big{font-family:'Figtree';font-size:28px;font-weight:800;line-height:1.1}
+.hero-totals .big{font-family:var(--font-display);font-size:28px;font-weight:800;line-height:1.1}
 .hero-totals .big-lbl{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-top:4px}
 .hero-totals .bal{color:var(--amber);font-weight:700;margin-top:10px;font-size:14px}
 .hero-totals .bal.paid{color:var(--green)}
@@ -17,7 +20,7 @@
 .cols{display:grid;grid-template-columns:1fr 320px;gap:16px}
 @media (max-width:900px){.cols{grid-template-columns:1fr}}
 .panel{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:16px}
-.panel-h{padding:14px 18px;border-bottom:1px solid var(--line);font-family:'Figtree';font-weight:700;font-size:14px}
+.panel-h{padding:14px 18px;border-bottom:1px solid var(--line);font-family:var(--font-display);font-weight:700;font-size:14px}
 .panel-b{padding:16px 18px}
 .lines{width:100%;border-collapse:collapse;font-size:13.5px}
 .lines th{text-align:left;padding:10px 16px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:#F5F4FA;font-weight:700}
@@ -25,7 +28,7 @@
 .lines .r{text-align:right}
 .tot-row{display:flex;justify-content:space-between;padding:8px 18px;font-size:14px;font-variant-numeric:tabular-nums}
 .tot-row.sub{border-top:1px solid var(--line);padding-top:12px}
-.tot-row.tot{font-family:'Figtree';font-weight:800;font-size:17px;border-top:2px solid var(--ink);padding:14px 18px;margin-top:4px}
+.tot-row.tot{font-family:var(--font-display);font-weight:800;font-size:17px;border-top:2px solid var(--ink);padding:14px 18px;margin-top:4px}
 .tot-row.pay{color:var(--green)}
 .tot-row.bal{color:var(--amber);font-weight:700}
 .pay-tbl{width:100%;border-collapse:collapse;font-size:13px}
@@ -35,14 +38,14 @@
 .pay-reversed{color:var(--muted);text-decoration:line-through}
 .ev{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:10px;font-size:13px}
 .ev:first-child{border-top:0}
-.ev .dot{width:8px;height:8px;border-radius:50%;background:#FFC61A;margin-top:6px;flex-shrink:0}
-.btn{display:inline-flex;align-items:center;gap:6px;background:#FFC61A;color:#1B1A24;font-weight:700;font-size:13px;padding:9px 18px;border-radius:999px;border:0;cursor:pointer;font-family:inherit;text-decoration:none}
-.btn:hover{background:#F0B700}
+.ev .dot{width:8px;height:8px;border-radius:50%;background:var(--yellow);margin-top:6px;flex-shrink:0}
+.btn{display:inline-flex;align-items:center;gap:6px;background:var(--yellow);color:var(--ink);font-weight:700;font-size:13px;padding:9px 18px;border-radius:999px;border:0;cursor:pointer;font-family:inherit;text-decoration:none}
+.btn:hover{background:color-mix(in srgb, var(--yellow) 85%, black 15%)}
 .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink);font-weight:600}
 .btn.ghost:hover{background:#F5F4FA}
-.btn.danger{background:#C2381B;color:#fff}
-.btn.blue{background:#2F5BEA;color:#fff}
-.btn.blue:hover{background:#1E47D0}
+.btn.danger{background:var(--red);color:#fff}
+.btn.blue{background:var(--amber);color:#fff}
+.btn.blue:hover{background:color-mix(in srgb, var(--amber) 85%, black 15%)}
 .pill{display:inline-block;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;vertical-align:middle}
 .p-draft{background:#F0EFF5;color:#5A5869}
 .p-pending_approval{background:#EDE9FE;color:#5B3BB8}
@@ -70,9 +73,9 @@
   </div>
   <div class="hero-totals">
     <div class="big-lbl">Total</div>
-    <div class="big">AED {{ number_format($invoice->total, 2) }}</div>
+    <div class="big">{{ $currencyCode }} {{ number_format($invoice->total, 2) }}</div>
     @if ($invoice->balance > 0)
-      <div class="bal">Balance AED {{ number_format($invoice->balance, 2) }}</div>
+      <div class="bal">Balance {{ $currencyCode }} {{ number_format($invoice->balance, 2) }}</div>
     @else
       <div class="bal paid">{{ $invoice->status === 'paid' ? 'Paid in full' : ($invoice->status === 'written_off' ? 'Written off' : '—') }}</div>
     @endif
@@ -92,18 +95,11 @@
       <button class="btn">Approve</button>
     </form>
 
-    <!-- <form method="POST" action="{{ route('admin.invoices.send-back', $invoice) }}" style="display:inline" onsubmit="return (this.reason.value=prompt('Reason for sending back?','')) !== null">@csrf
-      <input type="hidden" name="reason">
-      <button class="btn ghost">Send back</button>
-    </form> -->
-
-
     <button type="button" class="btn ghost" onclick="openSendBack()">Send back</button>
-<form id="sendback-form" method="POST" action="{{ route('admin.invoices.send-back', $invoice) }}" style="display:none">
-  @csrf
-  <input type="hidden" name="reason" id="sendback-reason">
-</form>
-
+    <form id="sendback-form" method="POST" action="{{ route('admin.invoices.send-back', $invoice) }}" style="display:none">
+      @csrf
+      <input type="hidden" name="reason" id="sendback-reason">
+    </form>
   @endif
 
   @if ($invoice->status === 'approved')
@@ -117,11 +113,11 @@
 
   @if (in_array($invoice->status, ['sent','partially_paid','overdue']))
     <button class="btn blue" onclick="document.getElementById('pay-modal').style.display='flex'">Record payment</button>
-   <button type="button" class="btn ghost" onclick="openWriteOff()">Write off balance</button>
-<form id="writeoff-form" method="POST" action="{{ route('admin.invoices.write-off', $invoice) }}" style="display:none">
-  @csrf
-  <input type="hidden" name="reason" id="writeoff-reason">
-</form>
+    <button type="button" class="btn ghost" onclick="openWriteOff()">Write off balance</button>
+    <form id="writeoff-form" method="POST" action="{{ route('admin.invoices.write-off', $invoice) }}" style="display:none">
+      @csrf
+      <input type="hidden" name="reason" id="writeoff-reason">
+    </form>
     <form method="POST" action="{{ route('admin.invoices.send', $invoice) }}" style="display:inline">@csrf
       @foreach (($invoice->client?->contacts ?? []) as $c)
         <input type="hidden" name="recipients[]" value="{{ $c->name }}">
@@ -141,13 +137,11 @@
   @if ($invoice->status !== 'void')
     <span style="margin-left:auto"></span>
 
-  <button type="button" class="btn danger" onclick="openVoid()">Void</button>
-<form id="void-form" method="POST" action="{{ route('admin.invoices.void', $invoice) }}" style="display:none">
-  @csrf
-  <input type="hidden" name="reason" id="void-reason">
-</form>
-
-    
+    <button type="button" class="btn danger" onclick="openVoid()">Void</button>
+    <form id="void-form" method="POST" action="{{ route('admin.invoices.void', $invoice) }}" style="display:none">
+      @csrf
+      <input type="hidden" name="reason" id="void-reason">
+    </form>
   @endif
 </div>
 
@@ -164,22 +158,22 @@
               <td>{{ $it->description }}</td>
               <td class="r">{{ number_format($it->quantity, 2) }}</td>
               <td class="r">{{ number_format($it->unit_rate, 3) }}</td>
-              <td class="r">{{ $it->taxRate?->rate_percent ? $it->taxRate->rate_percent . '%' : '—' }}</td>
+              <td class="r">{{ $it->taxRate?->rate_percent ? rtrim(rtrim(number_format($it->taxRate->rate_percent, 2), '0'), '.') . '%' : '—' }}</td>
               <td class="r">{{ number_format($it->line_total, 3) }}</td>
             </tr>
           @endforeach
         </tbody>
       </table>
-      <div class="tot-row sub"><span>Subtotal</span><span>AED {{ number_format($invoice->subtotal, 3) }}</span></div>
+      <div class="tot-row sub"><span>Subtotal</span><span>{{ $currencyCode }} {{ number_format($invoice->subtotal, 3) }}</span></div>
       @if ($invoice->discount_total > 0)
-        <div class="tot-row"><span>Discount</span><span>— {{ number_format($invoice->discount_total, 3) }}</span></div>
+        <div class="tot-row"><span>Discount</span><span>— {{ $currencyCode }} {{ number_format($invoice->discount_total, 3) }}</span></div>
       @endif
-      <div class="tot-row"><span>Tax</span><span>AED {{ number_format($invoice->tax_total, 3) }}</span></div>
-      <div class="tot-row tot"><span>Total</span><span>AED {{ number_format($invoice->total, 3) }}</span></div>
+      <div class="tot-row"><span>Tax</span><span>{{ $currencyCode }} {{ number_format($invoice->tax_total, 3) }}</span></div>
+      <div class="tot-row tot"><span>Total</span><span>{{ $currencyCode }} {{ number_format($invoice->total, 3) }}</span></div>
       @php $paid = $invoice->payments->whereNull('reversed_at')->sum('amount'); @endphp
-      <div class="tot-row pay"><span>Paid</span><span>AED {{ number_format($paid, 3) }}</span></div>
+      <div class="tot-row pay"><span>Paid</span><span>{{ $currencyCode }} {{ number_format($paid, 3) }}</span></div>
       <div class="tot-row bal {{ $invoice->balance <= 0 ? 'paid' : '' }}">
-        <span>Balance due</span><span>AED {{ number_format($invoice->balance, 3) }}</span>
+        <span>Balance due</span><span>{{ $currencyCode }} {{ number_format($invoice->balance, 3) }}</span>
       </div>
     </div>
 
@@ -197,14 +191,14 @@
                 <td>{{ $p->received_at->format('d M Y') }}</td>
                 <td>{{ ucfirst(str_replace('_',' ',$p->method)) }}</td>
                 <td style="color:var(--muted)">{{ $p->reference ?? '—' }}</td>
-                <td class="r">AED {{ number_format($p->amount, 3) }}</td>
+                <td class="r">{{ $currencyCode }} {{ number_format($p->amount, 3) }}</td>
                 <td style="text-align:right">
                   @if (! $p->reversed_at)
                     <button type="button" class="btn ghost" style="padding:4px 10px;font-size:11px" onclick="openReverse({{ $p->id }}, '{{ $p->payment_number }}')">Reverse</button>
-<form id="reverse-form-{{ $p->id }}" method="POST" action="{{ route('admin.invoices.payment.reverse', $p) }}" style="display:none">
-  @csrf
-  <input type="hidden" name="reason" id="reverse-reason-{{ $p->id }}">
-</form>
+                    <form id="reverse-form-{{ $p->id }}" method="POST" action="{{ route('admin.invoices.payment.reverse', $p) }}" style="display:none">
+                      @csrf
+                      <input type="hidden" name="reason" id="reverse-reason-{{ $p->id }}">
+                    </form>
                   @endif
                 </td>
               </tr>
@@ -243,17 +237,17 @@
 <div id="pay-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center;padding:20px">
   <div style="background:#fff;border-radius:16px;max-width:520px;width:100%;max-height:90vh;overflow:auto">
     <div style="padding:18px 24px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center">
-      <h2 style="font-family:'Figtree';font-size:17px;font-weight:800">Record payment · {{ $invoice->invoice_number }}</h2>
+      <h2 style="font-family:var(--font-display);font-size:17px;font-weight:800">Record payment · {{ $invoice->invoice_number }}</h2>
       <button onclick="document.getElementById('pay-modal').style.display='none'" style="background:none;border:0;font-size:22px;cursor:pointer;color:var(--muted)">×</button>
     </div>
     <form method="POST" action="{{ route('admin.invoices.payment', $invoice) }}">
       @csrf
       <div style="padding:20px 24px">
         <div style="padding:12px 14px;background:#F5F4FA;border-radius:10px;margin-bottom:16px;display:flex;justify-content:space-between">
-          <div><div style="color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase">Balance due</div><div style="font-family:'Figtree';font-weight:800;font-size:20px;color:var(--amber)">AED {{ number_format($invoice->balance, 2) }}</div></div>
+          <div><div style="color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase">Balance due</div><div style="font-family:var(--font-display);font-weight:800;font-size:20px;color:var(--amber)">{{ $currencyCode }} {{ number_format($invoice->balance, 2) }}</div></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-          <div><label style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase">Amount *</label><input name="amount" value="{{ number_format($invoice->balance, 2, '.', '') }}" required style="width:100%;height:42px;padding:0 14px;border:1px solid var(--line);border-radius:10px;font-weight:700;text-align:right;margin-top:4px"></div>
+          <div><label style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase">Amount *</label><input type="number" step="0.01" min="0" name="amount" value="{{ number_format($invoice->balance, 2, '.', '') }}" required style="width:100%;height:42px;padding:0 14px;border:1px solid var(--line);border-radius:10px;font-weight:700;text-align:right;margin-top:4px"></div>
           <div><label style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase">Received *</label><input type="date" name="received_at" value="{{ now()->format('Y-m-d') }}" required style="width:100%;height:42px;padding:0 14px;border:1px solid var(--line);border-radius:10px;margin-top:4px"></div>
         </div>
         <div style="margin-bottom:14px"><label style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase">Method *</label>
@@ -328,7 +322,7 @@ function openVoid() {
   Swal.fire({
     icon: 'error',
     title: 'Void ' + INV_NUMBER,
-    html: '<div style="color:#C2381B;font-size:13.5px;margin-bottom:4px;font-weight:600">This cannot be undone.</div>',
+    html: '<div style="color:var(--red);font-size:13.5px;margin-bottom:4px;font-weight:600">This cannot be undone.</div>',
     input: 'textarea',
     inputLabel: 'Reason',
     inputPlaceholder: 'e.g. Issued in error',
@@ -375,14 +369,14 @@ function openReverse(paymentId, paymentNumber) {
 </script>
 
 <style>
-  .swal-btn-blue{background:#2F5BEA !important;color:#fff !important;border-radius:999px !important;padding:10px 22px !important;font-weight:700 !important}
-  .swal-btn-amber{background:#F0B700 !important;color:#1B1A24 !important;border-radius:999px !important;padding:10px 22px !important;font-weight:700 !important}
-  .swal-btn-red{background:#C2381B !important;color:#fff !important;border-radius:999px !important;padding:10px 22px !important;font-weight:700 !important}
+  .swal-btn-blue{background:var(--amber) !important;color:#fff !important;border-radius:999px !important;padding:10px 22px !important;font-weight:700 !important}
+  .swal-btn-amber{background:color-mix(in srgb, var(--yellow) 85%, black 15%) !important;color:var(--ink) !important;border-radius:999px !important;padding:10px 22px !important;font-weight:700 !important}
+  .swal-btn-red{background:var(--red) !important;color:#fff !important;border-radius:999px !important;padding:10px 22px !important;font-weight:700 !important}
   .swal2-popup{border-radius:16px !important;padding:24px !important}
-  .swal2-title{font-family:'Figtree',sans-serif !important;font-weight:800 !important;font-size:19px !important;text-align:left !important;padding:0 0 2px !important}
+  .swal2-title{font-family:var(--font-display),sans-serif !important;font-weight:800 !important;font-size:19px !important;text-align:left !important;padding:0 0 2px !important}
   .swal2-html-container{text-align:left !important;padding:0 !important;margin-top:0 !important}
   .swal2-input-label{text-align:left !important;font-weight:700 !important;font-size:13px !important;color:#1B1A24 !important;margin-top:14px !important}
-  .swal2-textarea{border:1.5px solid #2F5BEA !important;border-radius:10px !important;font-family:inherit !important;font-size:14px !important;padding:12px 14px !important;box-shadow:0 0 0 3px rgba(47,91,234,.12) !important}
+  .swal2-textarea{border:1.5px solid var(--yellow) !important;border-radius:10px !important;font-family:inherit !important;font-size:14px !important;padding:12px 14px !important;box-shadow:0 0 0 3px color-mix(in srgb, var(--yellow) 15%, transparent) !important}
   .swal2-actions{justify-content:flex-end !important;margin-top:18px !important}
   .swal2-cancel.swal2-styled{background:#fff !important;color:#1B1A24 !important;border:1px solid #E6E4EE !important;border-radius:999px !important;padding:10px 22px !important;font-weight:600 !important}
 </style>

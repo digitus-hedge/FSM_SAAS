@@ -10,6 +10,9 @@
   $senderTrn     = $tenant?->trn ?? $tenant?->tax_number ?? null;
   $senderLogo    = ($tenant?->logo_path ?? null) ? asset('storage/'.$tenant->logo_path) : null;
 
+  $primaryColor  = $tenant?->primary_color ?? '#FFC61A';
+  $currencyCode  = $tenant?->currency_code ?? 'AED';
+
   $words  = preg_split('/\s+/', trim((string) $senderName));
   $badge  = strtoupper(substr($words[0] ?? '?', 0, 1) . substr($words[1] ?? '', 0, 1));
   if (! $badge) $badge = strtoupper(substr($senderName, 0, 2));
@@ -30,13 +33,13 @@
   :root{
     --ink:#1B1A24; --muted:#5F5D6E; --subtle:#8B89A0;
     --line:#E6E4EE; --soft:#F5F4FA;
-    --accent:#2F5BEA; --accent-dark:#1E3FB8;
+    --accent: {{ $primaryColor }}; --accent-dark: color-mix(in srgb, {{ $primaryColor }} 80%, black 20%);
     --green:#00866F; --amber:#8A5A00; --red:#C2381B;
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   body{font-family:'DM Sans',system-ui,sans-serif;color:var(--ink);font-size:14px;line-height:1.5;background:#fff;padding:40px 48px;max-width:900px;margin:0 auto}
 
-  /* ===== BLUE HEADER CARD ===== */
+  /* ===== HEADER CARD ===== */
   .hdr-card{
     background:linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
     color:#fff;
@@ -67,7 +70,7 @@
   font-family:'Figtree';font-weight:800;font-size:28px;
   margin-bottom:14px;
   display:flex;
-  align-items:baseline;   /* was: center */
+  align-items:baseline;
   gap:10px;
   line-height:1;
 }
@@ -190,7 +193,7 @@
   <div class="paid-stamp" style="color:var(--red);border-color:var(--red)">VOID</div>
 @endif
 
-{{-- ===== BLUE HEADER CARD ===== --}}
+{{-- ===== HEADER CARD ===== --}}
 <div class="hdr-card">
   <div>
     <div class="co-name">{{ $senderName }}</div>
@@ -276,21 +279,21 @@
 {{-- ===== TOTALS ===== --}}
 <div class="totals-wrap">
   <table class="totals">
-    <tr><td>Subtotal</td><td class="v">AED {{ number_format($invoice->subtotal, 2) }}</td></tr>
+    <tr><td>Subtotal</td><td class="v">{{ $currencyCode }} {{ number_format($invoice->subtotal, 2) }}</td></tr>
     @if ($invoice->discount_total > 0)
-      <tr><td>Discount</td><td class="v">-AED {{ number_format($invoice->discount_total, 2) }}</td></tr>
+      <tr><td>Discount</td><td class="v">-{{ $currencyCode }} {{ number_format($invoice->discount_total, 2) }}</td></tr>
     @endif
-    <tr><td>Tax</td><td class="v">AED {{ number_format($invoice->tax_total, 2) }}</td></tr>
-    <tr class="big"><td>Total</td><td class="v">AED {{ number_format($invoice->total, 2) }}</td></tr>
+    <tr><td>Tax</td><td class="v">{{ $currencyCode }} {{ number_format($invoice->tax_total, 2) }}</td></tr>
+    <tr class="big"><td>Total</td><td class="v">{{ $currencyCode }} {{ number_format($invoice->total, 2) }}</td></tr>
 
     @php $paidAmt = max(0, $invoice->total - ($invoice->balance ?? 0)); @endphp
     @if ($paidAmt > 0 && $invoice->balance > 0)
-      <tr><td>Paid</td><td class="v">AED {{ number_format($paidAmt, 2) }}</td></tr>
-      <tr class="balance"><td>Balance due</td><td class="v">AED {{ number_format($invoice->balance, 2) }}</td></tr>
+      <tr><td>Paid</td><td class="v">{{ $currencyCode }} {{ number_format($paidAmt, 2) }}</td></tr>
+      <tr class="balance"><td>Balance due</td><td class="v">{{ $currencyCode }} {{ number_format($invoice->balance, 2) }}</td></tr>
     @elseif ($invoice->status === 'paid')
-      <tr class="balance paid"><td>Balance due</td><td class="v">AED 0.00</td></tr>
+      <tr class="balance paid"><td>Balance due</td><td class="v">{{ $currencyCode }} 0.00</td></tr>
     @elseif ($invoice->balance > 0 && $invoice->status !== 'draft')
-      <tr class="balance"><td>Balance due</td><td class="v">AED {{ number_format($invoice->balance, 2) }}</td></tr>
+      <tr class="balance"><td>Balance due</td><td class="v">{{ $currencyCode }} {{ number_format($invoice->balance, 2) }}</td></tr>
     @endif
   </table>
 </div>

@@ -3,7 +3,7 @@
 
 @section('content')
 <style>
-  .page-h1{font-family:'Figtree';font-size:28px;font-weight:800;margin-bottom:6px}
+  .page-h1{font-family:var(--font-display);font-size:28px;font-weight:800;margin-bottom:6px}
   .page-sub{color:var(--muted);font-size:14px;margin-bottom:22px;max-width:720px}
 
   .tab-strip{display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:22px}
@@ -19,8 +19,8 @@
   table.exp th{text-align:left;padding:14px 16px;font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--line);white-space:nowrap}
   table.exp td{padding:16px;border-bottom:1px solid #F2F1F6;vertical-align:top;color:var(--ink)}
   table.exp tr:last-child td{border-bottom:0}
-  table.exp td.sr{font-family:'Figtree';font-weight:800;white-space:nowrap}
-  table.exp td.total{font-family:'Figtree';font-weight:700;white-space:nowrap}
+  table.exp td.sr{font-family:var(--font-display);font-weight:800;white-space:nowrap}
+  table.exp td.total{font-family:var(--font-display);font-weight:700;white-space:nowrap}
   table.exp td.qty{white-space:nowrap;color:var(--muted)}
 
   .chip{display:inline-block;padding:4px 10px;border-radius:999px;font-size:11.5px;font-weight:700}
@@ -54,8 +54,12 @@
   .act .btn-reject:hover{background:#FDECE7;color:var(--red);border-color:var(--red)}
 
   .empty{padding:60px 20px;text-align:center;color:var(--muted)}
-  .empty .big{font-family:'Figtree';font-weight:700;font-size:16px;color:var(--ink);margin-bottom:4px}
+  .empty .big{font-family:var(--font-display);font-weight:700;font-size:16px;color:var(--ink);margin-bottom:4px}
 </style>
+
+@php
+  $currencyCode = auth()->user()->tenant?->currency_code ?? 'AED';
+@endphp
 
 <h1 class="page-h1">Expenses to review</h1>
 <p class="page-sub">Approve or reject what technicians logged. Only approved billable expenses of a billable request can go on an invoice.</p>
@@ -103,7 +107,7 @@
               </td>
               <td>{{ $exp->description ?: '—' }}</td>
               <td class="qty">{{ rtrim(rtrim(number_format($exp->quantity, 2), '0'), '.') }} x {{ number_format($exp->unit_rate, 2) }}</td>
-              <td class="total">AED {{ number_format($exp->total_amount, 2) }}</td>
+              <td class="total">{{ $currencyCode }} {{ number_format($exp->total_amount, 2) }}</td>
 
               {{-- RECEIPT --}}
               <td>
@@ -233,7 +237,7 @@ function showReceipt(filename, imageUrl, description) {
     title: 'Receipt',
     html: `
       <div style="text-align:left;background:var(--soft);border-radius:12px;padding:14px;margin-top:6px">
-        <div style="font-family:'Figtree';font-weight:800;font-size:14px;color:var(--ink);text-align:center;margin-bottom:2px">
+        <div style="font-family:var(--font-display);font-weight:800;font-size:14px;color:var(--ink);text-align:center;margin-bottom:2px">
           ${filename}
         </div>
         <div style="color:var(--muted);font-size:12px;text-align:center;margin-bottom:10px">

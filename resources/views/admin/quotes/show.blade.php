@@ -8,13 +8,14 @@
       ? \App\Models\Invoice::where('service_request_id', $quote->service_request_id)
           ->orderByDesc('id')->first()
       : null;
+  $currencyCode = auth()->user()->tenant?->currency_code ?? 'AED';
 @endphp
 
 <style>
   .crumb{color:var(--muted);font-size:13px;margin-bottom:4px}
   .crumb a{color:var(--ink);text-decoration:underline}
   .head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:4px;flex-wrap:wrap}
-  h1.q{font-family:'Figtree';font-size:28px;font-weight:800}
+  h1.q{font-family:var(--font-display);font-size:28px;font-weight:800}
   .pill{display:inline-block;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;margin-left:8px}
   .p-sent{background:#EDE9FE;color:#5B3BB8}
   .p-draft{background:#F0EFF5;color:#5A5869}
@@ -36,7 +37,7 @@
   .totals{display:flex;justify-content:flex-end;margin-top:16px}
   .totals table{min-width:280px;font-size:14px}
   .totals td{padding:5px 0}
-  .totals .big{font-family:'Figtree';font-weight:800;font-size:16px;border-top:1px solid var(--line);padding-top:10px}
+  .totals .big{font-family:var(--font-display);font-weight:800;font-size:16px;border-top:1px solid var(--line);padding-top:10px}
   .terms-box{background:#F8F7FB;border-radius:10px;padding:14px 16px;color:var(--ink);font-size:13.5px;margin-top:8px}
   .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
   .hist-row{padding:10px 0;border-bottom:1px solid #F2F1F6;font-size:13.5px}
@@ -45,8 +46,9 @@
   .hist-row .u{color:var(--muted)}
 
   .btn.primary {
-    background: #2F5BEA;
+    background: var(--amber);
     color: #ffffff;
+    border-color: var(--amber);
 }
 
 </style>
@@ -66,12 +68,6 @@
       <div class="sub">Valid until {{ $quote->valid_until->format('d M Y') }}</div>
     @endif
   </div>
-  @php
-  $srInvoice = $quote->service_request_id
-      ? \App\Models\Invoice::where('service_request_id', $quote->service_request_id)
-          ->orderByDesc('id')->first()
-      : null;
-@endphp
 
 <div class="actions">
 
@@ -87,9 +83,9 @@
   {{-- ACCEPTED → Start / View invoice --}}
   @if ($quote->status === 'accepted')
     @if ($srInvoice)
-      <!-- <a href="{{ route('admin.invoices.show', $srInvoice) }}" class="btn">
+      <a href="{{ route('admin.invoices.show', $srInvoice) }}" class="btn">
         View invoice {{ $srInvoice->invoice_number }}
-      </a> -->
+      </a>
     @else
       <a href="{{ route('admin.invoices.build', $quote->service_request_id) }}" class="btn primary">
         Start invoice from this quote
@@ -102,8 +98,7 @@
     @if ($quote->source === 'builder')
       <a href="{{ route('admin.quotes.edit', $quote) }}" class="btn">Edit</a>
     @endif
-    <button type="button" class="btn"
-            style="background:#2F5BEA;color:#fff;border-color:#2F5BEA"
+    <button type="button" class="btn primary"
             onclick="openSendSheet()">
       Send
     </button>
@@ -125,13 +120,13 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
       Uploaded document:
       <a href="{{ asset('storage/'.$quote->pdfAttachment->storage_path) }}" target="_blank" style="color:var(--ink);text-decoration:underline;font-weight:700">{{ $quote->pdfAttachment->original_name }}</a>.
-      Total entered: AED {{ number_format($quote->total,2) }}.
+      Total entered: {{ $currencyCode }} {{ number_format($quote->total,2) }}.
     </div>
     <div style="padding:22px;display:flex;justify-content:flex-end">
       <table style="min-width:280px;font-size:14px">
-        <tr><td style="color:var(--muted);padding:5px 0">Subtotal</td><td style="text-align:right;padding:5px 0">AED {{ number_format($quote->subtotal,2) }}</td></tr>
-        <tr><td style="color:var(--muted);padding:5px 0">Tax included</td><td style="text-align:right;padding:5px 0">AED {{ number_format($quote->tax_total,2) }}</td></tr>
-        <tr><td style="font-family:'Figtree';font-weight:800;border-top:1px solid var(--line);padding:10px 0">Total</td><td style="font-family:'Figtree';font-weight:800;text-align:right;border-top:1px solid var(--line);padding:10px 0">AED {{ number_format($quote->total,2) }}</td></tr>
+        <tr><td style="color:var(--muted);padding:5px 0">Subtotal</td><td style="text-align:right;padding:5px 0">{{ $currencyCode }} {{ number_format($quote->subtotal,2) }}</td></tr>
+        <tr><td style="color:var(--muted);padding:5px 0">Tax included</td><td style="text-align:right;padding:5px 0">{{ $currencyCode }} {{ number_format($quote->tax_total,2) }}</td></tr>
+        <tr><td style="font-family:var(--font-display);font-weight:800;border-top:1px solid var(--line);padding:10px 0">Total</td><td style="font-family:var(--font-display);font-weight:800;text-align:right;border-top:1px solid var(--line);padding:10px 0">{{ $currencyCode }} {{ number_format($quote->total,2) }}</td></tr>
       </table>
     </div>
     @if ($quote->terms)
@@ -159,12 +154,12 @@
     </table>
     <div class="totals">
       <table>
-        <tr><td style="color:var(--muted)">Subtotal</td><td style="text-align:right">AED {{ number_format($quote->subtotal,2) }}</td></tr>
-        <tr><td style="color:var(--muted)">Tax {{ $quote->subtotal > 0 ? rtrim(rtrim(number_format($quote->tax_total / $quote->subtotal * 100,0),'0'),'.') : '0' }}%</td><td style="text-align:right">AED {{ number_format($quote->tax_total,2) }}</td></tr>
+        <tr><td style="color:var(--muted)">Subtotal</td><td style="text-align:right">{{ $currencyCode }} {{ number_format($quote->subtotal,2) }}</td></tr>
+        <tr><td style="color:var(--muted)">Tax {{ $quote->subtotal > 0 ? number_format($quote->tax_total / $quote->subtotal * 100, 0) : '0' }}%</td><td style="text-align:right">{{ $currencyCode }} {{ number_format($quote->tax_total,2) }}</td></tr>
         @if ($quote->discount_total > 0)
-          <tr><td style="color:var(--muted)">Discount</td><td style="text-align:right">-AED {{ number_format($quote->discount_total,2) }}</td></tr>
+          <tr><td style="color:var(--muted)">Discount</td><td style="text-align:right">-{{ $currencyCode }} {{ number_format($quote->discount_total,2) }}</td></tr>
         @endif
-        <tr><td class="big">Total</td><td class="big" style="text-align:right">AED {{ number_format($quote->total,2) }}</td></tr>
+        <tr><td class="big">Total</td><td class="big" style="text-align:right">{{ $currencyCode }} {{ number_format($quote->total,2) }}</td></tr>
       </table>
     </div>
     @if ($quote->terms)
@@ -175,7 +170,7 @@
 
 <div class="grid-2">
   <div class="card">
-    <div style="font-family:'Figtree';font-weight:800;font-size:16px;margin-bottom:10px">Client response</div>
+    <div style="font-family:var(--font-display);font-weight:800;font-size:16px;margin-bottom:10px">Client response</div>
     @if ($quote->responded_at)
       <div style="font-size:13.5px">{{ ucfirst($quote->status) }} by {{ $quote->responded_by_name }}, {{ $quote->responded_at->format('d M, H:i') }}</div>
     @else
@@ -183,7 +178,7 @@
     @endif
   </div>
   <div class="card">
-    <div style="font-family:'Figtree';font-weight:800;font-size:16px;margin-bottom:10px">Versions</div>
+    <div style="font-family:var(--font-display);font-weight:800;font-size:16px;margin-bottom:10px">Versions</div>
     <div style="font-size:13.5px">
       <strong>{{ $quote->quote_number }}</strong>
       <span class="pill p-{{ $quote->status }}">{{ ucfirst($quote->status) }}</span>
@@ -196,7 +191,7 @@
 </div>
 
 <div class="card">
-  <div style="font-family:'Figtree';font-weight:800;font-size:16px;margin-bottom:10px">History</div>
+  <div style="font-family:var(--font-display);font-weight:800;font-size:16px;margin-bottom:10px">History</div>
   @forelse ($quote->events as $ev)
     <div class="hist-row">
       <span class="t">{{ $ev->occurred_at->format('d M, H:i') }}</span>
@@ -228,7 +223,7 @@ function openSendSheet() {
     const checked = (!disabled && i === 0) ? 'checked' : '';
     return `
       <label style="display:flex;gap:10px;padding:12px 0;border-bottom:1px solid #F2F1F6;cursor:pointer">
-        <input type="checkbox" name="recipients[]" value="${c.name}" ${checked} ${disabled} style="margin-top:3px;accent-color:#2F5BEA">
+        <input type="checkbox" name="recipients[]" value="${c.name}" ${checked} ${disabled} style="margin-top:3px;accent-color:var(--amber)">
         <div>
           <div style="font-weight:800;font-size:14.5px">${c.name}</div>
           <div style="color:var(--muted);font-size:12.5px">${sub}</div>
@@ -237,7 +232,7 @@ function openSendSheet() {
     `;
   }).join('');
 
-   const msg = `A quote for your service request {{ $quote->serviceRequest?->sr_number }} is ready. The total is AED {{ number_format($quote->total,2) }} and it is valid until {{ $quote->valid_until?->format('d M Y') }}. Please review it and let us know your decision.\n[View quote: a secure link is created per recipient]`;
+   const msg = `A quote for your service request {{ $quote->serviceRequest?->sr_number }} is ready. The total is {{ $currencyCode }} {{ number_format($quote->total,2) }} and it is valid until {{ $quote->valid_until?->format('d M Y') }}. Please review it and let us know your decision.\n[View quote: a secure link is created per recipient]`;
 
   Swal.fire({
     title: 'Send quote',
@@ -265,7 +260,7 @@ function openSendSheet() {
   openSendSheet();
 @endif
 </script>
-<style>.swal-btn-primary-blue{background:#2F5BEA !important;color:#fff !important}</style>
+<style>.swal-btn-primary-blue{background:var(--amber) !important;color:#fff !important}</style>
 
 
 
@@ -284,7 +279,7 @@ function openSendSheet() {
   .sim-panel{position:fixed;right:20px;bottom:70px;width:400px;height:640px;background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.18);overflow:hidden;display:none;z-index:51;flex-direction:column}
   .sim-panel.open{display:flex}
   .sim-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line);background:#fff}
-  .sim-head h3{font-family:'Figtree';font-weight:800;font-size:15px}
+  .sim-head h3{font-family:var(--font-display);font-weight:800;font-size:15px}
   .sim-head .x{background:none;border:0;font-size:20px;cursor:pointer;color:var(--muted);padding:0 8px}
   .sim-picker{padding:10px 14px;border-bottom:1px solid var(--line)}
   .sim-picker select{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font-family:inherit;font-size:13.5px}
@@ -295,9 +290,9 @@ function openSendSheet() {
   .sim-msg .card{background:#fff;border-radius:12px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.04)}
   .sim-msg .ch{color:var(--muted);font-size:12px;margin-bottom:4px;display:flex;justify-content:space-between}
   .sim-msg .ch strong{color:var(--ink)}
-  .sim-msg .ttl{font-family:'Figtree';font-weight:800;font-size:14px;margin:6px 0}
+  .sim-msg .ttl{font-family:var(--font-display);font-weight:800;font-size:14px;margin:6px 0}
   .sim-msg .body{font-size:13.5px;color:var(--ink);line-height:1.5;margin-bottom:12px}
-  .sim-msg .vq{background:var(--accent);color:#fff;padding:8px 16px;border-radius:999px;border:0;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit}
+  .sim-msg .vq{background:var(--amber);color:#fff;padding:8px 16px;border-radius:999px;border:0;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit}
 </style>
 
 <div class="sim-dock">

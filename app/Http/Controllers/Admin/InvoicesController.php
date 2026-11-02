@@ -88,7 +88,7 @@ class InvoicesController extends Controller
                     'client_id'          => $sr->client_id,
                     'source'             => 'builder',
                     'status'             => 'draft',
-                    'currency_code'      => 'AED',
+                    'currency_code'      => auth()->user()->tenant?->currency_code ?? 'AED',
                     'due_date'           => now()->addDays(20),
                     'notes'              => 'Payment due within 20 days of invoice date.',
                     'created_by_user_id' => auth()->id(),
@@ -140,9 +140,6 @@ class InvoicesController extends Controller
             'lines.*.unit_rate'     => 'required|numeric|min:0',
             'lines.*.tax_rate_id'   => 'nullable|integer|exists:tax_rates,id',
         ], [
-            // 'lines.*.description.min' => 'Enter a description of 2 to 255 characters.',
-            // 'lines.*.description.max' => 'Enter a description of 2 to 255 characters.',
-
             'due_date.required'              => 'Pick a due date.',
             'due_date.date'                  => 'Due date is invalid.',
             'lines.*.description.required'   => 'Description is required.',
@@ -262,7 +259,7 @@ class InvoicesController extends Controller
             'client_id'          => $sr->client_id,
             'source'             => 'uploaded_pdf',
             'status'             => 'draft',
-            'currency_code'      => 'AED',
+            'currency_code'      => auth()->user()->tenant?->currency_code ?? 'AED',
             'subtotal'           => $data['total'] - ($data['tax_included'] ?? 0),
             'tax_total'          => $data['tax_included'] ?? 0,
             'total'              => $data['total'],
@@ -396,7 +393,9 @@ class InvoicesController extends Controller
         if ($invoice->status === 'approved') {
             $invoice->update(['status' => 'sent', 'sent_at' => now()]);
 
-            $sr->update(['billing_status' => 'invoiced', 'status' => 'completed']);
+            if ($sr) {
+                $sr->update(['billing_status' => 'invoiced', 'status' => 'completed']);
+            }
         }
         InvoiceEvent::log($invoice->id, 'sent', 'Sent to ' . implode(', ', $request->recipients));
 
@@ -433,7 +432,7 @@ class InvoicesController extends Controller
                 'received_by_user_id' => auth()->id(),
             ]);
             $invoice->recomputeBalance();
-            InvoiceEvent::log($invoice->id, 'payment_received', 'AED ' . number_format($data['amount'], 3));
+            InvoiceEvent::log($invoice->id, 'payment_received', ($invoice->currency_code ?? 'AED') . ' ' . number_format($data['amount'], 3));
 
 
             $sr = $invoice->serviceRequest;
@@ -490,7 +489,7 @@ class InvoicesController extends Controller
             'write_off_reason' => $data['reason'],
             'balance'          => 0,
         ]);
-        InvoiceEvent::log($invoice->id, 'written_off', 'AED ' . number_format($amount, 3) . ' — ' . $data['reason']);
+        InvoiceEvent::log($invoice->id, 'written_off', ($invoice->currency_code ?? 'AED') . ' ' . number_format($amount, 3) . ' — ' . $data['reason']);
 
         return redirect()->route('admin.invoices.show', $invoice)
             ->with('success', 'Balance written off.');

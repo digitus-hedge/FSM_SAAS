@@ -4,9 +4,10 @@
     [$prioLabel, $prioColor] = $prioMap[$job->priority] ?? ['', 'slate'];
     [$stateLabel, $stateColor] = $stateMap[$job->status] ?? ['', 'slate'];
     $sameDay = $job->scheduled_eta_at && $job->scheduled_eta_at->isSameDay(now());
-    $tag = ($linkable ?? true) ? 'a' : 'div';
+    $isLink = $linkable ?? true;
+    $tag = $isLink ? 'a' : 'div';
 @endphp
-<{{ $tag }} @if($linkable ?? true) href="{{ route('technician.jobs.show', $job) }}" @endif class="card tap" style="display:block;text-decoration:none;color:inherit">
+<{{ $tag }} @if($isLink) href="{{ route('technician.jobs.show', $job) }}" @endif class="card tap" style="display:block;text-decoration:none;color:inherit">
     <div class="r1">
         <span>{{ $job->sr_number }}</span>
         <span class="chip sm" style="--c:var(--{{ $prioColor }})">{{ $prioLabel }}</span>

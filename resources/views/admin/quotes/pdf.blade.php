@@ -12,6 +12,8 @@
                  ?? null;
   $senderTrn     = $tenant?->trn ?? $tenant?->tax_number ?? null;
   $senderLogo    = ($tenant?->logo_path ?? null) ? asset('storage/'.$tenant->logo_path) : null;
+  $currencyCode  = $tenant?->currency_code ?? 'AED';
+  $primaryColor  = $tenant?->primary_color ?? '#FFC61A';
 
   $words  = preg_split('/\s+/', trim((string) $senderName));
   $badge  = strtoupper(substr($words[0] ?? '?', 0, 1) . substr($words[1] ?? '', 0, 1));
@@ -33,7 +35,7 @@
   :root{
     --ink:#1B1A24; --muted:#5F5D6E; --subtle:#8B89A0;
     --line:#E6E4EE; --soft:#F5F4FA;
-    --accent:#2F5BEA; --accent-dark:#1E3FB8;
+    --accent:{{ $primaryColor }}; --accent-dark: color-mix(in srgb, {{ $primaryColor }} 75%, black 25%);
     --green:#00866F; --red:#C2381B;
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -211,12 +213,12 @@
 {{-- ===== TOTALS ===== --}}
 <div class="totals-wrap">
   <table class="totals">
-    <tr><td>Subtotal</td><td class="v">AED {{ number_format($quote->subtotal,2) }}</td></tr>
+    <tr><td>Subtotal</td><td class="v">{{ $currencyCode }} {{ number_format($quote->subtotal,2) }}</td></tr>
     @if ($quote->discount_total > 0)
-      <tr><td>Discount</td><td class="v">-AED {{ number_format($quote->discount_total,2) }}</td></tr>
+      <tr><td>Discount</td><td class="v">-{{ $currencyCode }} {{ number_format($quote->discount_total,2) }}</td></tr>
     @endif
-    <tr><td>Tax</td><td class="v">AED {{ number_format($quote->tax_total,2) }}</td></tr>
-    <tr class="big"><td>Total</td><td class="v">AED {{ number_format($quote->total,2) }}</td></tr>
+    <tr><td>Tax</td><td class="v">{{ $currencyCode }} {{ number_format($quote->tax_total,2) }}</td></tr>
+    <tr class="big"><td>Total</td><td class="v">{{ $currencyCode }} {{ number_format($quote->total,2) }}</td></tr>
   </table>
 </div>
 

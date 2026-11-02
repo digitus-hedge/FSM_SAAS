@@ -29,7 +29,7 @@
             <img src="{{ $photo->url }}" style="width:100%;border-radius:12px;display:block;aspect-ratio:1;object-fit:cover">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
                 <span class="chip">{{ $photo->kind === 'before_photo' ? 'Before' : 'After' }}</span>
-                <form method="POST" action="{{ route('technician.jobs.photos.delete', [$serviceRequest, $photo]) }}">
+                <form method="POST" action="{{ route('technician.jobs.photos.delete', [$serviceRequest, $photo]) }}" >
                     @csrf @method('DELETE')
                     <button type="submit" class="btn danger sm">Remove</button>
                 </form>

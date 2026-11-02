@@ -4,7 +4,7 @@
 @section('content')
 <style>
     .page-h1 {
-        font-family: 'Figtree';
+        font-family: var(--font-display);
         font-size: 28px;
         font-weight: 800;
         margin-bottom: 6px
@@ -84,13 +84,13 @@
     }
 
     .rr-num {
-        font-family: 'Figtree';
+        font-family: var(--font-display);
         font-weight: 800;
         font-size: 14.5px
     }
 
     .rr-title {
-        font-family: 'Figtree';
+        font-family: var(--font-display);
         font-weight: 700;
         font-size: 14.5px
     }
@@ -145,7 +145,7 @@
     }
 
     .btn-primary {
-        background: #2F5BEA;
+        background: var(--amber);
         color: #fff;
         padding: 10px 20px;
         border-radius: 12px;
@@ -156,7 +156,7 @@
     }
 
     .btn-primary:hover {
-        background: #2548c0
+        background: color-mix(in srgb, var(--amber) 85%, black 15%)
     }
 
     table.rr tbody tr:hover { background:#F8F7FB }
@@ -229,7 +229,7 @@
         <span class="pill pill-na">Not applicable</span>
     @endif
 </td>
-        
+
             <td style="text-align:right;" onclick="event.stopPropagation()">
     @php
     $draft = $sr->quotes()->where('status','draft')->latest('id')->first();
@@ -269,14 +269,14 @@
       <div style="text-align:left">
         <p style="color:var(--muted);margin-bottom:16px;font-size:13.5px">How do you want to make it?</p>
         <label style="display:flex;gap:12px;padding:14px 2px;cursor:pointer">
-          <input type="radio" name="mq" value="build" checked style="margin-top:3px;accent-color:#2F5BEA">
+          <input type="radio" name="mq" value="build" checked style="margin-top:3px;accent-color:var(--amber)">
           <div>
             <div style="font-weight:800;font-size:14.5px">Build the quote</div>
             <div style="color:var(--muted);font-size:12.5px;margin-top:2px">Add lines, tax and a discount. A branded PDF is made when you send it.</div>
           </div>
         </label>
         <label style="display:flex;gap:12px;padding:14px 2px;cursor:pointer">
-          <input type="radio" name="mq" value="upload" style="margin-top:3px;accent-color:#2F5BEA">
+          <input type="radio" name="mq" value="upload" style="margin-top:3px;accent-color:var(--amber)">
           <div>
             <div style="font-weight:800;font-size:14.5px">Upload a PDF</div>
             <div style="color:var(--muted);font-size:12.5px;margin-top:2px">Use a quote you already made. You enter the total.</div>
@@ -305,7 +305,7 @@
 
 <style>
     .swal-btn-primary-blue {
-        background: #2F5BEA !important;
+        background: var(--amber) !important;
         color: #fff !important
     }
 </style>
