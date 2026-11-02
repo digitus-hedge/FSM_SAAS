@@ -5,9 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#FFFFFF">
 <title>@yield('title', 'Field View') — {{ optional(\App\Models\Tenant::current())->name ?? 'AIYWAH FSM' }}</title>
+@php
+    $brandTenant = \App\Models\Tenant::current();
+    $brandFont   = \App\Models\BrandFont::where('key', $brandTenant?->font_key ?? 'dm_sans')->first();
+    $googleParam = $brandFont->google_param ?? 'DM+Sans:wght@400;500;700&family=Figtree:wght@700;800';
+    $fontBody    = $brandFont->body_family ?? 'DM Sans';
+    $fontDisplay = $brandFont->display_family ?? 'Figtree';
+@endphp
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Figtree:wght@700;800&display=swap" rel="stylesheet">
-@include('technician._design_system', ['accentHex' => $accentHex ?? (optional(\App\Models\Tenant::current())->primary_color ?? '#2F5BEA')])
+<link href="https://fonts.googleapis.com/css2?family={{ $googleParam }}&display=swap" rel="stylesheet">
+@include('technician._design_system', [
+    'accentHex'   => $accentHex ?? ($brandTenant?->primary_color ?? '#FFC61A'),
+    'fontBody'    => $fontBody,
+    'fontDisplay' => $fontDisplay,
+])
 <style>.app{min-height:100dvh;max-width:480px;margin:0 auto;display:flex;flex-direction:column;background:var(--bg);position:relative}</style>
 </head>
 <body>
@@ -35,14 +46,14 @@
   </div>
 
   <nav class="nav">
-    <a href="{{ route('technician.jobs.index') }}" {!! request()->routeIs('technician.jobs.index') ? 'aria-current=page' : '' !!}>@include('technician._icon', ['name'=>'home','size'=>23])Today</a>
+    <a href="{{ route('technician.jobs.index') }}" {!! request()->routeIs('technician.jobs.index') ? 'aria-current="page"' : '' !!}>@include('technician._icon', ['name'=>'home','size'=>23])Today</a>
     @if ($isTeamLead)
-    <a href="{{ route('technician.team.index') }}" style="position:relative" {!! request()->routeIs('technician.team.*') ? 'aria-current=page' : '' !!}>
+    <a href="{{ route('technician.team.index') }}" style="position:relative" {!! request()->routeIs('technician.team.*') ? 'aria-current="page"' : '' !!}>
       @include('technician._icon', ['name'=>'users','size'=>23])Team
       @if ($needsActionCount)<span class="dot">{{ $needsActionCount }}</span>@endif
     </a>
     @endif
-    <a href="{{ route('technician.profile') }}" {!! request()->routeIs('technician.profile') ? 'aria-current=page' : '' !!}>@include('technician._icon', ['name'=>'user','size'=>23])Profile</a>
+    <a href="{{ route('technician.profile') }}" {!! request()->routeIs('technician.profile') ? 'aria-current="page"' : '' !!}>@include('technician._icon', ['name'=>'user','size'=>23])Profile</a>
   </nav>
 </div>
 
@@ -51,7 +62,7 @@
     <div class="dh">
         <div class="mk">{{ strtoupper(substr($tenantObj->name ?? 'AF', 0, 2)) }}</div>
         <div>
-            <div style="font:700 18px Figtree">{{ $tenantObj->name ?? '' }}</div>
+            <div style="font-family:var(--font-display);font-weight:700;font-size:18px">{{ $tenantObj->name ?? '' }}</div>
             <div class="muted" style="font-size:14px">{{ $u->name }}, {{ $isTeamLead ? 'Team Lead' : 'Field Technician' }}</div>
         </div>
     </div>

@@ -2,9 +2,9 @@
 @section('title', 'All my jobs')
 @section('content')
 <div class="tabs">
-    <a href="{{ route('technician.jobs.all', ['tab' => 'active']) }}" class="{{ $tab === 'active' ? 'active' : '' }}">Active</a>
-    <a href="{{ route('technician.jobs.all', ['tab' => 'review']) }}" class="{{ $tab === 'review' ? 'active' : '' }}">Review</a>
-    <a href="{{ route('technician.jobs.all', ['tab' => 'done']) }}" class="{{ $tab === 'done' ? 'active' : '' }}">Done</a>
+    <a href="{{ route('technician.jobs.all', ['tab' => 'active', 'q' => $search]) }}" class="{{ $tab === 'active' ? 'active' : '' }}">Active</a>
+    <a href="{{ route('technician.jobs.all', ['tab' => 'review', 'q' => $search]) }}" class="{{ $tab === 'review' ? 'active' : '' }}">Review</a>
+    <a href="{{ route('technician.jobs.all', ['tab' => 'done', 'q' => $search]) }}" class="{{ $tab === 'done' ? 'active' : '' }}">Done</a>
 </div>
 <form method="GET" style="margin-bottom:14px">
     <input type="hidden" name="tab" value="{{ $tab }}">

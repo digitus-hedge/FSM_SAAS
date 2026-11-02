@@ -5,9 +5,9 @@
 <style>
   .crumb{color:var(--muted);font-size:13px;margin-bottom:4px}
   .crumb a{color:var(--ink);text-decoration:underline}
-  .page-h1{font-family:'Figtree';font-size:28px;font-weight:800;margin-bottom:6px}
+  .page-h1{font-family:var(--font-display);font-size:28px;font-weight:800;margin-bottom:6px}
   .sub-line{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px}
-  .sr-tag{background:#F0EFF5;color:#5A5869;padding:2px 10px;border-radius:999px;font-family:'Figtree';font-weight:700;font-size:12px}
+  .sr-tag{background:#F0EFF5;color:#5A5869;padding:2px 10px;border-radius:999px;font-family:var(--font-display);font-weight:700;font-size:12px}
   .sub-txt{color:var(--ink);font-size:14px}
   .pills{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap}
   .pill{display:inline-block;padding:4px 12px;border-radius:999px;font-size:12.5px;font-weight:700}
@@ -28,18 +28,18 @@
 
   .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
   .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px}
-  .card h2{font-family:'Figtree';font-weight:800;font-size:17px;margin-bottom:14px}
+  .card h2{font-family:var(--font-display);font-weight:800;font-size:17px;margin-bottom:14px}
   .card p{color:var(--muted);font-size:13.5px;margin-bottom:14px;line-height:1.5}
   .kv{display:grid;grid-template-columns:120px 1fr;gap:10px 20px;font-size:14px;margin-bottom:14px;align-items:center}
   .kv .k{color:var(--ink);font-weight:500}
   .kv .v{color:var(--ink)}
 
-  .quote-link{color:#2F5BEA;text-decoration:underline;font-weight:600}
+  .quote-link{color:var(--amber);text-decoration:underline;font-weight:600}
   .amount{font-weight:600;margin-left:4px}
 
   .btn{display:inline-block;padding:10px 20px;border-radius:12px;font-weight:700;text-decoration:none;font-size:13.5px;cursor:pointer;border:0;font-family:inherit}
-  .btn-primary{background:#2F5BEA;color:#fff}
-  .btn-primary:hover{background:#2548c0}
+  .btn-primary{background:var(--amber);color:#fff}
+  .btn-primary:hover{background:color-mix(in srgb, var(--amber) 85%, black 15%)}
   .btn-outline{background:#fff;color:var(--ink);border:1px solid var(--line)}
   .btn-outline:hover{background:var(--soft)}
   .btn-outline-red{background:#fff;color:#C2381B;border:1px solid #F2C2C2}
@@ -73,6 +73,8 @@
   $isAwaitingInv   = $sr->billing_status === 'awaiting_invoice';
   $isInvoiced      = $sr->billing_status === 'invoiced';
   $isCancelled     = $sr->status === 'cancelled';
+
+  $currencyCode = auth()->user()->tenant?->currency_code ?? 'AED';
 
   // Safe route check — invoice builder may not exist yet
   $invoiceRoute = \Route::has('admin.invoices.build')
@@ -147,7 +149,7 @@
             <span class="pill pill-na" style="margin-left:8px">Draft</span>
           @endif
           @if ($latestQuote->total > 0)
-            <span class="amount">AED {{ number_format($latestQuote->total, 2) }}</span>
+            <span class="amount">{{ $currencyCode }} {{ number_format($latestQuote->total, 2) }}</span>
           @endif
         @else
           <span style="color:var(--muted)">None</span>
@@ -179,10 +181,9 @@
     <span class="pill {{ $iv[0] }}" style="margin-left:8px">{{ $iv[1] }}</span>
 
     @if ($latestInvoice->total > 0)
-      <span class="amount">AED {{ number_format($latestInvoice->total, 2) }}</span>
+      <span class="amount">{{ $currencyCode }} {{ number_format($latestInvoice->total, 2) }}</span>
     @endif
 
- 
   @else
     <span style="color:var(--muted)">None</span>
   @endif
@@ -347,14 +348,14 @@ function openMakeQuote(srId) {
       <div style="text-align:left">
         <p style="color:var(--muted);margin-bottom:16px;font-size:13.5px">How do you want to make it?</p>
         <label style="display:flex;gap:12px;padding:14px 2px;cursor:pointer">
-          <input type="radio" name="mq" value="build" checked style="margin-top:3px;accent-color:#2F5BEA">
+          <input type="radio" name="mq" value="build" checked style="margin-top:3px;accent-color:var(--amber)">
           <div>
             <div style="font-weight:800;font-size:14.5px">Build the quote</div>
             <div style="color:var(--muted);font-size:12.5px;margin-top:2px">Add lines, tax and a discount. A branded PDF is made when you send it.</div>
           </div>
         </label>
         <label style="display:flex;gap:12px;padding:14px 2px;cursor:pointer">
-          <input type="radio" name="mq" value="upload" style="margin-top:3px;accent-color:#2F5BEA">
+          <input type="radio" name="mq" value="upload" style="margin-top:3px;accent-color:var(--amber)">
           <div>
             <div style="font-weight:800;font-size:14.5px">Upload a PDF</div>
             <div style="color:var(--muted);font-size:12.5px;margin-top:2px">Use a quote you already made. You enter the total.</div>
@@ -443,5 +444,5 @@ function openCancelRequest() {
 }
 
 </script>
-<style>.swal-btn-primary-blue{background:#2F5BEA !important;color:#fff !important}</style>
+<style>.swal-btn-primary-blue{background:var(--amber) !important;color:#fff !important}</style>
 @endsection

@@ -56,8 +56,10 @@ class JobsController extends Controller
 
         if (! empty($data['gps_accuracy']) && $data['gps_accuracy'] > 150) {
             $result['gps_status'] = 'low_accuracy';
-            $result['block'] = true;
-            $result['message'] = 'GPS signal is too weak (accuracy over 150m). Move to an open area and try again.';
+            if ($sr->enforce_geofence) {
+                $result['block'] = true;
+                $result['message'] = 'GPS signal is too weak (accuracy over 150m). Move to an open area and try again.';
+            }
             return $result;
         }
 
@@ -97,7 +99,7 @@ class JobsController extends Controller
         return $result;
     }
 
-        public function index()
+    public function index()
     {
         $me = auth()->id();
         $now = now();
@@ -373,8 +375,11 @@ class JobsController extends Controller
         }
 
         $geo = $this->evaluateGeofence($serviceRequest, $data);
+        if ($geo['block']) {
+            return back()->withErrors(['identifier' => $geo['message']]);
+        }
 
-        ServiceRequestPunch::create([
+        $punch = ServiceRequestPunch::create([
             'tenant_id'              => $serviceRequest->tenant_id,
             'service_request_id'    => $serviceRequest->id,
             'technician_user_id'    => auth()->id(),
@@ -389,9 +394,15 @@ class JobsController extends Controller
             'gps_status'             => $geo['gps_status'],
             'site_distance_meters'   => $geo['distance'],
             'is_within_geofence'     => $geo['within'],
+            'geofence_override_reason'     => $geo['override']?->reason,
+            'geofence_override_by_user_id' => $geo['override']?->decided_by_user_id,
             'sync_status'            => 'synced',
             'device_info'            => substr((string) $request->userAgent(), 0, 255),
         ]);
+
+        if ($geo['override']) {
+            $geo['override']->update(['used_punch_id' => $punch->id, 'status' => 'used']);
+        }
 
         $workMinutes = $serviceRequest->first_punch_in_at
             ? $serviceRequest->first_punch_in_at->diffInMinutes(now()) - $serviceRequest->total_hold_minutes
@@ -406,7 +417,7 @@ class JobsController extends Controller
         return redirect()->route('technician.jobs.show', $serviceRequest)->with('success', 'Punched out. Job sent for review.');
     }
 
-    public function requestGeofenceOverride(Request $request, ServiceRequest $serviceRequest)
+        public function requestGeofenceOverride(Request $request, ServiceRequest $serviceRequest)
     {
         $this->authorizeTech($serviceRequest);
 
@@ -421,7 +432,7 @@ class JobsController extends Controller
 
         $photoAttachmentId = null;
         if ($request->hasFile('photo')) {
-            $path = $request->file('photo')->store("attachments/sr-{$serviceRequest->id}", 'public');
+            $path = $request->file('photo')->store("sr/{$serviceRequest->id}/attachments", 'public');
             $photoAttachmentId = Attachment::create([
                 'tenant_id'            => $serviceRequest->tenant_id,
                 'attachable_type'      => ServiceRequest::class,
@@ -477,7 +488,7 @@ class JobsController extends Controller
         return view('technician.jobs.photos', compact('serviceRequest', 'photos'));
     }
 
-    public function storePhoto(Request $request, ServiceRequest $serviceRequest)
+        public function storePhoto(Request $request, ServiceRequest $serviceRequest)
     {
         $this->authorizeTech($serviceRequest);
         $data = $request->validate([
@@ -485,7 +496,7 @@ class JobsController extends Controller
             'category' => ['required', 'in:before_photo,after_photo'],
         ]);
 
-        $path = $request->file('photo')->store("attachments/sr-{$serviceRequest->id}", 'public');
+        $path = $request->file('photo')->store("sr/{$serviceRequest->id}/attachments", 'public');
 
         Attachment::create([
             'tenant_id'           => $serviceRequest->tenant_id,
@@ -560,14 +571,18 @@ class JobsController extends Controller
     public function storeExpense(Request $request, ServiceRequest $serviceRequest)
     {
         $this->authorizeTech($serviceRequest);
-        $category = ExpenseCategory::findOrFail($request->input('expense_category_id'));
 
         $data = $request->validate([
             'expense_category_id' => ['required', 'exists:expense_categories,id'],
             'description'           => ['required', 'string', 'max:255'],
             'quantity'               => ['required', 'numeric', 'min:0.01'],
             'unit_rate'              => ['nullable', 'numeric', 'min:0'],
-            'receipt'                => [$category->requires_receipt ? 'required' : 'nullable', 'image', 'max:10240'],
+        ]);
+
+        $category = ExpenseCategory::findOrFail($data['expense_category_id']);
+
+        $request->validate([
+            'receipt' => [$category->requires_receipt ? 'required' : 'nullable', 'image', 'max:10240'],
         ]);
 
         $unitRate = $data['unit_rate'] ?? $category->default_unit_rate ?? 0;
@@ -575,7 +590,7 @@ class JobsController extends Controller
 
         $receiptId = null;
         if ($request->hasFile('receipt')) {
-            $path = $request->file('receipt')->store("attachments/sr-{$serviceRequest->id}", 'public');
+            $path = $request->file('receipt')->store("sr/{$serviceRequest->id}/attachments", 'public');
             $receiptId = Attachment::create([
                 'tenant_id'            => $serviceRequest->tenant_id,
                 'attachable_type'      => ServiceRequest::class,
@@ -636,7 +651,7 @@ class JobsController extends Controller
             return back()->withErrors(['identifier' => 'Could not read the signature. Please try again.']);
         }
 
-        $path = "attachments/sr-{$serviceRequest->id}/signature-" . time() . '.png';
+        $path = "sr/{$serviceRequest->id}/attachments/signature-" . time() . '.png';
         Storage::disk('public')->put($path, $binary);
 
         $attachment = Attachment::create([

@@ -6,8 +6,8 @@
     <div style="font-weight:800;font-size:16px">{{ $serviceRequest->title }}</div>
     <div style="color:var(--muted);font-size:13px;margin-top:4px">{{ $serviceRequest->client?->name }} · {{ $serviceRequest->site?->name }}</div>
     <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
-        <span class="chip {{ $serviceRequest->priorityColor() }}">{{ $serviceRequest->priorityLabel() }}</span>
-        <span class="chip {{ $serviceRequest->is_on_hold ? 'amber' : '' }}">{{ $serviceRequest->is_on_hold ? 'On hold' : $serviceRequest->statusLabel() }}</span>
+        <span class="chip" style="--c:var(--{{ $serviceRequest->priorityColor() }})">{{ $serviceRequest->priorityLabel() }}</span>
+        <span class="chip" style="--c:var(--{{ $serviceRequest->is_on_hold ? 'amber' : 'slate' }})">{{ $serviceRequest->is_on_hold ? 'On hold' : $serviceRequest->statusLabel() }}</span>
         @if ($serviceRequest->enforce_geofence)<span class="chip">Geofence enforced</span>@endif
     </div>
     @if ($serviceRequest->description)<p style="margin-top:12px;font-size:13.5px">{{ $serviceRequest->description }}</p>@endif
@@ -49,7 +49,7 @@
     @elseif ($serviceRequest->is_on_hold)
         <form method="POST" action="{{ route('technician.jobs.resume', $serviceRequest) }}">
             @csrf
-            <input type="hidden" name="client_event_uuid" value="{{ Str::uuid() }}">
+            <input type="hidden" name="client_event_uuid" class="uuid-field">
             <button type="submit" class="btn block">Resume</button>
         </form>
     @elseif ($serviceRequest->status === 'in_progress')
@@ -57,7 +57,7 @@
             <summary class="btn secondary block" style="list-style:none;cursor:pointer">Put on hold</summary>
             <form method="POST" action="{{ route('technician.jobs.hold', $serviceRequest) }}" style="margin-top:10px">
                 @csrf
-                <input type="hidden" name="client_event_uuid" value="{{ Str::uuid() }}">
+                <input type="hidden" name="client_event_uuid" class="uuid-field">
                 <label class="field">Reason
                     <select name="hold_reason_id" required>
                         @foreach ($holdReasons as $r)<option value="{{ $r->id }}">{{ $r->label }}</option>@endforeach
@@ -79,14 +79,14 @@
 </div>
 
 @if ($pendingOverride && $pendingOverride->status === 'pending')
-    <div class="card"><span class="chip amber">Geofence override requested — waiting on your manager.</span></div>
+    <div class="card"><span class="chip" style="--c:var(--amber)">Geofence override requested — waiting on your manager.</span></div>
 @endif
 
 <details class="card">
     <summary style="font-weight:700;font-size:13.5px;cursor:pointer;list-style:none">Request geofence override</summary>
     <form method="POST" action="{{ route('technician.jobs.geofence-override', $serviceRequest) }}" enctype="multipart/form-data" style="margin-top:10px">
         @csrf
-        <input type="hidden" name="client_event_uuid" value="{{ Str::uuid() }}">
+        <input type="hidden" name="client_event_uuid" class="uuid-field">
         <input type="hidden" name="gps_lat"><input type="hidden" name="gps_lng"><input type="hidden" name="gps_accuracy">
         <label class="field">Reason<input type="text" name="reason" required maxlength="255"></label>
         <label class="field">Photo (optional)<input type="file" name="photo" accept="image/*" capture="environment"></label>

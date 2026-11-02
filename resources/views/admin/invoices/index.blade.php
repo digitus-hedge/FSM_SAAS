@@ -2,7 +2,7 @@
 @section('title','Invoices')
 @section('content')
 <style>
-.page-h1{font-family:'Figtree';font-size:28px;font-weight:800;margin-bottom:6px;letter-spacing:-.4px}
+.page-h1{font-family:var(--font-display);font-size:28px;font-weight:800;margin-bottom:6px;letter-spacing:-.4px}
 .page-sub{color:var(--muted);font-size:14px;margin-bottom:22px}
 .tab-strip{display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:22px;}
 .tab-strip a{padding:12px 20px;color:var(--muted);text-decoration:none;font-weight:600;border-bottom:2px solid transparent;position:relative;top:1px;white-space:nowrap;font-size:13.5px}
@@ -17,7 +17,7 @@ table.inv tr:last-child td{border-bottom:0}
 table.inv tbody tr{cursor:pointer;transition:background .1s}
 table.inv tbody tr:hover{background:#F8F7FB}
 .inv-num{font-family:'JetBrains Mono',Consolas,monospace;font-weight:800;font-size:12.5px}
-.total{font-family:'Figtree';font-weight:700;white-space:nowrap}
+.total{font-family:var(--font-display);font-weight:700;white-space:nowrap}
 .pill{display:inline-block;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
 .p-draft{background:#F0EFF5;color:#5A5869}
 .p-pending_approval{background:#EDE9FE;color:#5B3BB8}
@@ -29,9 +29,14 @@ table.inv tbody tr:hover{background:#F8F7FB}
 .p-sr-awaiting{background:#FFF4CC;color:#8A5A00}
 .p-sr-completed{background:#DDF7F1;color:#00866F}
 .empty{padding:60px 20px;text-align:center;color:var(--muted)}
-.btn-y{background:#FFC61A;color:#1B1A24;font-weight:700;font-size:12.5px;padding:7px 14px;border-radius:999px;border:0;cursor:pointer;font-family:inherit;text-decoration:none;display:inline-block}
-.btn-y:hover{background:#F0B700}
+.btn-y{background:var(--yellow);color:var(--ink);font-weight:700;font-size:12.5px;padding:7px 14px;border-radius:999px;border:0;cursor:pointer;font-family:inherit;text-decoration:none;display:inline-block}
+.btn-y:hover{background:color-mix(in srgb, var(--yellow) 85%, black 15%)}
 </style>
+
+@php
+  $currencyCode = auth()->user()->tenant?->currency_code ?? 'AED';
+  $srPillMap = ['awaiting_invoice' => 'p-sr-awaiting', 'completed' => 'p-sr-completed'];
+@endphp
 
 <h1 class="page-h1">Invoices</h1>
 <p class="page-sub">Customer copies. The legal tax invoice is issued from your own accounting suite where the law requires it.</p>
@@ -50,7 +55,7 @@ table.inv tbody tr:hover{background:#F8F7FB}
 <div class="card">
   @if ($items->isEmpty())
     <div class="empty">
-      <div style="font-family:'Figtree';font-weight:700;font-size:16px;color:var(--ink);margin-bottom:4px">Nothing here.</div>
+      <div style="font-family:var(--font-display);font-weight:700;font-size:16px;color:var(--ink);margin-bottom:4px">Nothing here.</div>
       <div>{{ $tab==='toinvoice' ? 'Nothing needs an invoice right now.' : 'No invoices in this tab.' }}</div>
     </div>
   @elseif ($tab==='toinvoice')
@@ -61,7 +66,7 @@ table.inv tbody tr:hover{background:#F8F7FB}
           <tr>
             <td><b class="inv-num">{{ $r->sr_number }}</b><br><span style="color:var(--muted);font-size:12.5px">{{ $r->title ?? '—' }}</span></td>
             <td>{{ $r->client?->name ?? '—' }}</td>
-            <td><span class="pill p-sr-{{ strtolower(str_replace(' ','-',$r->status)) }}">{{ $r->status }}</span></td>
+            <td><span class="pill {{ $srPillMap[$r->status] ?? 'p-sr-awaiting' }}">{{ ucfirst(str_replace('_',' ',$r->status)) }}</span></td>
             <td style="text-align:right"><a href="{{ route('admin.invoices.build', $r) }}" class="btn-y">Make invoice</a></td>
           </tr>
         @endforeach
@@ -78,9 +83,9 @@ table.inv tbody tr:hover{background:#F8F7FB}
             <td class="inv-num">{{ $i->invoice_number }}</td>
             <td>{{ $i->serviceRequest?->sr_number ?? '—' }}</td>
             <td>{{ $i->client?->name ?? '—' }}</td>
-            <td class="total">AED {{ number_format($i->total, 2) }}</td>
+            <td class="total">{{ $currencyCode }} {{ number_format($i->total, 2) }}</td>
             <td class="total" style="color:{{ $i->balance > 0 ? 'var(--amber)' : 'var(--muted)' }}">
-              {{ $i->balance > 0 ? 'AED ' . number_format($i->balance, 2) : '—' }}
+              {{ $i->balance > 0 ? $currencyCode . ' ' . number_format($i->balance, 2) : '—' }}
             </td>
             <td>{{ $i->due_date?->format('d M Y') ?? '—' }}</td>
             <td><span class="pill p-{{ $i->status }}">{{ ucfirst(str_replace('_',' ',$i->status)) }}</span></td>

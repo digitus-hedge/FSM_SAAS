@@ -4,18 +4,22 @@
 @section('content')
 <style>
   .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px;max-width:520px}
-  h1{font-family:'Figtree';font-size:28px;font-weight:800;margin-bottom:4px}
+  h1{font-family:var(--font-display);font-size:28px;font-weight:800;margin-bottom:4px}
   .sub{color:var(--muted);font-size:13.5px;margin-bottom:22px}
   .fld{margin-bottom:16px}
-  .fld label{display:block;font-weight:700;font-family:'Figtree';margin-bottom:6px}
-  .req{color:#D22E2E}
+  .fld label{display:block;font-weight:700;font-family:var(--font-display);margin-bottom:6px}
+  .req{color:var(--red)}
   .fld input{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;font-family:inherit;font-size:14px;background:#fff}
   .hint{color:var(--muted);font-size:12px;margin-top:4px}
-  .err{color:#C2381B;font-size:12px;margin-top:4px}
+  .err{color:var(--red);font-size:12px;margin-top:4px}
   .btns{display:flex;gap:10px;margin-top:16px}
   .btn{padding:12px 22px;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink);font-family:inherit}
-  .btn-primary{background:#2F5BEA;color:#fff;border-color:#2F5BEA}
+  .btn-primary{background:var(--amber);color:#fff;border-color:var(--amber)}
 </style>
+
+@php
+  $currencyCode = auth()->user()->tenant?->currency_code ?? 'AED';
+@endphp
 
 <div style="color:var(--muted);font-size:13px;margin-bottom:4px"><a href="{{ route('admin.requests-review.index') }}" style="color:var(--ink)">Quotes</a></div>
 <h1>Upload a quote</h1>
@@ -33,7 +37,7 @@
   <div class="fld">
     <label>Total <span class="req">*</span></label>
     <input type="number" step="0.01" min="0.01" name="total" value="{{ old('total') }}" required>
-    <div class="hint">Above 0, in AED</div>
+    <div class="hint">Above 0, in {{ $currencyCode }}</div>
     @error('total')<div class="err">{{ $message }}</div>@enderror
   </div>
 

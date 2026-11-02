@@ -31,9 +31,9 @@
 
             @if ($isPending)
                 <div class="row2" style="margin-top:10px">
-                    <form method="POST" action="{{ route('technician.team.reject', $job) }}" onsubmit="return confirm('Reject this request?')">
+                    <form method="POST" action="{{ route('technician.team.reject', $job) }}" class="reason-reject-form">
                         @csrf
-                        <input type="hidden" name="reason" value="Rejected by team lead">
+                        <input type="hidden" name="reason" class="reason-field">
                         <button type="submit" class="btn danger sm block">Reject</button>
                     </form>
                     <form method="POST" action="{{ route('technician.team.approve', $job) }}">
@@ -65,8 +65,9 @@
             <div class="sub">{{ $o->technician?->name }} · {{ $o->site_distance_meters }}m from site</div>
             <div style="margin-top:8px;font-size:14.5px">{{ $o->reason }}</div>
             <div class="row2" style="margin-top:10px">
-                <form method="POST" action="{{ route('technician.team.overrides.reject', $o) }}">
+                <form method="POST" action="{{ route('technician.team.overrides.reject', $o) }}" class="note-reject-form">
                     @csrf
+                    <input type="hidden" name="decision_note" class="note-field">
                     <button type="submit" class="btn danger sm block">Reject</button>
                 </form>
                 <form method="POST" action="{{ route('technician.team.overrides.approve', $o) }}">
@@ -96,4 +97,26 @@
         <div class="card muted">No conflicts waiting for review.</div>
     @endforelse
 @endif
+
+<script>
+document.querySelectorAll('.reason-reject-form').forEach(form => {
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const reason = prompt('Reason for rejecting this?', '');
+        if (reason === null) return;
+        if (! reason.trim()) { alert('Please give a reason.'); return; }
+        form.querySelector('.reason-field').value = reason.trim();
+        form.submit();
+    });
+});
+document.querySelectorAll('.note-reject-form').forEach(form => {
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const note = prompt('Note for this rejection (optional):', '');
+        if (note === null) return; // cancelled — don't submit
+        form.querySelector('.note-field').value = note.trim();
+        form.submit();
+    });
+});
+</script>
 @endsection

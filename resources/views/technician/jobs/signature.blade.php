@@ -3,8 +3,8 @@
 @section('back', route('technician.jobs.show', $serviceRequest))
 @section('content')
 <div class="card">
-    <label class="field">Customer name<input type="text" id="signer_name" required></label>
-    <label class="field">Customer phone (optional)<input type="text" id="signer_phone"></label>
+    <label class="field">Customer name<input type="text" id="signer_name" class="inp" required></label>
+    <label class="field">Customer phone (optional)<input type="text" id="signer_phone" class="inp"></label>
     <div style="font-weight:700;font-size:13px;margin-bottom:6px">Sign below</div>
     <canvas id="pad" width="400" height="180" style="width:100%;height:180px;border:1px solid var(--line);border-radius:10px;background:#fff;touch-action:none"></canvas>
     <div style="display:flex;gap:10px;margin-top:10px">
@@ -24,7 +24,7 @@
 const canvas = document.getElementById('pad');
 const ctx = canvas.getContext('2d');
 ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#1B1A24';
-let drawing = false, lastX = 0, lastY = 0;
+let drawing = false, lastX = 0, lastY = 0, hasDrawn = false;
 function pos(e) {
     const r = canvas.getBoundingClientRect();
     const sx = canvas.width / r.width, sy = canvas.height / r.height;
@@ -37,13 +37,15 @@ function move(e) {
     const [x, y] = pos(e);
     ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(x, y); ctx.stroke();
     [lastX, lastY] = [x, y];
+    hasDrawn = true;
 }
 function end() { drawing = false; }
 canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', move); canvas.addEventListener('mouseup', end);
 canvas.addEventListener('touchstart', start); canvas.addEventListener('touchmove', move); canvas.addEventListener('touchend', end);
-document.getElementById('clear-btn').addEventListener('click', () => ctx.clearRect(0, 0, canvas.width, canvas.height));
+document.getElementById('clear-btn').addEventListener('click', () => { ctx.clearRect(0, 0, canvas.width, canvas.height); hasDrawn = false; });
 document.getElementById('save-btn').addEventListener('click', () => {
     if (! document.getElementById('signer_name').value.trim()) { alert('Enter the customer name first.'); return; }
+    if (! hasDrawn) { alert('Please capture the customer signature before saving.'); return; }
     document.getElementById('signature_png').value = canvas.toDataURL('image/png');
     document.getElementById('signer_name_hidden').value = document.getElementById('signer_name').value;
     document.getElementById('signer_phone_hidden').value = document.getElementById('signer_phone').value;
