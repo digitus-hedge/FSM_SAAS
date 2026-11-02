@@ -161,17 +161,22 @@ class JobsController extends Controller
         return view('technician.jobs.all', compact('jobs', 'tab', 'search'));
     }
 
-    public function show(ServiceRequest $serviceRequest)
-    {
-        $this->authorizeTech($serviceRequest);
-        $serviceRequest->load(['client', 'site', 'holdReason']);
-        $holdReasons = HoldReason::active()->orderBy('label')->get();
-        $pendingOverride = GeofenceOverrideRequest::where('service_request_id', $serviceRequest->id)
-            ->where('technician_user_id', auth()->id())
-            ->latest('id')->first();
+ public function show(ServiceRequest $job)         // ✅ parameter name = {job}
+{
+    $this->authorizeTech($job);
+    $job->load(['client', 'site', 'holdReason']);
+    $holdReasons = HoldReason::active()->orderBy('label')->get();
+    $pendingOverride = GeofenceOverrideRequest::where('service_request_id', $job->id)
+        ->where('technician_user_id', auth()->id())
+        ->latest('id')->first();
 
-        return view('technician.jobs.show', compact('serviceRequest', 'holdReasons', 'pendingOverride'));
-    }
+    // Keep the view variable name the same so the blade doesn't break
+    return view('technician.jobs.show', [
+        'serviceRequest'  => $job,
+        'holdReasons'     => $holdReasons,
+        'pendingOverride' => $pendingOverride,
+    ]);
+}
 
     public function accept(ServiceRequest $serviceRequest)
     {
