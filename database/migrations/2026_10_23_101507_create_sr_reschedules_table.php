@@ -16,7 +16,7 @@ return new class extends Migration
             $table->unsignedBigInteger('service_request_id');
 
             $table->timestamp('previous_eta_at')->nullable();
-            $table->timestamp('new_eta_at');
+            $table->timestamp('new_eta_at')->nullable();;
 
             $table->string('reason', 255)->nullable();
 
