@@ -19,10 +19,9 @@ use App\Http\Controllers\Admin\RequestsReviewController;
 use App\Http\Controllers\Admin\ClientImportController;
 use App\Http\Controllers\Admin\ProjectSiteImportController;
 use App\Http\Controllers\Admin\QuotesController;
+use App\Http\Controllers\Admin\OperationsQueueController;
 use App\Http\Controllers\PublicQuoteController;
-
 use App\Http\Controllers\AuthController;
-
 use App\Http\Controllers\Web\PlatformAuthView;
 use App\Http\Controllers\Tenant\MembersController;
 use App\Models\Tenant;
@@ -34,6 +33,7 @@ use App\Http\Controllers\Client\ClientAuthController;
 use App\Http\Controllers\FieldLoginController;
 use App\Http\Controllers\Technician\JobsController;
 use App\Http\Controllers\Technician\TeamController;
+use App\Http\Controllers\Tenant\DashboardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -146,6 +146,20 @@ Route::prefix('client')->name('client.')->group(function () {
 
 Route::middleware(['auth'])->group(function () {
 
+
+    // Route::get('/dashboard', function () {
+    //     $tenant = Tenant::current();
+    //     abort_unless($tenant, 404);
+
+    //     $clientCodes = ['client_user', 'client_admin', 'client_viewer'];
+    //     if (in_array(auth()->user()->role?->code, $clientCodes, true)) {
+    //         return redirect()->route('portal.dashboard');
+    //     }
+
+    //     return view('tenant.dashboard', compact('tenant'));
+    // })->name('tenant.dashboard');
+
+
     Route::get('/dashboard', function () {
         $tenant = Tenant::current();
         abort_unless($tenant, 404);
@@ -155,8 +169,10 @@ Route::middleware(['auth'])->group(function () {
             return redirect()->route('portal.dashboard');
         }
 
-        return view('tenant.dashboard', compact('tenant'));
+        return app(DashboardController::class)
+            ->index(request());
     })->name('tenant.dashboard');
+
 
     // Client portal (authenticated client user)
     Route::prefix('portal')->name('portal.')->group(function () {
@@ -408,7 +424,14 @@ Route::prefix('admin/business-hours')->name('admin.tenant-business-hours.')->gro
     Route::put('/',  [TenantBusinessHourController::class, 'update'])->name('update');
 });
 
-// Service Requests
+
+// Operations queue
+Route::prefix('admin/operations-queue')->name('admin.operations-queue.')->group(function () {
+    Route::get('/', [OperationsQueueController::class, 'index'])->name('index');
+});
+
+
+
 // Service Requests
 Route::prefix('service-requests')->name('service-requests.')->group(function () {
     Route::get('/',                       [ServiceRequestController::class, 'index'])->name('index');

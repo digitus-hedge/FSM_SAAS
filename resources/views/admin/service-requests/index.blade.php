@@ -8,7 +8,7 @@
   .page-head p{color:var(--muted);font-size:13px;margin-top:3px}
 
   .btn{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-body);font-size:13px;font-weight:600;padding:9px 16px;border-radius:999px;border:1px solid transparent;text-decoration:none;cursor:pointer;transition:background .15s}
-  .btn-primary{background:var(--yellow);color:var(--ink)}
+  .btn-primary{background:var(--yellow);color:#fff;}
   .btn-primary:hover{background:color-mix(in srgb, var(--yellow) 85%, black 15%)}
   .btn-ghost{background:#fff;color:var(--ink);border-color:var(--line)}
   .btn-ghost:hover{background:var(--soft)}
@@ -106,16 +106,15 @@
         'progress'  => ['label' => 'In progress',      'status' => 'in_progress'],
         'review'    => ['label' => 'To review',        'status' => 'pending_review'],
         'invoice'   => ['label' => 'Awaiting invoice', 'status' => 'awaiting_invoice'],
+        'overdue'   => ['label' => 'Overdue',          'status' => 'overdue'],   // NEW
         'rework'    => ['label' => 'Rework',           'status' => 'rework'],
         'done'      => ['label' => 'Completed',        'status' => 'completed'],
         'cancelled' => ['label' => 'Cancelled',        'status' => 'cancelled'],
         'all'       => ['label' => 'All',              'status' => ''],
     ];
 
-    $activeStage = request('stage', 'all');
-    $activeStage = array_key_exists($activeStage, $stageTabs)
-        ? $activeStage
-        : 'all';
+    // Use the controller's activeStage (don't recompute — handles ?overdue=1 param)
+    $activeStage = $activeStage ?? request('stage', 'all');
 @endphp
 
 <style>
@@ -173,23 +172,25 @@
         background: rgba(255,255,255,.22);
         color: #fff;
     }
+
+
 </style>
 
 <div class="stage-tabs" role="group" aria-label="Request stages">
     @foreach ($stageTabs as $key => $tab)
-        <a
-            href="{{ route('service-requests.index', array_merge(request()->except('page', 'stage'), ['stage' => $key])) }}"
+        <a href="{{ route('service-requests.index', array_merge(request()->except('page', 'stage', 'overdue'), ['stage' => $key])) }}"
             class="stage-tab {{ $activeStage === $key ? 'active' : '' }}"
-            aria-pressed="{{ $activeStage === $key ? 'true' : 'false' }}"
-        >
+            data-stage="{{ $key }}"
+            aria-pressed="{{ $activeStage === $key ? 'true' : 'false' }}">
             {{ $tab['label'] }}
-
             <span class="stage-count">
                 {{ $stageCounts[$key] ?? 0 }}
             </span>
         </a>
     @endforeach
 </div>
+
+
 
 @php
   $hasFilter = request()->filled('q')
@@ -211,12 +212,17 @@
     <span id="sr-search-spin" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);width:12px;height:12px;border:2px solid var(--line);border-top-color:var(--amber);border-radius:50%;display:none;animation:srspin .8s linear infinite"></span>
   </div>
 
-  <select name="status" class="input input-select auto-submit" style="width:180px">
-    <option value="">All statuses</option>
-    @foreach ($statuses as $key => $label)
-      <option value="{{ $key }}" @selected(request('status')===$key)>{{ $label }}</option>
-    @endforeach
-  </select>
+ <select class="input input-select" style="width:180px" id="status-filter"
+        data-current-status="{{ request('status') }}"
+        data-current-stage="{{ $activeStage }}">
+  <option value="">All statuses</option>
+  @foreach ($statuses as $key => $label)
+    <option value="status:{{ $key }}" @selected(request('status')===$key && $activeStage !== 'overdue')>
+      {{ $label }}
+    </option>
+  @endforeach
+  <option value="stage:overdue" @selected($activeStage === 'overdue')>Overdue</option>
+</select>
 
   <select name="priority" class="input input-select auto-submit" style="width:160px">
     <option value="">All priorities</option>
@@ -401,9 +407,39 @@
   });
 
   // Auto-submit when any dropdown changes
+    // Auto-submit regular .auto-submit dropdowns
   document.querySelectorAll('.auto-submit').forEach(sel => {
     sel.addEventListener('change', () => form.submit());
   });
+
+  // Special handler for the status filter — may redirect to ?stage= or filter by ?status=
+  const statusFilter = document.getElementById('status-filter');
+  if (statusFilter) {
+    statusFilter.addEventListener('change', (e) => {
+      const value = e.target.value;
+      const url = new URL(window.location.href);
+
+      // Clear previous status + stage params + overdue param
+      url.searchParams.delete('status');
+      url.searchParams.delete('stage');
+      url.searchParams.delete('overdue');
+      url.searchParams.delete('page');
+
+      if (value === '') {
+        // "All statuses" — clear everything
+        window.location = url.toString();
+        return;
+      }
+
+      const [kind, val] = value.split(':');
+      if (kind === 'stage') {
+        url.searchParams.set('stage', val);
+      } else {
+        url.searchParams.set('status', val);
+      }
+      window.location = url.toString();
+    });
+  }
 })();
 </script>
 @endsection

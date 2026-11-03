@@ -478,8 +478,8 @@
             <span class="lbl">Policy</span>
             <span class="val">
               {{ $policy->category?->name ?? 'Tenant default' }}:
-              respond {{ $policy->response_human ?? ($policy->response_minutes . ' min') }},
-              resolve {{ $policy->resolution_human ?? ($policy->resolution_minutes . ' min') }}
+              Respond {{ $policy->response_human ?? ($policy->response_minutes . ' min') }},
+              Resolve {{ $policy->resolution_human ?? ($policy->resolution_minutes . ' min') }}
             </span>
           </div>
 

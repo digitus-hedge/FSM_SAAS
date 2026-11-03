@@ -334,6 +334,7 @@ class InvoicesController extends Controller
                 // When the invoice goes out, the job itself is done — advance the SR status.
                 $sr->update([
                     'status'         => 'completed',
+                    'completed_at'   => now(),
                     // 'billing_status' => 'invoiced',   // (keeps your existing cascade)
                 ]);
             }
@@ -394,7 +395,7 @@ class InvoicesController extends Controller
             $invoice->update(['status' => 'sent', 'sent_at' => now()]);
 
             if ($sr) {
-                $sr->update(['billing_status' => 'invoiced', 'status' => 'completed']);
+                $sr->update(['billing_status' => 'invoiced', 'status' => 'completed','completed_at' => now()]);
             }
         }
         InvoiceEvent::log($invoice->id, 'sent', 'Sent to ' . implode(', ', $request->recipients));

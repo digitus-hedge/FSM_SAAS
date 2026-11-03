@@ -21,14 +21,63 @@ class ServiceRequestController extends Controller
     // public function index(Request $request)
     // {
     //     $perPage = (int) $request->input('per_page', 10);
-    //     if(!in_array($perPage, $this->perPageOptions)) $perPage = 10;
 
-    //     $requests = ServiceRequest::query()
-    //         ->with(['client:id,name', 'site:id,name', 'category:id,name'])
-    //         ->status($request->input('status'))
+    //     if (!in_array($perPage, $this->perPageOptions)) 
+    //     {
+    //     $perPage = 10;
+    //     }
+
+    //     $stageStatuses = [
+    //         'needs'     => 'pending',
+    //         'quote'     => 'waiting_for_quote',
+    //         'quoted'    => 'quoted',
+    //         'assign'    => 'approved',
+    //         'assigned'  => 'assigned',
+    //         'progress'  => 'in_progress',
+    //         'review'    => 'pending_review',
+    //         'invoice'   => 'awaiting_invoice',
+    //         'rework'    => 'rework',
+    //         'done'      => 'completed',
+    //         'cancelled' => 'cancelled',
+    //     ];
+
+    //     $activeStage = $request->input('stage', 'all');
+
+    //     if($activeStage !== 'all' && !array_key_exists($activeStage, $stageStatuses)) 
+    //     {
+    //     $activeStage = 'all';
+    //     }
+
+    //     $countQuery = ServiceRequest::query();
+
+    //     $stageCounts = [];
+
+    //     foreach ($stageStatuses as $key => $status) {
+    //         $stageCounts[$key] = (clone $countQuery)
+    //             ->where('status', $status)
+    //             ->count();
+    //     }
+
+    //     $stageCounts['all'] = (clone $countQuery)->count();
+
+    //     $query = ServiceRequest::query()
+    //         ->with([
+    //             'client:id,name',
+    //             'site:id,name',
+    //             'category:id,name',
+    //         ]);
+
+    //     if($activeStage !== 'all')
+    //     {
+    //     $query->where('status', $stageStatuses[$activeStage]);
+    //     }
+
+    //     $query->status($request->input('status'))
     //         ->priority($request->input('priority'))
     //         ->forClient($request->input('client_id'))
-    //         ->search(trim((string) $request->input('q', '')))
+    //         ->search(trim((string) $request->input('q', '')));
+
+    //     $requests = $query
     //         ->orderByDesc('id')
     //         ->paginate($perPage)
     //         ->withQueryString();
@@ -40,10 +89,10 @@ class ServiceRequestController extends Controller
     //         'statuses'       => ServiceRequest::STATUSES,
     //         'priorities'     => ServiceRequest::PRIORITIES,
     //         'clients'        => Client::active()->orderBy('name')->get(['id', 'name']),
+    //         'stageCounts'    => $stageCounts,
+    //         'activeStage'    => $activeStage,
     //     ]);
     // }
-
-
 
 
     public function index(Request $request)
@@ -71,17 +120,14 @@ class ServiceRequestController extends Controller
 
         $activeStage = $request->input('stage', 'all');
 
-        if (
-            $activeStage !== 'all' &&
-            !array_key_exists($activeStage, $stageStatuses)
-        ) {
+        // Allow 'overdue' and 'all' alongside the regular statuses
+        $validStages = array_merge(array_keys($stageStatuses), ['overdue', 'all']);
+        if (! in_array($activeStage, $validStages, true)) {
             $activeStage = 'all';
         }
 
-        // Base query for stage counts.
-        // Keep the same tenant/authorization restrictions as your normal query.
+        // Base query for stage counts
         $countQuery = ServiceRequest::query();
-
         $stageCounts = [];
 
         foreach ($stageStatuses as $key => $status) {
@@ -89,6 +135,13 @@ class ServiceRequestController extends Controller
                 ->where('status', $status)
                 ->count();
         }
+
+        // Overdue count — open + has SLA deadline + deadline in past
+        $stageCounts['overdue'] = (clone $countQuery)
+            ->whereNotIn('status', ['completed', 'cancelled','pending'])
+            ->whereNotNull('sla_resolution_due_at')
+            ->where('sla_resolution_due_at', '<', now())
+            ->count();
 
         $stageCounts['all'] = (clone $countQuery)->count();
 
@@ -101,8 +154,20 @@ class ServiceRequestController extends Controller
             ]);
 
         // Filter by selected tab
-        if ($activeStage !== 'all') {
+        if ($activeStage === 'overdue') {
+            $query->whereNotIn('status', ['completed', 'cancelled','pending'])
+                ->whereNotNull('sla_resolution_due_at')
+                ->where('sla_resolution_due_at', '<', now());
+        } elseif ($activeStage !== 'all') {
             $query->where('status', $stageStatuses[$activeStage]);
+        }
+
+        // Also support legacy ?overdue=1 param from Operations Queue "See all" link
+        if ($request->boolean('overdue') && $activeStage !== 'overdue') {
+            $query->whereNotIn('status', ['completed', 'cancelled','pending'])
+                ->whereNotNull('sla_resolution_due_at')
+                ->where('sla_resolution_due_at', '<', now());
+            $activeStage = 'overdue';
         }
 
         // Keep existing filters
@@ -111,8 +176,14 @@ class ServiceRequestController extends Controller
             ->forClient($request->input('client_id'))
             ->search(trim((string) $request->input('q', '')));
 
+        // Overdue defaults to deadline order; everything else by newest id
+        if ($activeStage === 'overdue') {
+            $query->orderBy('sla_resolution_due_at');
+        } else {
+            $query->orderByDesc('id');
+        }
+
         $requests = $query
-            ->orderByDesc('id')
             ->paginate($perPage)
             ->withQueryString();
 
@@ -146,11 +217,11 @@ class ServiceRequestController extends Controller
     {
         $data     = $request->validated();
         $tenantId = auth()->user()->tenant_id;
-        
+
         $cat = ServiceCategory::where('tenant_id', $tenantId)->findOrFail($data['service_category_id']);
         $teamLeadId = User::where('tenant_id', $tenantId)
             ->whereNull('deactivated_at')
-            ->whereHas('coveredCategories', fn ($q) => $q->where('service_categories.id', $data['service_category_id']))
+            ->whereHas('coveredCategories', fn($q) => $q->where('service_categories.id', $data['service_category_id']))
             ->orderBy('id')
             ->value('id');
         $proofSnapshot = [
@@ -402,41 +473,41 @@ class ServiceRequestController extends Controller
      * ============================================================ */
 
     public function approve(Request $request, ServiceRequest $service_request)
-{
-    $data = $request->validate([
-        'coverage' => ['required', 'in:in_contract,in_warranty,goodwill,needs_quote'],
-        'note'     => ['nullable', 'string', 'max:500'],
-    ]);
-
-    if ($data['coverage'] === 'needs_quote') {
-        $service_request->update([
-            'status'                   => 'quoted',
-            'coverage_type'            => 'out_of_coverage',
-            'billing_status'           => 'pending_quote',
-            'quote_requested_at'       => now(),
-            'coverage_override_reason' => $data['note'] ?? null,
+    {
+        $data = $request->validate([
+            'coverage' => ['required', 'in:in_contract,in_warranty,goodwill,needs_quote'],
+            'note'     => ['nullable', 'string', 'max:500'],
         ]);
 
-        return back()->with('success', "{$service_request->sr_number} marked for quoting.");
+        if ($data['coverage'] === 'needs_quote') {
+            $service_request->update([
+                'status'                   => 'quoted',
+                'coverage_type'            => 'out_of_coverage',
+                'billing_status'           => 'pending_quote',
+                'quote_requested_at'       => now(),
+                'coverage_override_reason' => $data['note'] ?? null,
+            ]);
+
+            return back()->with('success', "{$service_request->sr_number} marked for quoting.");
+        }
+
+        // In-contract / In-warranty / Goodwill — no billing needed, work is covered.
+        $policy  = $service_request->resolveSlaPolicy();
+        $started = now();
+
+        $service_request->update([
+            'status'                   => 'approved',
+            'approved_by_user_id'      => auth()->id(),
+            'coverage_type'            => $data['coverage'],
+            'billing_status'           => 'not_applicable',
+            'coverage_override_reason' => $data['note'] ?? null,
+            'sla_clock_started_at'     => $started,
+            'sla_response_due_at'      => $policy ? $started->copy()->addMinutes((int) $policy->response_minutes) : null,
+            'sla_resolution_due_at'    => $policy ? $started->copy()->addMinutes((int) $policy->resolution_minutes) : null,
+        ]);
+
+        return back()->with('success', "{$service_request->sr_number} approved — " . str_replace('_', ' ', $data['coverage']) . '.');
     }
-
-    // In-contract / In-warranty / Goodwill — no billing needed, work is covered.
-    $policy  = $service_request->resolveSlaPolicy();
-    $started = now();
-
-    $service_request->update([
-        'status'                   => 'approved',
-        'approved_by_user_id'      => auth()->id(),
-        'coverage_type'            => $data['coverage'],
-        'billing_status'           => 'not_applicable',
-        'coverage_override_reason' => $data['note'] ?? null,
-        'sla_clock_started_at'     => $started,
-        'sla_response_due_at'      => $policy ? $started->copy()->addMinutes((int) $policy->response_minutes) : null,
-        'sla_resolution_due_at'    => $policy ? $started->copy()->addMinutes((int) $policy->resolution_minutes) : null,
-    ]);
-
-    return back()->with('success', "{$service_request->sr_number} approved — " . str_replace('_', ' ', $data['coverage']) . '.');
-}
 
     public function assign(Request $request, ServiceRequest $service_request)
     {

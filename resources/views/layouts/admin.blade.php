@@ -270,6 +270,28 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
 
 
 
+        {{-- OPERATIONS QUEUE --}}
+    @if ($u->role?->name === 'Company Admin')
+    @php
+        $opsAlertCount = \App\Models\ServiceRequest::whereNotIn('status', ['completed','cancelled'])
+            ->whereNotNull('sla_resolution_due_at')
+            ->where('sla_resolution_due_at', '<', now())
+            ->count();
+    @endphp
+    <a href="{{ route('admin.operations-queue.index') }}" class="nav-item {{ request()->routeIs('admin.operations-queue.*') ? 'active' : '' }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12 6 12 12 16 14"/>
+        </svg>
+        Operations queue
+        @if ($opsAlertCount > 0)
+        <!-- <span style="margin-left:auto;background:var(--red);color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;min-width:20px;text-align:center">{{ $opsAlertCount }}</span> -->
+        @endif
+    </a>
+    @endif
+
+
+
         @if ($u->role?->name === 'Company Admin')
         @php
         $waitingCount = \App\Models\ServiceRequestExpense::where('approval_status', 'pending')->count();
@@ -278,7 +300,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
         Expenses to review
         @if ($waitingCount > 0)
-            <span style="margin-left:auto;background:var(--yellow);color:var(--ink);font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;min-width:20px;text-align:center">{{ $waitingCount }}</span>
+            <span style="margin-left:auto;background:var(--yellow);color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;min-width:20px;text-align:center">{{ $waitingCount }}</span>
         @endif
         </a>
         @endif
@@ -325,7 +347,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
     </svg>
     Invoices
     @if ($invCount > 0)
-      <span style="margin-left:auto;background:var(--yellow);color:var(--ink);font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px">{{ $invCount }}</span>
+      <span style="margin-left:auto;background:var(--yellow);color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px">{{ $invCount }}</span>
     @endif
   </a>
 @endif
