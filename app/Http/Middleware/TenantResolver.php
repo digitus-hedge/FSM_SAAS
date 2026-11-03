@@ -34,9 +34,9 @@ class TenantResolver
             throw new NotFoundHttpException("No active workspace at '{$slug}'.");
         }
 
-        // Enforce membership if someone is logged in. Platform admins bypass.
+               // Enforce membership if someone is logged in. Platform admins bypass.
         $user = $request->user();
-        if ($user && ! $user->hasAccessToTenant($tenant)) {
+        if ($user && ! $user->is_platform_admin && ! $user->hasAccessToTenant($tenant)) {
             abort(403, "You don't have access to this workspace.");
         }
 

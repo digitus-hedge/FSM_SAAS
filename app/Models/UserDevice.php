@@ -17,8 +17,10 @@ class UserDevice extends Model
         'revoked_at'    => 'datetime',
     ];
 
-    public function isLive(): bool
+    public function isLive(): bools
     {
-        return $this->revoked_at === null && $this->trusted_until->isFuture();
+        return $this->revoked_at === null
+            && $this->trusted_until !== null
+            && $this->trusted_until->isFuture();
     }
 }

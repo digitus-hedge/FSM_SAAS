@@ -14,7 +14,8 @@ class DatabaseSeeder extends Seeder
         $this->call(PermissionCatalogSeeder::class);
         $this->call(PlanSeeder::class);
         $this->call(PlatformUserSeeder::class);
- $this->call(HoldReasonSeeder::class);
+        $this->call(HoldReasonSeeder::class);
+        $this->call(BrandFontSeeder::class);
         // Local and staging only — never prod
         if (app()->environment('local', 'staging', 'testing')) {
             // $this->call(DemoTenantsSeeder::class);
