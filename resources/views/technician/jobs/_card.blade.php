@@ -6,8 +6,15 @@
     $sameDay = $job->scheduled_eta_at && $job->scheduled_eta_at->isSameDay(now());
     $isLink = $linkable ?? true;
     $tag = $isLink ? 'a' : 'div';
+    $isActive = $job->status === 'in_progress';
+    $cardStyle = 'display:block;text-decoration:none;color:inherit;border-left:4px solid var(--' . $stateColor . ')';
+    if ($isActive) {
+        $cardStyle .= ';box-shadow:0 6px 18px -10px color-mix(in srgb,var(--accent) 55%,transparent)';
+    }
 @endphp
-<{{ $tag }} @if($isLink) href="{{ route('technician.jobs.show', $job) }}" @endif class="card tap" style="display:block;text-decoration:none;color:inherit">
+<{{ $tag }} @if($isLink) href="{{ route('technician.jobs.show', $job) }}" @endif
+    class="card tap"
+    style="{{ $cardStyle }}">
     <div class="r1">
         <span>{{ $job->sr_number }}</span>
         <span class="chip sm" style="--c:var(--{{ $prioColor }})">{{ $prioLabel }}</span>
@@ -22,4 +29,10 @@
         @if ($job->enforce_geofence)<span class="chip sm" style="--c:var(--blue)">Geofence on</span>@endif
         @if ($job->status === 'cancelled')<span class="chip sm" style="--c:var(--red)">Cancelled</span>@endif
     </div>
+    @if ($isActive && $isLink)
+        <div style="display:flex;align-items:center;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);font-weight:700;font-size:13.5px;color:var(--accent)">
+            Open job sheet
+            @include('technician._icon', ['name'=>'right','size'=>16])
+        </div>
+    @endif
 </{{ $tag }}>

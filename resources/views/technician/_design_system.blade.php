@@ -1,16 +1,16 @@
 <style>
 :root{
   --bg:#FFFFFF; --surface:#FFFFFF; --soft:#F5F4FA; --ink:#1B1A24; --muted:#5F5D6E; --line:#E6E4EE;
-  --accent: {{ $accentHex ?? '#FFC61A' }}; --accent-ink:#FFFFFF;
+  --accent: {{ $accentHex ?? '#E22A6B' }}; --accent-ink:#FFFFFF;
   --blue:#2F5BEA; --violet:#7A5AF8; --green:#14A058; --amber:#D98200; --red:#DC3E36; --slate:#64748B; --teal:#0E94A3; --indigo:#4F46E5; --pink:#D6409F;
   --tint:color-mix(in srgb,var(--accent) 14%,var(--surface));
-  --font-body: {{ $fontBody ?? 'DM Sans' }}; --font-display: {{ $fontDisplay ?? 'Figtree' }};
+  --font-body: {{ $fontBody ?? 'Inter' }}; --font-display: {{ $fontDisplay ?? 'Inter' }};
   box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px); color-scheme:light;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --bg:#13121A; --surface:#1A1924; --soft:#222130; --ink:#F3F2F8; --muted:#A9A7B8; --line:#2D2B3C;
-    --accent: {{ $accentHex ?? '#FFD24D' }}; --accent-ink:#0F1220;
+    --accent: {{ $accentHex ?? '#FF6FA5' }}; --accent-ink:#0F1220;
     --blue:#7C9CFF; --violet:#AB9DFF; --green:#4CD08A; --amber:#F3B14A; --red:#FF8A82; --slate:#9FB0CC; --teal:#4FD1D9; --indigo:#9A94FF; --pink:#F08CCB; color-scheme:dark;
   }
 }

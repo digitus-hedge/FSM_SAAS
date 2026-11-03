@@ -8,14 +8,14 @@
 @php
     $brandTenant = \App\Models\Tenant::current();
     $brandFont   = \App\Models\BrandFont::where('key', $brandTenant?->font_key ?? 'dm_sans')->first();
-    $googleParam = $brandFont->google_param ?? 'DM+Sans:wght@400;500;700&family=Figtree:wght@700;800';
-    $fontBody    = $brandFont->body_family ?? 'DM Sans';
-    $fontDisplay = $brandFont->display_family ?? 'Figtree';
+    $googleParam = $brandFont->google_param ?? 'Inter:wght@400;500;600;700;800;900';
+    $fontBody    = $brandFont->body_family ?? 'Inter';
+    $fontDisplay = $brandFont->display_family ?? 'Inter';
 @endphp
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family={{ $googleParam }}&display=swap" rel="stylesheet">
 @include('technician._design_system', [
-    'accentHex'   => $accentHex ?? ($brandTenant?->primary_color ?? '#FFC61A'),
+    'accentHex'   => $accentHex ?? ($brandTenant?->primary_color ?? '#E22A6B'),
     'fontBody'    => $fontBody,
     'fontDisplay' => $fontDisplay,
 ])
