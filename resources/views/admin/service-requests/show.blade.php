@@ -733,7 +733,7 @@
         <select name="technician_id" id="technician_id" class="modal-select" required>
           <option value="">Choose a technician</option>
           @foreach (($technicians ?? collect()) as $t)
-            <option value="{{ $t->id }}" @selected((int) $sr->assigned_tech_user_id === $t->id)>{{ $t->name }}</option>
+            <option value="{{ $t->id }}" @selected((int) $sr->assigned_tech_user_id === $t->id)>{{ $t->name }}@if ($t->role?->code === 'team_lead') (Team Lead)@endif</option>
           @endforeach
         </select>
       </div>

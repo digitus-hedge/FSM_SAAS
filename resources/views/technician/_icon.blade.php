@@ -16,6 +16,11 @@ $paths = [
  'plus'    => '<path d="M12 5v14M5 12h14"/>',
  'check'   => '<path d="M20 6L9 17l-5-5"/>',
  'x'       => '<path d="M18 6L6 18M6 6l12 12"/>',
+ 'camera'  => '<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.2" r="3.4"/>',
+ 'doc'     => '<path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5"/><path d="M9 13.2h6M9 17h6"/>',
+ 'wallet'  => '<rect x="3" y="7" width="18" height="12" rx="2.5"/><path d="M3 10.5h18"/><circle cx="16.5" cy="14.5" r="1.1" fill="currentColor" stroke="none"/>',
+ 'pen'     => '<path d="M4 20l.9-3.8L15.6 5.5a1.5 1.5 0 0 1 2.1 0l1.8 1.8a1.5 1.5 0 0 1 0 2.1L8.8 20.1 4 20z"/><path d="M14.2 7.1l2.7 2.7"/>',
+ 'phone'   => '<path d="M5 4h3l2 5-2.3 1.4a11.5 11.5 0 0 0 5.2 5.2L14.3 13.3l5 2v3a2 2 0 0 1-2.2 2A16.5 16.5 0 0 1 3 5.2 2 2 0 0 1 5 4z"/>',
 ];
 $size = $size ?? 20;
 $w = $w ?? 1.9;

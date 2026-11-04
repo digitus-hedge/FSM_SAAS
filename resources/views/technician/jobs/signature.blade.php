@@ -2,16 +2,29 @@
 @section('title', 'Signature')
 @section('back', route('technician.jobs.show', $serviceRequest))
 @section('content')
-<div class="card">
-    <label class="field">Customer name<input type="text" id="signer_name" class="inp" required></label>
-    <label class="field">Customer phone (optional)<input type="text" id="signer_phone" class="inp"></label>
-    <div style="font-weight:700;font-size:13px;margin-bottom:6px">Sign below</div>
-    <canvas id="pad" width="400" height="180" style="width:100%;height:180px;border:1px solid var(--line);border-radius:10px;background:#fff;touch-action:none"></canvas>
-    <div style="display:flex;gap:10px;margin-top:10px">
-        <button type="button" id="clear-btn" class="btn secondary" style="flex:1">Clear</button>
-        <button type="button" id="save-btn" class="btn" style="flex:1">Save signature</button>
+
+<div class="card" style="padding:18px">
+    <div class="field">
+        <label>Customer name</label>
+        <input type="text" id="signer_name" class="inp" required>
+    </div>
+    <div class="field">
+        <label>Customer phone (optional)</label>
+        <input type="text" id="signer_phone" class="inp">
+    </div>
+
+    <div class="field" style="margin-bottom:10px">
+        <label>Sign below</label>
+        <canvas id="pad" width="400" height="180" class="pad" style="height:200px;background:#fff"></canvas>
+        <div class="hint">Have the customer sign with a finger or stylus, then tap Save.</div>
+    </div>
+
+    <div style="display:flex;gap:10px">
+        <button type="button" id="clear-btn" class="btn" style="flex:1">Clear</button>
+        <button type="button" id="save-btn" class="btn dark" style="flex:1">Save signature</button>
     </div>
 </div>
+
 <form method="POST" action="{{ route('technician.jobs.signature.store', $serviceRequest) }}" id="sig-form">
     @csrf
     <input type="hidden" name="signature_png" id="signature_png">
@@ -20,6 +33,7 @@
     <input type="hidden" name="gps_lat" id="gps_lat">
     <input type="hidden" name="gps_lng" id="gps_lng">
 </form>
+
 <script>
 const canvas = document.getElementById('pad');
 const ctx = canvas.getContext('2d');

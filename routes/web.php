@@ -511,4 +511,11 @@ Route::prefix('service-requests')->name('service-requests.')->group(function () 
         Route::post('/team/overrides/{override}/approve', [TeamController::class, 'approveOverride'])->name('team.overrides.approve');
         Route::post('/team/overrides/{override}/reject', [TeamController::class, 'rejectOverride'])->name('team.overrides.reject');
         Route::post('/team/conflicts/{log}/reviewed', [TeamController::class, 'reviewConflict'])->name('team.conflicts.reviewed');
+        Route::get('/team/desktop', [TeamController::class, 'index'])->name('team.desktop');
+        Route::get('/team/desktop/requests', [TeamController::class, 'webRequests'])->name('team.desktop.requests');
+        Route::get('/team/desktop/overrides', [TeamController::class, 'webOverrides'])->name('team.desktop.overrides');
+        Route::get('/team/desktop/conflicts', [TeamController::class, 'webConflicts'])->name('team.desktop.conflicts');
+        Route::get('/team/desktop/requests/create', [TeamController::class, 'createRequest'])->name('team.desktop.requests.create');
+        Route::post('/team/desktop/requests', [TeamController::class, 'storeRequest'])->name('team.desktop.requests.store');
+        Route::get('/team/sites-for-client', [TeamController::class, 'sitesForClient'])->name('team.sites-for-client');
     });

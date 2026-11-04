@@ -106,7 +106,7 @@
       @error('name') <small class="err-inline">{{ $message }}</small> @enderror
     </div>
 
-    @php($currencyCode = auth()->user()->tenant?->currency_code ?? 'AED')
+    @php($currencyCode = auth()->user()->tenant?->currency_code ?? config('app.currency', 'USD'))
     <div class="field {{ $errors->has('default_unit_rate') ? 'has-error' : '' }}">
       <label for="default_unit_rate" class="lbl">Default unit rate</label>
       <div class="input-wrap">

@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Technician;
 
 use App\Http\Controllers\Controller;
+use App\Models\Client;
 use App\Models\FieldEventLog;
 use App\Models\GeofenceOverrideRequest;
+use App\Models\ProjectSite;
+use App\Models\ServiceCategory;
 use App\Models\ServiceRequest;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -21,60 +24,186 @@ class TeamController extends Controller
         abort_unless($sr->team_lead_user_id === auth()->id(), 403);
     }
 
-    public function index(Request $request)
+    /**
+     * Shared data for every team-lead screen (mobile dashboard and every desktop/web
+     * page). Always builds all three queues so the sidebar badge counts on the web
+     * layout stay accurate no matter which page is being rendered.
+     */
+    private function webTeamData(): array
     {
-        $tab = $request->get('tab', 'jobs');
         $teamIds = $this->teamMemberIds();
 
-        $jobsByTech = collect();
-        $needsAction = collect();
-        $overrides = collect();
-        $conflicts = collect();
+        $activeJobs = ServiceRequest::with(['client', 'site'])
+            ->whereIn('assigned_tech_user_id', $teamIds)
+            ->whereIn('status', ['assigned', 'in_progress', 'rework'])
+            ->orderBy('scheduled_eta_at')
+            ->get();
 
-        if ($tab === 'jobs') {
-            $jobs = ServiceRequest::with(['client', 'site', 'assignedTech'])
-                ->whereIn('assigned_tech_user_id', $teamIds)
-                ->whereIn('status', ['assigned', 'in_progress', 'rework'])
-                ->orderBy('scheduled_eta_at')
-                ->get();
-            $jobsByTech = $jobs->groupBy(fn ($j) => $j->assignedTech?->name ?? 'Unassigned');
-        }
+        $jobsByTechId = $activeJobs->groupBy('assigned_tech_user_id');
 
-        if ($tab === 'action') {
-            $needsAction = ServiceRequest::with(['client', 'site'])
-                ->where('team_lead_user_id', auth()->id())
-                ->whereIn('status', ['pending', 'quoted', 'approved'])
-                ->orderBy('scheduled_eta_at')
-                ->get();
-        }
+        $teamMembers = User::whereIn('id', $teamIds)->get()->map(function ($member) use ($jobsByTechId) {
+            $jobs = $jobsByTechId->get($member->id, collect());
+            $current = $jobs->firstWhere('status', 'in_progress') ?? $jobs->first();
 
-        if ($tab === 'ovr') {
-            $overrides = GeofenceOverrideRequest::with(['serviceRequest', 'technician'])
-                ->whereHas('serviceRequest', fn ($q) => $q->where('team_lead_user_id', auth()->id()))
-                ->where('status', 'pending')
-                ->orderByDesc('id')->get();
-        }
+            if (! $current) {
+                $member->crew_status = 'off_duty';
+                $member->crew_line = 'No active job';
+            } elseif ($current->scheduled_eta_at && $current->scheduled_eta_at->isPast()) {
+                $member->crew_status = 'at_risk';
+                $member->crew_line = ($current->site?->name ?? $current->client?->name ?? $current->title) . ' — overdue';
+            } else {
+                $member->crew_status = 'on_track';
+                $label = $current->status === 'in_progress' ? 'On site' : 'Assigned';
+                $member->crew_line = $label . ' — ' . ($current->site?->name ?? $current->client?->name ?? $current->title);
+            }
 
-        if ($tab === 'conf') {
-            $conflicts = FieldEventLog::with(['serviceRequest', 'user'])
-                ->where('result', 'conflict_rejected')
-                ->whereNull('reviewed_at')
-                ->whereHas('serviceRequest', fn ($q) => $q->where('team_lead_user_id', auth()->id()))
-                ->orderByDesc('id')->get();
-        }
+            $member->current_job = $current;
 
-        $needsActionCount = ServiceRequest::where('team_lead_user_id', auth()->id())
-            ->whereIn('status', ['pending', 'quoted', 'approved'])->count();
-        $overrideCount = GeofenceOverrideRequest::whereHas('serviceRequest', fn ($q) => $q->where('team_lead_user_id', auth()->id()))->where('status', 'pending')->count();
-        $conflictCount = FieldEventLog::where('result', 'conflict_rejected')->whereNull('reviewed_at')
-            ->whereHas('serviceRequest', fn ($q) => $q->where('team_lead_user_id', auth()->id()))->count();
+            return $member;
+        });
 
-        $teamMembers = User::whereIn('id', $teamIds)->get();
+        $jobsTodayCount = $activeJobs->count();
+        $atRiskCount = $teamMembers->where('crew_status', 'at_risk')->count();
 
-        return view('technician.team.index', compact(
-            'tab', 'jobsByTech', 'needsAction', 'overrides', 'conflicts',
-            'needsActionCount', 'overrideCount', 'conflictCount', 'teamMembers'
-        ));
+        $needsAction = ServiceRequest::with(['client', 'site'])
+            ->where('team_lead_user_id', auth()->id())
+            ->whereIn('status', ['pending', 'quoted', 'approved'])
+            ->orderBy('scheduled_eta_at')
+            ->get();
+
+        $overrides = GeofenceOverrideRequest::with(['serviceRequest', 'technician'])
+            ->whereHas('serviceRequest', fn ($q) => $q->where('team_lead_user_id', auth()->id()))
+            ->where('status', 'pending')
+            ->orderByDesc('id')->get();
+
+        $conflicts = FieldEventLog::with(['serviceRequest', 'user'])
+            ->where('result', 'conflict_rejected')
+            ->whereNull('reviewed_at')
+            ->whereHas('serviceRequest', fn ($q) => $q->where('team_lead_user_id', auth()->id()))
+            ->orderByDesc('id')->get();
+
+        return compact(
+            'teamMembers', 'jobsTodayCount', 'atRiskCount',
+            'needsAction', 'overrides', 'conflicts'
+        );
+    }
+
+    public function index(Request $request)
+    {
+        $data = $this->webTeamData();
+
+        $view = $request->routeIs('technician.team.desktop') ? 'technician.team.desktop' : 'technician.team.index';
+
+        return view($view, $data);
+    }
+
+    public function webRequests()
+    {
+        return view('technician.team.requests', $this->webTeamData());
+    }
+
+    public function webOverrides()
+    {
+        return view('technician.team.overrides', $this->webTeamData());
+    }
+
+    public function webConflicts()
+    {
+        return view('technician.team.conflicts', $this->webTeamData());
+    }
+
+    /**
+     * D25 item 4 — a team lead can raise a new request themselves, using the same
+     * staff form as the office, scoped to the clients/sites/categories they can see.
+     */
+    public function createRequest()
+    {
+        $tenantId = auth()->user()->tenant_id;
+
+        return view('technician.team.requests-create', [
+            'clients'    => Client::where('tenant_id', $tenantId)->where('is_active', 1)->orderBy('name')->get(['id', 'name']),
+            'categories' => ServiceCategory::where('tenant_id', $tenantId)->where('is_active', 1)->orderBy('name')->get(['id', 'name']),
+        ]);
+    }
+
+    public function storeRequest(Request $request)
+    {
+        $tenantId = auth()->user()->tenant_id;
+
+        $data = $request->validate([
+            'client_id'           => ['required', 'exists:clients,id'],
+            'project_site_id'     => ['required', 'exists:project_sites,id'],
+            'service_category_id' => ['required', 'exists:service_categories,id'],
+            'priority'            => ['required', 'in:' . implode(',', array_keys(ServiceRequest::PRIORITIES))],
+            'title'               => ['required', 'string', 'max:190'],
+            'description'         => ['nullable', 'string', 'max:2000'],
+            'client_po_reference' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $cat = ServiceCategory::where('tenant_id', $tenantId)->findOrFail($data['service_category_id']);
+
+        $proofSnapshot = [
+            'require_before_photo' => (bool) $cat->require_before_photo,
+            'require_after_photo'  => (bool) $cat->require_after_photo,
+            'require_signature'    => (bool) $cat->require_signature,
+            'require_checklist'    => (bool) $cat->require_checklist,
+            'snapshot_at'          => now()->toIso8601String(),
+            'category_code'        => $cat->code ?? null,
+        ];
+
+        $sr = ServiceRequest::create([
+            'tenant_id'              => $tenantId,
+            'sr_number'              => ServiceRequest::nextSrNumber($tenantId),
+            'client_id'              => $data['client_id'],
+            'project_site_id'        => $data['project_site_id'],
+            'service_category_id'    => $data['service_category_id'],
+            'priority'               => $data['priority'],
+            'title'                  => $data['title'],
+            'description'            => $data['description'] ?? null,
+            'client_po_reference'    => $data['client_po_reference'] ?? null,
+            'service_mode'           => 'on_site',
+            'source'                 => 'front_desk',
+            'coverage_type'          => 'out_of_coverage',
+            'status'                 => 'pending',
+            'billing_status'         => 'not_applicable',
+            'invoice_mandatory'      => (bool) ($cat->invoice_mandatory ?? false),
+            'enforce_geofence'       => false,
+            'allow_signature_waiver' => false,
+            'created_by_user_id'     => auth()->id(),
+            'proof_rules_snapshot'   => $proofSnapshot,
+            // Raised by the team lead themselves — keep it on their own queue.
+            'team_lead_user_id'      => auth()->id(),
+        ]);
+
+        $policy  = $sr->resolveSlaPolicy();
+        $started = now();
+        $sr->update([
+            'sla_clock_started_at'  => $started,
+            'sla_response_due_at'   => $policy ? $started->copy()->addMinutes((int) $policy->response_minutes) : null,
+            'sla_resolution_due_at' => $policy ? $started->copy()->addMinutes((int) $policy->resolution_minutes) : null,
+        ]);
+
+        return redirect()->route('technician.team.desktop.requests')->with('success', "Request {$sr->sr_number} created.");
+    }
+
+    /**
+     * AJAX endpoint — sites for a client, scoped the same way as the admin one, so the
+     * new-request form can populate the Site select after a client is chosen.
+     */
+    public function sitesForClient(Request $request)
+    {
+        $tenantId = auth()->user()->tenant_id;
+        $clientId = (int) $request->input('client_id');
+
+        $sites = ProjectSite::where('tenant_id', $tenantId)
+            ->where(function ($q) use ($clientId) {
+                $q->where('client_id', $clientId)->orWhereNull('client_id');
+            })
+            ->where('is_active', 1)
+            ->orderBy('name')
+            ->get(['id', 'name', 'site_type', 'client_id']);
+
+        return response()->json($sites);
     }
 
     public function approve(ServiceRequest $serviceRequest)

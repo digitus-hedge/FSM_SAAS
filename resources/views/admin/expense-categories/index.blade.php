@@ -135,7 +135,7 @@
       </tr>
     </thead>
     <tbody>
-        @php $currency = auth()->user()->tenant?->currency_code ?? 'AED'; @endphp
+        @php $currency = auth()->user()->tenant?->currency_code ?? config('app.currency', 'USD'); @endphp
 
       @forelse ($categories as $cat)
         <tr>

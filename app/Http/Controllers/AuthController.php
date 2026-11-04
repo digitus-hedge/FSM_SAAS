@@ -314,13 +314,29 @@ class AuthController extends Controller
             return redirect()->route('password.change');
         }
 
-        return redirect()->intended(route('technician.jobs.index'));
+        // Field entry point (login/technician, login/team-lead) always lands on the MOBILE
+        // view — a team lead signing in here is on their phone in the field, same as a technician.
+        // Note: technician.jobs.index now serves the DESKTOP jobs dashboard (URL swap), so the
+        // mobile Today view is technician.jobs.mobile.
+        $target = $user->role?->code === 'team_lead'
+            ? route('technician.team.index')
+            : route('technician.jobs.mobile');
+
+        return redirect()->intended($target);
     }
 
     private function redirectAfterSignIn(\App\Models\User $user)
     {
+        // The regular office/laptop login (/login): a team lead lands on their desktop
+        // dashboard here, not the mobile view — that's reserved for the field login above.
+        if ($user->role?->code === 'team_lead') {
+            return redirect()->route('technician.team.desktop');
+        }
+
+        // A plain field technician never gets the desktop view (D1) — always mobile,
+        // even if they somehow sign in from the office login.
         if (in_array($user->role?->code, self::FIELD_CODES, true)) {
-            return redirect()->route('technician.jobs.index');
+            return redirect()->route('technician.jobs.mobile');
         }
         return redirect()->route('tenant.dashboard');
     }

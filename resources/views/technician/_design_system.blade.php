@@ -30,13 +30,14 @@ input,select,textarea{font:inherit;color:inherit}
 .badge{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 11px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .badge i{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block}
 .badge.amber i{background:var(--amber)}.badge.grey i{background:var(--slate)}
-.main{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;padding:14px 14px 100px;-webkit-overflow-scrolling:touch}
+.main{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;padding:14px 14px 100px;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none}
+.main::-webkit-scrollbar{display:none;width:0;height:0}
 .nav{flex:0 0 auto;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border-top:1px solid var(--line);background:var(--bg);padding-bottom:env(safe-area-inset-bottom,0px)}
 .nav a{border:0;background:none;min-height:62px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:12px;font-weight:600;color:var(--muted);position:relative;text-decoration:none}
 .nav a[aria-current=page]{color:var(--ink)}
 .nav a[aria-current=page]::before{content:"";position:absolute;top:0;left:30%;right:30%;height:3px;border-radius:0 0 3px 3px;background:var(--accent)}
 .nav .dot{top:8px;right:calc(50% - 22px)}
-.abar{position:sticky;left:0;right:0;bottom:0;z-index:5;background:var(--bg);border-top:1px solid var(--line);padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:8px}
+.abar{flex:0 0 auto;background:var(--bg);border-top:1px solid var(--line);padding:12px 14px;display:flex;flex-direction:column;gap:8px}
 .abar .row{display:flex;gap:8px}
 .btn{min-height:52px;border-radius:15px;border:1px solid var(--line);background:var(--surface);font-weight:700;padding:0 18px;display:inline-flex;align-items:center;justify-content:center;gap:8px;flex:1;text-align:center;text-decoration:none;color:var(--ink)}
 .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent}
@@ -85,12 +86,13 @@ input,select,textarea{font:inherit;color:inherit}
 .proof{list-style:none;margin:0;padding:0}.proof li{display:flex;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}.proof li:first-child{border-top:0}
 .tick{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;flex:0 0 auto;background:var(--soft);color:var(--muted)}
 .tick.ok{background:var(--green);color:#fff}.tick.no{background:color-mix(in srgb,var(--red) 14%,var(--surface));color:var(--red)}
-.sheetwrap{position:fixed;inset:0;z-index:30;background:rgba(18,16,28,.5);display:flex;align-items:stretch;justify-content:flex-start}
-.sheet{background:var(--bg);width:100%;border-radius:24px 24px 0 0;padding:10px 16px calc(18px + env(safe-area-inset-bottom,0px));max-height:90%;overflow:auto}
+.sheetwrap{position:absolute;inset:0;z-index:30;background:rgba(18,16,28,.5);display:flex;align-items:stretch;justify-content:flex-start}
+.sheet{background:var(--bg);width:100%;border-radius:24px 24px 0 0;padding:10px 16px calc(18px + env(safe-area-inset-bottom,0px));max-height:90%;overflow:auto;scrollbar-width:none;-ms-overflow-style:none}
+.sheet::-webkit-scrollbar{display:none;width:0;height:0}
 .sheet .grab{width:44px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 14px}
 .sheet h2{font-size:20px;margin-bottom:6px}
 .sheet .acts{display:flex;gap:10px;margin-top:14px}
-.toast{position:fixed;left:14px;right:14px;bottom:calc(86px + env(safe-area-inset-bottom,0px));z-index:40;background:var(--ink);color:var(--bg);border-radius:14px;padding:12px 14px;font-size:14.5px;box-shadow:0 12px 30px rgba(0,0,0,.28)}
+.toast{position:absolute;left:14px;right:14px;bottom:calc(86px + env(safe-area-inset-bottom,0px));z-index:40;background:var(--ink);color:var(--bg);border-radius:14px;padding:12px 14px;font-size:14.5px;box-shadow:0 12px 30px rgba(0,0,0,.28)}
 .pad{display:block;width:100%;height:230px;border:1px solid var(--line);border-radius:16px;background:var(--surface);touch-action:none}
 .bar{height:8px;border-radius:5px;background:var(--soft);overflow:hidden}.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .15s}
 .big{font-family:var(--font-display);font-weight:700;font-size:40px;letter-spacing:-.02em}
@@ -112,11 +114,19 @@ input,select,textarea{font:inherit;color:inherit}
 .drawer{width:86%;max-width:330px;height:100%;background:var(--bg);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);box-shadow:8px 0 30px rgba(0,0,0,.2)}
 .drawer .dh{display:flex;gap:12px;align-items:center;padding:18px 16px 14px;border-bottom:1px solid var(--line)}
 .drawer .mk{width:44px;height:44px;border-radius:13px;background:linear-gradient(145deg,var(--accent),color-mix(in srgb,var(--accent) 80%,black 20%));color:var(--accent-ink);display:grid;place-items:center;font-family:var(--font-display);font-weight:700;font-size:16px;flex:0 0 auto}
-.drawer .dl{flex:1;overflow:auto;padding:8px}
+.drawer .dl{flex:1;overflow:auto;padding:8px;scrollbar-width:none;-ms-overflow-style:none}
+.drawer .dl::-webkit-scrollbar{display:none;width:0;height:0}
 .drawer .df{border-top:1px solid var(--line);padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px))}
 .dit{display:flex;align-items:center;gap:14px;width:100%;min-height:52px;padding:0 12px;border:0;background:none;border-radius:14px;font-weight:600;text-align:left;color:var(--ink);text-decoration:none}
 .dit .grow{flex:1}
 .dit:active{background:var(--soft)}
 .dit[aria-current=page]{background:var(--soft)}
 details summary{list-style:none}details summary::-webkit-details-marker{display:none}details summary::before{content:'+ ';font-weight:700}details[open] summary::before{content:'- '}
+.acc summary::-webkit-details-marker{display:none}
+.acc summary::before{content:none!important}
+.acc .acc-chev{transition:transform .2s ease;color:var(--muted);flex:0 0 auto}
+.acc[open] .acc-chev{transform:rotate(90deg);color:var(--ink)}
+.tile{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:20px 10px;text-decoration:none;color:inherit}
+.tile .tile-ic{width:44px;height:44px;border-radius:13px;background:var(--tint);color:var(--accent);display:grid;place-items:center}
+.tile .tile-lb{font-weight:700;font-size:13.5px}
 </style>

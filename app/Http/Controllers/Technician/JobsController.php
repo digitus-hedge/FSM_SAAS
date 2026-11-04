@@ -99,48 +99,74 @@ class JobsController extends Controller
         return $result;
     }
 
-    public function index()
+    /**
+     * Shared "my jobs" data for both the mobile Today view and the desktop Jobs
+     * dashboard — same underlying lists, two different layouts.
+     */
+    public function index(Request $request)
     {
         $me = auth()->id();
         $now = now();
-        $jobs = ServiceRequest::with(['client', 'site'])
-            ->where('assigned_tech_user_id', $me)
-            ->whereIn('status', ['assigned', 'in_progress', 'rework', 'pending_review', 'cancelled'])
+        $todayDate = $now->toDateString();
+
+        $base = fn () => ServiceRequest::with(['client', 'site'])->where('assigned_tech_user_id', $me);
+
+        $todayJobs = $base()
+            ->whereIn('status', ['assigned', 'in_progress', 'rework', 'completed', 'cancelled'])
+            ->where(function ($q) use ($todayDate, $now) {
+                $q->whereDate('scheduled_eta_at', $todayDate)
+                    ->orWhere('status', 'in_progress')
+                    ->orWhere(function ($q2) use ($now) {
+                        $q2->whereIn('status', ['assigned', 'rework'])->where('scheduled_eta_at', '<', $now);
+                    });
+            })
+            ->get()
+            ->sort(function ($a, $b) {
+                $pa = $a->status === 'in_progress' ? 0 : 1;
+                $pb = $b->status === 'in_progress' ? 0 : 1;
+                if ($pa !== $pb) return $pa <=> $pb;
+                return ($a->scheduled_eta_at ?? now()) <=> ($b->scheduled_eta_at ?? now());
+            })
+            ->values();
+
+        $review = $base()
+            ->where('status', 'pending_review')
+            ->where('last_punch_out_at', '>', $now->copy()->subDay())
+            ->orderByDesc('last_punch_out_at')
+            ->get();
+
+        $upcoming = $base()
+            ->whereIn('status', ['assigned', 'rework'])
+            ->whereDate('scheduled_eta_at', '>', $todayDate)
             ->orderBy('scheduled_eta_at')
             ->get();
 
-        $nowJobs = $jobs->where('status', 'in_progress')->values();
+        $todayIds = $todayJobs->pluck('id');
+        $history = $base()
+            ->whereIn('status', ['completed', 'cancelled'])
+            ->whereNotIn('id', $todayIds)
+            ->orderByDesc(DB::raw('COALESCE(last_punch_out_at, scheduled_eta_at)'))
+            ->limit(30)
+            ->get();
 
-        $soon = $jobs->filter(function ($j) use ($now) {
-            return in_array($j->status, ['assigned', 'rework'])
-                && $j->scheduled_eta_at
-                && $j->scheduled_eta_at->greaterThanOrEqualTo($now)
-                && ! $j->scheduled_eta_at->isSameDay($now)
-                && $j->scheduled_eta_at->lessThan($now->copy()->addDays(3));
-        })->sortBy('scheduled_eta_at')->values();
+        $total = $todayJobs->count();
+        $done = $todayJobs->where('status', 'completed')->count();
+        $active = $todayJobs->where('status', 'in_progress')->count();
+        $upcomingCount = max(0, $total - $done - $active);
+        $progressPct = $total > 0 ? (int) round($done / $total * 100) : 0;
 
-        $soonIds = $soon->pluck('id');
+        $data = compact(
+            'todayJobs', 'review', 'upcoming', 'history',
+            'total', 'done', 'active', 'upcomingCount', 'progressPct'
+        );
 
-        $todayArr = $jobs->filter(function ($j) use ($now, $soonIds) {
-            if ($soonIds->contains($j->id) || $j->status === 'in_progress') return false;
-            $sameDay = $j->scheduled_eta_at && $j->scheduled_eta_at->isSameDay($now);
-            $overdue = in_array($j->status, ['assigned', 'rework']) && $j->scheduled_eta_at && $j->scheduled_eta_at->lessThan($now);
-            return (in_array($j->status, ['assigned', 'rework', 'cancelled']) && $sameDay) || $overdue;
-        })->all();
+        // /technician/jobs now serves the DESKTOP dashboard (the URL swap).
+        // The mobile Today view moved to /technician/jobs/mobile.
+        if ($request->routeIs('technician.jobs.index')) {
+            return view('technician.jobs.desktop', $data);
+        }
 
-        usort($todayArr, function ($a, $b) {
-            $pa = $a->priority === 'emergency' ? 0 : 1;
-            $pb = $b->priority === 'emergency' ? 0 : 1;
-            if ($pa !== $pb) return $pa <=> $pb;
-            return ($a->scheduled_eta_at ?? now()) <=> ($b->scheduled_eta_at ?? now());
-        });
-        $today = collect($todayArr);
-
-        $review = $jobs->filter(function ($j) use ($now) {
-            return $j->status === 'pending_review' && $j->last_punch_out_at && $j->last_punch_out_at->greaterThan($now->copy()->subDay());
-        })->values();
-
-        return view('technician.jobs.index', compact('nowJobs', 'today', 'soon', 'review'));
+        return view('technician.jobs.index', $data);
     }
 
     public function all(Request $request)
@@ -200,8 +226,8 @@ class JobsController extends Controller
             'reason'                 => $data['reason'] ?? null,
             'source'                 => 'technician_request',
             'rescheduled_by_user_id' => auth()->id(),
-            'created_at'             => now(),
-            'updated_at'             => now(),
+            'created_at'              => now(),
+            'updated_at'              => now(),
         ]);
 
         $serviceRequest->update(['scheduled_eta_at' => $data['new_eta_at']]);
@@ -364,7 +390,7 @@ class JobsController extends Controller
         ]);
 
         if ($this->alreadyApplied($serviceRequest->id, 'punch_out', $data['client_event_uuid'])) {
-            return redirect()->route('technician.jobs.index')->with('success', 'Already punched out.');
+            return redirect()->route('technician.jobs.mobile')->with('success', 'Already punched out.');
         }
 
         if ($serviceRequest->status !== 'in_progress') {

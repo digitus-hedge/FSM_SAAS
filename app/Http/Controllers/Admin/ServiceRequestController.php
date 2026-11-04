@@ -300,18 +300,20 @@ class ServiceRequestController extends Controller
 
         $tenantId = auth()->user()->tenant_id;
 
-        // Find THIS tenant's field_technician role id
-        $techRoleId = DB::table('roles')
+        // Find THIS tenant's field_technician + team_lead role ids — team leads can
+        // also be assigned a job directly, not just technicians under them.
+        $techRoleIds = DB::table('roles')
             ->where('tenant_id', $tenantId)
-            ->where('code', 'field_technician')
-            ->value('id');
+            ->whereIn('code', ['field_technician', 'team_lead'])
+            ->pluck('id');
 
         $technicians = User::query()
+            ->with('role:id,code')
             ->where('tenant_id', $tenantId)
-            ->when($techRoleId, fn($q) => $q->where('role_id', $techRoleId))
+            ->when($techRoleIds->isNotEmpty(), fn($q) => $q->whereIn('role_id', $techRoleIds))
             ->whereNull('deactivated_at')
             ->orderBy('name')
-            ->get(['id', 'name', 'team_lead_id']);
+            ->get(['id', 'name', 'team_lead_id', 'role_id']);
 
         return view('admin.service-requests.show', [
             'sr'          => $service_request,
@@ -521,10 +523,14 @@ class ServiceRequestController extends Controller
 
         $tech = User::findOrFail($data['technician_id']);
 
+        // If the job is assigned straight to a team lead (no team_lead_id of their own),
+        // keep it visible on THEIR team-lead queue rather than leaving it ownerless.
+        $teamLeadUserId = $tech->team_lead_id ?? ($tech->role?->code === 'team_lead' ? $tech->id : null);
+
         $service_request->update([
             'status'                 => 'assigned',
             'assigned_tech_user_id'  => $tech->id,
-            'team_lead_user_id'      => $tech->team_lead_id,          // auto-set from technician's team
+            'team_lead_user_id'      => $teamLeadUserId,              // auto-set from technician's team
             'scheduled_eta_at'       => $data['arrival_time'],
             'enforce_geofence'       => (bool) ($data['enforce_geofence'] ?? false),
             'allow_signature_waiver' => (bool) ($data['allow_signature_waiver'] ?? false),
