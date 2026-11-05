@@ -22,6 +22,21 @@ class InvoicesController extends Controller
         abort_unless(in_array($role, ['Company Admin', 'Finance', 'Operations Manager'], true), 403);
     }
 
+    /**
+     * An invoice can only be started once QC has actually passed the job as
+     * out-of-coverage (status = 'awaiting_invoice'). Without this, an SR could
+     * be invoiced — and then force-marked completed — before a technician was
+     * ever assigned or any work was logged.
+     */
+    private function ensureReadyToInvoice(ServiceRequest $sr): void
+    {
+        abort_unless(
+            $sr->status === 'awaiting_invoice',
+            422,
+            "{$sr->sr_number} isn't ready to invoice yet — it must pass QC review first (status: " . $sr->statusLabel() . ')'
+        );
+    }
+
     /* ========== LIST ========== */
 
     public function index(Request $request)
@@ -60,9 +75,16 @@ class InvoicesController extends Controller
 
     private function toInvoiceRequests()
     {
+        // Fixed: was matching 'Awaiting Invoice' / 'Completed' (capitalized, with a
+        // space) against a column that actually stores lowercase snake_case values
+        // ('awaiting_invoice') — so this never matched a real row. Also dropped
+        // 'completed' entirely: a job only reaches that status directly when QC
+        // passes it as covered (billing_status = 'not_applicable'), which means no
+        // invoice is needed for it at all. Only 'awaiting_invoice' (QC passed it as
+        // out-of-coverage) should ever need one.
         return ServiceRequest::query()
             ->with(['client:id,name'])
-            ->whereIn('status', ['Awaiting Invoice', 'Completed'])
+            ->where('status', 'awaiting_invoice')
             ->whereNotIn('id', Invoice::whereNotIn('status', ['void'])->pluck('service_request_id'))
             ->orderByDesc('updated_at')
             ->get();
@@ -71,38 +93,71 @@ class InvoicesController extends Controller
     /* ========== BUILD ========== */
 
     public function build(ServiceRequest $sr)
-    {
-        $this->guard();
-        $sr->load(['client', 'site']);
+{
+    $this->guard();
+    $this->ensureReadyToInvoice($sr);
+    $sr->load(['client', 'site']);
 
-        $invoice = Invoice::where('service_request_id', $sr->id)
-            ->whereNotIn('status', ['void'])
+    $invoice = Invoice::where('service_request_id', $sr->id)
+        ->whereNotIn('status', ['void'])
+        ->first();
+
+    if (! $invoice) {
+        // Pull the client's accepted quote, if there is one, so its lines and
+        // totals carry straight over — the client already agreed to this price,
+        // it shouldn't need re-typing.
+        $quote = \App\Models\Quote::where('service_request_id', $sr->id)
+            ->where('status', 'accepted')
+            ->orderByDesc('id')
+            ->with('items')
             ->first();
 
-        if (! $invoice) {
-            $invoice = DB::transaction(function () use ($sr) {
-                $inv = Invoice::create([
-                    'tenant_id'          => auth()->user()->tenant_id,
-                    'invoice_number'     => Invoice::nextNumber(auth()->user()->tenant_id),
-                    'service_request_id' => $sr->id,
-                    'client_id'          => $sr->client_id,
-                    'source'             => 'builder',
-                    'status'             => 'draft',
-                    'currency_code'      => auth()->user()->tenant?->currency_code ?? 'AED',
-                    'due_date'           => now()->addDays(20),
-                    'notes'              => 'Payment due within 20 days of invoice date.',
-                    'created_by_user_id' => auth()->id(),
-                ]);
-                InvoiceEvent::log($inv->id, 'draft_made');
-                return $inv;
-            });
-        }
+        $invoice = DB::transaction(function () use ($sr, $quote) {
+            $inv = Invoice::create([
+                'tenant_id'          => auth()->user()->tenant_id,
+                'invoice_number'     => Invoice::nextNumber(auth()->user()->tenant_id),
+                'service_request_id' => $sr->id,
+                'client_id'          => $sr->client_id,
+                'source'             => 'builder',
+                'status'             => 'draft',
+                'currency_code'      => $quote->currency_code ?? (auth()->user()->tenant?->currency_code ?? 'AED'),
+                'due_date'           => now()->addDays(20),
+                'notes'              => $quote->terms ?? 'Payment due within 20 days of invoice date.',
+                'created_by_user_id' => auth()->id(),
+                'discount_type'      => $quote->discount_type ?? 'none',
+                'discount_value'     => $quote->discount_value ?? 0,
+                'subtotal'           => $quote->subtotal ?? 0,
+                'tax_total'          => $quote->tax_total ?? 0,
+                'discount_total'     => $quote->discount_total ?? 0,
+                'total'              => $quote->total ?? 0,
+                'base_total'         => $quote->total ?? 0,
+                'balance'            => $quote->total ?? 0,
+            ]);
 
-        $taxRates = TaxRate::orderBy('name')->get(['id', 'name', 'rate_percent']);
+            if ($quote) {
+                foreach ($quote->items as $i => $item) {
+                    InvoiceItem::create([
+                        'invoice_id'  => $inv->id,
+                        'line_no'     => $i + 1,
+                        'description' => $item->description,
+                        'quantity'    => $item->quantity,
+                        'unit'        => $item->unit,
+                        'unit_rate'   => $item->unit_rate,
+                        'tax_rate_id' => $item->tax_rate_id,
+                        'line_total'  => $item->line_total,
+                    ]);
+                }
+            }
 
-        return view('admin.invoices.build', compact('invoice', 'sr', 'taxRates'));
+            InvoiceEvent::log($inv->id, 'draft_made', $quote ? 'Copied from quote ' . $quote->quote_number : null);
+            return $inv;
+        });
     }
 
+    $taxRates = TaxRate::orderBy('name')->get(['id', 'name', 'rate_percent']);
+
+    return view('admin.invoices.build', compact('invoice', 'sr', 'taxRates'));
+}
     public function edit(Invoice $invoice)
     {
         $this->guard();
@@ -218,6 +273,7 @@ class InvoicesController extends Controller
     public function uploadForm(ServiceRequest $sr)
     {
         $this->guard();
+        $this->ensureReadyToInvoice($sr);
         $sr->load(['client', 'site']);
         return view('admin.invoices.upload', compact('sr'));
     }
@@ -225,6 +281,8 @@ class InvoicesController extends Controller
     public function storeUpload(Request $request, ServiceRequest $sr)
     {
         $this->guard();
+        $this->ensureReadyToInvoice($sr);
+
         $data = $request->validate([
             'pdf'          => 'required|file|mimes:pdf|max:10240',
             'total'        => 'required|numeric|min:0.01',
@@ -329,13 +387,15 @@ class InvoicesController extends Controller
                 $invoice->submitted_by_user_id === auth()->id() ? '(own invoice)' : null
             );
 
+            // Note: the SR already reached 'awaiting_invoice' only after QC passed
+            // it as out-of-coverage (see ensureReadyToInvoice() / RequestsReviewController::qcPass()),
+            // so by the time an invoice is approved the job itself was genuinely
+            // done — this no longer force-completes an unworked job.
             $sr = $invoice->serviceRequest;
-            if ($sr) {
-                // When the invoice goes out, the job itself is done — advance the SR status.
+            if ($sr && $sr->status === 'awaiting_invoice') {
                 $sr->update([
-                    'status'         => 'completed',
-                    'completed_at'   => now(),
-                    // 'billing_status' => 'invoiced',   // (keeps your existing cascade)
+                    'status'       => 'completed',
+                    'completed_at' => now(),
                 ]);
             }
         });
@@ -394,8 +454,12 @@ class InvoicesController extends Controller
         if ($invoice->status === 'approved') {
             $invoice->update(['status' => 'sent', 'sent_at' => now()]);
 
+            // 'approve()' already completes the SR once — this just keeps
+            // billing_status in sync without re-forcing a status that was
+            // already set correctly (or, if somehow still open, without
+            // forcing it closed from here).
             if ($sr) {
-                $sr->update(['billing_status' => 'invoiced', 'status' => 'completed','completed_at' => now()]);
+                $sr->update(['billing_status' => 'invoiced']);
             }
         }
         InvoiceEvent::log($invoice->id, 'sent', 'Sent to ' . implode(', ', $request->recipients));

@@ -16,6 +16,7 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0;min-height:100%;background:var(--soft);color:var(--ink);font-family:var(--font-body),system-ui,-apple-system,"Segoe UI",sans-serif;font-size:16px;line-height:1.45;-webkit-text-size-adjust:100%}
+h1,h2,h3,.fig{font-family:var(--font-display, var(--font-body, system-ui, sans-serif))}
 h1,h2,h3,h4{font-family:var(--font-display),var(--font-body),system-ui,sans-serif;margin:0;letter-spacing:-.01em}
 button{font:inherit;color:inherit;cursor:pointer}
 input,select,textarea{font:inherit;color:inherit}

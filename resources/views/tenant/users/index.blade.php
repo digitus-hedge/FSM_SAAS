@@ -131,7 +131,16 @@ function copyText(text, btn) {
                 @forelse ($users as $u)
                     <tr style="border-top:1px solid var(--line)">
                         <td style="padding:12px 16px;font-weight:600">{{ $u->name }}</td>
-                        <td style="padding:12px 16px">{{ $u->role?->name ?? '—' }}</td>
+                        <td style="padding:12px 16px">
+                            {{ $u->role?->name ?? '—' }}
+                            @if ($u->client_id)
+                                <div style="color:var(--muted);font-size:11.5px;margin-top:2px">
+                                    {{ $u->client?->name ?? 'Unknown company' }}
+                                </div>
+                            @elseif (in_array($u->role?->code, ['client_user', 'client_admin', 'client_viewer'], true))
+                                <div style="color:var(--red);font-size:11.5px;margin-top:2px">No company linked</div>
+                            @endif
+                        </td>
                         <td style="padding:12px 16px;color:var(--muted)">{{ $u->email ?? $u->phone ?? '—' }}</td>
                         <td style="padding:12px 16px">
                             @if ($u->deactivated_at)
@@ -149,6 +158,11 @@ function copyText(text, btn) {
 
                             <a href="{{ route('tenant.users.devices', $u) }}"
                             style="color:var(--ink);font-weight:600;text-decoration:underline;font-size:12px;margin-right:12px">Devices</a>
+
+                            <form method="POST" action="{{ route('tenant.users.temp-password', $u) }}" style="display:inline" class="needs-confirm" data-confirm-title="Reset {{ $u->name }}'s password?" data-confirm-text="A new one-time password will be generated. Share it with them directly — it won't be emailed." data-confirm-ok="Generate" data-confirm-ok-color="yellow">
+                                @csrf
+                                <button type="submit" style="background:none;border:0;font:inherit;font-size:12px;font-weight:600;color:var(--ink);cursor:pointer;text-decoration:underline;margin-right:12px">Reset password</button>
+                            </form>
 
                             @if ($u->deactivated_at)
                                 <form method="POST" action="{{ route('tenant.users.reactivate', $u) }}" style="display:inline">

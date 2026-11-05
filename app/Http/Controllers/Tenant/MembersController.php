@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\Controller;
+use App\Models\Client;
 use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
@@ -16,6 +17,9 @@ use Illuminate\Validation\ValidationException;
 
 class MembersController extends Controller
 {
+    /** Role codes that represent a login for someone at a customer company, not your own staff. */
+    private const CLIENT_ROLE_CODES = ['client_user', 'client_admin', 'client_viewer'];
+
     public function __construct(private AuditLogger $audit) {}   // ← added
 
     public function index(Request $request)
@@ -54,97 +58,89 @@ class MembersController extends Controller
         $tenant = Tenant::current();
         abort_unless($tenant, 404);
 
-        return view('tenant.members.create', [
-            'user'   => null,
-            'roles'  => Role::where('tenant_id', $tenant->id)->orderBy('name')->get(),
-            'tenant' => $tenant,
+        return view('tenant.users.form', [
+            'user'            => null,
+            'roles'           => Role::where('tenant_id', $tenant->id)->orderBy('name')->get(),
+            'clients'         => Client::where('tenant_id', $tenant->id)->orderBy('name')->get(),
+            'clientRoleCodes' => self::CLIENT_ROLE_CODES,
+            'teamLeads'       => $this->teamLeadOptions($tenant),
+            'tenant'          => $tenant,
         ]);
     }
 
     public function store(Request $request)
-{
-    $tenant = Tenant::current();
-    abort_unless($tenant, 404);
+    {
+        $tenant = Tenant::current();
+        abort_unless($tenant, 404);
 
-    $data = $this->validatedPayload($request, $tenant);
+        $data = $this->validatedPayload($request, $tenant);
 
-    $clientRoleCodes = ['client_user', 'client_admin', 'client_viewer'];
-    $role = Role::find($data['role_id']);
-    $isClientRole = in_array($role?->code, $clientRoleCodes, true);
+        $role = Role::find($data['role_id']);
+        $isClientRole = in_array($role?->code, self::CLIENT_ROLE_CODES, true);
 
-    if ($isClientRole && empty($data['email'])) {
-        throw ValidationException::withMessages([
-            'email' => 'Client accounts need an email — that is how they sign in.',
+        do {
+            $employeeCode = 'EMP-' . $tenant->id . '-' . strtoupper(Str::random(6));
+        } while (
+            User::where('tenant_id', $tenant->id)
+                ->where('employee_code', $employeeCode)
+                ->exists()
+        );
+
+        $user = User::create([
+            'tenant_id'            => $tenant->id,
+            'role_id'              => $data['role_id'],
+            'name'                 => $data['name'],
+            'email'                => $data['email'],
+            'phone'                => $data['phone'],
+            'employee_code'        => $employeeCode,
+            'client_id'            => $data['client_id'] ?? null,
+            'team_lead_id'         => $data['team_lead_id'] ?? null,
+            'password'             => Hash::make(Str::random(32)),
+            'must_change_password' => ! $isClientRole,
         ]);
-    }
 
-    do {
-        $employeeCode = 'EMP-' . $tenant->id . '-' . strtoupper(Str::random(6));
-    } while (
-        User::where('tenant_id', $tenant->id)
-            ->where('employee_code', $employeeCode)
-            ->exists()
-    );
+        $this->audit->log('user.created', [
+            'item_type' => User::class,
+            'item_id'   => $user->id,
+            'new'       => $user->only(['name', 'email', 'phone', 'role_id', 'employee_code', 'client_id', 'team_lead_id']),
+        ]);
 
-    $user = User::create([
-        'tenant_id'            => $tenant->id,
-        'role_id'              => $data['role_id'],
-        'name'                 => $data['name'],
-        'email'                => $data['email']  ?: null,
-        'phone'                => $data['phone']  ?: null,
-        'employee_code'        => $employeeCode,
-        'password'             => Hash::make(Str::random(32)),
-        'must_change_password' => ! $isClientRole,
-    ]);
+        if ($isClientRole) {
+            $signInUrl = $this->buildClientSignInUrl($tenant);
+            return redirect()->route('tenant.users.index')
+                ->with('success', "{$user->name} was created.")
+                ->with('client_info', [
+                    'user'  => $user->name,
+                    'email' => $user->email,
+                    'url'   => $signInUrl,
+                ]);
+        }
 
-    $this->audit->log('user.created', [
-        'item_type' => User::class,
-        'item_id'   => $user->id,
-        'new'       => $user->only(['name', 'email', 'phone', 'role_id', 'employee_code']),
-    ]);
+        $token = app(\App\Services\Auth\SecureLinkService::class)
+                    ->create($user, 'user_invite', 7 * 24 * 60);
 
-    if ($isClientRole) {
-        $signInUrl = $this->buildClientSignInUrl($tenant);
+        $url = url("/invitation/{$token}");
+
+        \Illuminate\Support\Facades\Mail::to($user->email)->send(
+            (new \App\Mail\InvitationMail($user, $tenant, $url))->afterCommit()
+        );
+
         return redirect()->route('tenant.users.index')
             ->with('success', "{$user->name} was created.")
-            ->with('client_info', [
-                'user'  => $user->name,
-                'email' => $user->email,
-                'url'   => $signInUrl,
-            ]);
+            ->with('invitation_link', ['user' => $user->name, 'url' => $url]);
     }
-
-    if ($user->email) {
-    $token = app(\App\Services\Auth\SecureLinkService::class)
-                ->create($user, 'user_invite', 7 * 24 * 60);
-
-    $url = url("/invitation/{$token}");
-
-    \Illuminate\Support\Facades\Mail::to($user->email)->send(
-        (new \App\Mail\InvitationMail($user, $tenant, $url))->afterCommit()
-    );
-
-    return redirect()->route('tenant.users.index')
-        ->with('success', "{$user->name} was created.")
-        ->with('invitation_link', ['user' => $user->name, 'url' => $url]);
-}
-
-    $tempPassword = Str::random(12);
-    $user->update(['password' => Hash::make($tempPassword)]);
-
-    return redirect()->route('tenant.users.index')
-        ->with('success', "{$user->name} was created.")
-        ->with('temp_password', ['user' => $user->name, 'password' => $tempPassword]);
-}
 
     public function edit(User $user)
     {
         $this->ensureSameTenant($user);
 
         return view('tenant.users.form', [
-            'user'   => $user,
-            'roles'  => Role::where('tenant_id', $user->tenant_id)->orderBy('name')->get(),
-            'tenant' => $user->tenant,
+            'user'            => $user,
+            'roles'           => Role::where('tenant_id', $user->tenant_id)->orderBy('name')->get(),
+            'clients'         => Client::where('tenant_id', $user->tenant_id)->orderBy('name')->get(),
+            'clientRoleCodes' => self::CLIENT_ROLE_CODES,
+            'teamLeads'       => $this->teamLeadOptions($user->tenant, $user->id),
+            'tenant'          => $user->tenant,
         ]);
     }
 
@@ -161,17 +157,19 @@ class MembersController extends Controller
         }
 
         // ↓ snapshot BEFORE the update so we can diff
-        $before = $user->only(['name', 'email', 'phone', 'employee_code', 'role_id']);
+        $before = $user->only(['name', 'email', 'phone', 'employee_code', 'role_id', 'client_id', 'team_lead_id']);
 
         $user->update([
-            'role_id'       => $data['role_id'],
-            'name'          => $data['name'],
-            'email'         => $data['email']  ?: null,
-            'phone'         => $data['phone']  ?: null,
+            'role_id'      => $data['role_id'],
+            'name'         => $data['name'],
+            'email'        => $data['email'],
+            'phone'        => $data['phone'],
+            'client_id'    => $data['client_id'] ?? null,
+            'team_lead_id' => $data['team_lead_id'] ?? null,
         ]);
 
         // ↓ audit — only the keys that actually changed
-        $after   = $user->only(['name', 'email', 'phone', 'employee_code', 'role_id']);
+        $after   = $user->only(['name', 'email', 'phone', 'employee_code', 'role_id', 'client_id', 'team_lead_id']);
         $changed = array_keys(array_diff_assoc($after, $before));
         if ($changed) {
             // role change is logged separately so the trail shows role_changed, not just updated
@@ -264,17 +262,40 @@ class MembersController extends Controller
 
     // ───────────────────────── helpers ─────────────────────────
 
+    /**
+     * Team leads this company has, for the "Team lead" dropdown on the user form.
+     * $excludeId drops the user being edited, so a team lead can't be set as their own lead.
+     */
+    private function teamLeadOptions(Tenant $tenant, ?int $excludeId = null)
+    {
+        return User::where('tenant_id', $tenant->id)
+            ->whereHas('role', fn ($q) => $q->where('code', 'team_lead'))
+            ->whereNull('deactivated_at')
+            ->when($excludeId, fn ($q) => $q->where('id', '!=', $excludeId))
+            ->orderBy('name')
+            ->get(['id', 'name']);
+    }
+
+    /**
+     * Email and phone are both required (not just unique-if-present).
+     * client_id is required when (and only when) the chosen role is a client
+     * role (client_user / client_admin / client_viewer) — that's what ties a
+     * client login to one company from the master Clients list.
+     * team_lead_id is only meaningful for a field_technician — it's how a
+     * technician becomes a member of a team lead's crew (TeamController reads
+     * this column directly).
+     */
     private function validatedPayload(Request $request, Tenant $tenant, ?User $editingUser = null): array
     {
         $ignoreId = $editingUser?->id;
 
-        return $request->validate([
+        $data = $request->validate([
             'name'          => ['required', 'string', 'min:2', 'max:150'],
-            'email'         => ['nullable', 'email', 'max:190',
+            'email'         => ['required', 'email', 'max:190',
                                 Rule::unique('users', 'email')
                                     ->where('tenant_id', $tenant->id)
                                     ->ignore($ignoreId)],
-            'phone'         => ['nullable', 'string', 'max:30',
+            'phone'         => ['required', 'string', 'max:30',
                                 Rule::unique('users', 'phone')
                                     ->where('tenant_id', $tenant->id)
                                     ->ignore($ignoreId)],
@@ -284,13 +305,46 @@ class MembersController extends Controller
                                     ->ignore($ignoreId)],
             'role_id'       => ['required',
                                 Rule::exists('roles', 'id')->where('tenant_id', $tenant->id)],
+            'client_id'     => ['nullable',
+                                Rule::exists('clients', 'id')->where('tenant_id', $tenant->id)],
+            'team_lead_id'  => ['nullable',
+                                Rule::exists('users', 'id')->where('tenant_id', $tenant->id)],
         ], [
-            'name.required'    => 'Enter a name of 2 to 150 characters.',
-            'email.email'      => 'Enter a valid email address.',
-            'email.unique'     => 'That email is already used in this company.',
-            'phone.unique'     => 'That phone number is already used in this company.',
-            'role_id.required' => 'Choose a role.',
+            'name.required'      => 'Enter a name of 2 to 150 characters.',
+            'email.required'     => 'Email is required.',
+            'email.email'        => 'Enter a valid email address.',
+            'email.unique'       => 'That email is already used in this company.',
+            'phone.required'     => 'Phone number is required.',
+            'phone.unique'       => 'That phone number is already used in this company.',
+            'role_id.required'   => 'Choose a role.',
+            'client_id.exists'   => 'Choose a valid client company.',
+            'team_lead_id.exists' => 'Choose a valid team lead.',
         ]);
+
+        $role = Role::find($data['role_id']);
+        $isClientRole = in_array($role?->code, self::CLIENT_ROLE_CODES, true);
+        $isFieldTechnician = $role?->code === 'field_technician';
+
+        if ($isClientRole) {
+            // Re-validate client_id as required now that we know the role needs it.
+            $request->validate([
+                'client_id' => ['required',
+                                Rule::exists('clients', 'id')->where('tenant_id', $tenant->id)],
+            ], [
+                'client_id.required' => 'Choose which client company this user belongs to.',
+            ]);
+        } else {
+            // Staff roles never carry a client_id, whatever the form posted.
+            $data['client_id'] = null;
+        }
+
+        // A team lead is only meaningful for a field technician — every other role
+        // (including a team lead themselves) never carries one, whatever the form posted.
+        if (! $isFieldTechnician) {
+            $data['team_lead_id'] = null;
+        }
+
+        return $data;
     }
 
     private function ensureSameTenant(User $user): void
@@ -314,25 +368,26 @@ class MembersController extends Controller
     }
 
     private function buildClientSignInUrl(Tenant $tenant): string
-{
-    $host     = parse_url(config('app.url'), PHP_URL_HOST);
-    $port     = parse_url(config('app.url'), PHP_URL_PORT);
-    $scheme   = parse_url(config('app.url'), PHP_URL_SCHEME) ?: 'http';
-    $portPart = $port ? ":{$port}" : '';
-    return "{$scheme}://{$tenant->slug}.{$host}{$portPart}/client/sign-in";
-}
-    public function devices(User $user)
-{
-    $this->ensureSameTenant($user);
-    $devices = \App\Models\UserDevice::where('user_type', 'user')
-        ->where('user_id', $user->id)
-        ->whereNull('revoked_at')
-        ->orderByDesc('last_used_at')
-        ->get();
+    {
+        $host     = parse_url(config('app.url'), PHP_URL_HOST);
+        $port     = parse_url(config('app.url'), PHP_URL_PORT);
+        $scheme   = parse_url(config('app.url'), PHP_URL_SCHEME) ?: 'http';
+        $portPart = $port ? ":{$port}" : '';
+        return "{$scheme}://{$tenant->slug}.{$host}{$portPart}/client/sign-in";
+    }
 
-    return view('tenant.users.devices', [
-        'targetUser' => $user,
-        'devices'    => $devices,
-    ]);
-}
+    public function devices(User $user)
+    {
+        $this->ensureSameTenant($user);
+        $devices = \App\Models\UserDevice::where('user_type', 'user')
+            ->where('user_id', $user->id)
+            ->whereNull('revoked_at')
+            ->orderByDesc('last_used_at')
+            ->get();
+
+        return view('tenant.users.devices', [
+            'targetUser' => $user,
+            'devices'    => $devices,
+        ]);
+    }
 }

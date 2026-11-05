@@ -160,13 +160,7 @@ class JobsController extends Controller
             'total', 'done', 'active', 'upcomingCount', 'progressPct'
         );
 
-        // /technician/jobs now serves the DESKTOP dashboard (the URL swap).
-        // The mobile Today view moved to /technician/jobs/mobile.
-        if ($request->routeIs('technician.jobs.index')) {
-            return view('technician.jobs.desktop', $data);
-        }
-
-        return view('technician.jobs.index', $data);
+       return view('technician.jobs.index', $data);
     }
 
     public function all(Request $request)

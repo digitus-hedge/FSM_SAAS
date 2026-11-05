@@ -625,10 +625,17 @@ class ServiceRequestController extends Controller
     }
 
     public function markReview(ServiceRequest $service_request)
-    {
-        $service_request->update(['status' => 'pending_review']);
-        return back()->with('success', "{$service_request->sr_number} submitted for review.");
-    }
+{
+    abort_unless(
+        $service_request->status === 'in_progress',
+        422,
+        "{$service_request->sr_number} can only be submitted for review once work is in progress (status: " . $service_request->statusLabel() . ')'
+    );
+
+    $service_request->update(['status' => 'pending_review']);
+    return back()->with('success', "{$service_request->sr_number} submitted for review.");
+}
+    
 
     /**
      * AJAX endpoint — returns sites for a client as JSON.

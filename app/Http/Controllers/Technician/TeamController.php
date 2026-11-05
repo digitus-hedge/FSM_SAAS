@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Technician;
 
 use App\Http\Controllers\Controller;
+use App\Models\Attachment;
 use App\Models\Client;
 use App\Models\FieldEventLog;
 use App\Models\GeofenceOverrideRequest;
@@ -11,6 +12,7 @@ use App\Models\ServiceCategory;
 use App\Models\ServiceRequest;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class TeamController extends Controller
 {
@@ -39,6 +41,11 @@ class TeamController extends Controller
             ->orderBy('scheduled_eta_at')
             ->get();
 
+        // Home KPI tiles — counted from the same active-jobs set, before it gets
+        // grouped per technician below.
+        $inProgressCount = $activeJobs->where('status', 'in_progress')->count();
+        $reworkCount     = $activeJobs->where('status', 'rework')->count();
+
         $jobsByTechId = $activeJobs->groupBy('assigned_tech_user_id');
 
         $teamMembers = User::whereIn('id', $teamIds)->get()->map(function ($member) use ($jobsByTechId) {
@@ -58,6 +65,7 @@ class TeamController extends Controller
             }
 
             $member->current_job = $current;
+            $member->active_jobs = $jobs;
 
             return $member;
         });
@@ -69,6 +77,15 @@ class TeamController extends Controller
             ->where('team_lead_user_id', auth()->id())
             ->whereIn('status', ['pending', 'quoted', 'approved'])
             ->orderBy('scheduled_eta_at')
+            ->get();
+
+        $needsApprovalCount = $needsAction->where('status', 'pending')->count();
+        $toAssignCount      = $needsAction->where('status', 'approved')->count();
+
+        $toReview = ServiceRequest::with(['client', 'site'])
+            ->where('team_lead_user_id', auth()->id())
+            ->where('status', 'pending_review')
+            ->orderByDesc('last_punch_out_at')
             ->get();
 
         $overrides = GeofenceOverrideRequest::with(['serviceRequest', 'technician'])
@@ -84,7 +101,9 @@ class TeamController extends Controller
 
         return compact(
             'teamMembers', 'jobsTodayCount', 'atRiskCount',
-            'needsAction', 'overrides', 'conflicts'
+            'needsAction', 'needsApprovalCount', 'toAssignCount',
+            'inProgressCount', 'reworkCount', 'toReview',
+            'overrides', 'conflicts'
         );
     }
 
@@ -138,6 +157,8 @@ class TeamController extends Controller
             'title'               => ['required', 'string', 'max:190'],
             'description'         => ['nullable', 'string', 'max:2000'],
             'client_po_reference' => ['nullable', 'string', 'max:100'],
+            'attachments'          => ['nullable', 'array'],
+            'attachments.*'        => ['file', 'max:10240'],
         ]);
 
         $cat = ServiceCategory::where('tenant_id', $tenantId)->findOrFail($data['service_category_id']);
@@ -183,6 +204,29 @@ class TeamController extends Controller
             'sla_resolution_due_at' => $policy ? $started->copy()->addMinutes((int) $policy->resolution_minutes) : null,
         ]);
 
+        // D25 — attachments the team lead adds when raising the request themselves.
+        foreach ($request->file('attachments', []) as $file) {
+            if (! $file || ! $file->isValid()) {
+                continue;
+            }
+
+            $path = $file->store("sr/{$sr->id}/attachments", 'public');
+
+            Attachment::create([
+                'tenant_id'           => $tenantId,
+                'attachable_type'     => ServiceRequest::class,
+                'attachable_id'       => $sr->id,
+                'kind'                 => 'sr_attachment',
+                'storage_path'         => $path,
+                'original_name'        => $file->getClientOriginalName(),
+                'mime_type'             => $file->getMimeType(),
+                'size_bytes'            => $file->getSize(),
+                'captured_at'           => now(),
+                'uploaded_by_user_id'   => auth()->id(),
+                'client_event_uuid'     => (string) Str::uuid(),
+            ]);
+        }
+
         return redirect()->route('technician.team.desktop.requests')->with('success', "Request {$sr->sr_number} created.");
     }
 
@@ -206,12 +250,39 @@ class TeamController extends Controller
         return response()->json($sites);
     }
 
-    public function approve(ServiceRequest $serviceRequest)
+    public function approve(Request $request, ServiceRequest $serviceRequest)
     {
         $this->authorizeTeamSr($serviceRequest);
         abort_unless(in_array($serviceRequest->status, ['pending', 'quoted']), 422);
-        $serviceRequest->update(['status' => 'approved', 'approved_by_user_id' => auth()->id()]);
-        return back()->with('success', 'Approved.');
+
+        $data = $request->validate([
+            'coverage_type' => ['required', 'in:in_warranty,out_of_coverage'],
+        ]);
+
+        if ($data['coverage_type'] === 'out_of_coverage') {
+            // Out of coverage — needs a priced quote sent to the client before work
+            // starts. Team leads can't see or build quotes themselves (Field View
+            // spec: "You cannot: see quotes, invoices, expense amounts or contract
+            // values"), so this hands off to the office's existing Quotes queue
+            // instead of approving straight to assignment.
+            $serviceRequest->update([
+                'status'             => 'quoted',
+                'coverage_type'      => 'out_of_coverage',
+                'billing_status'     => 'pending_quote',
+                'quote_requested_at' => now(),
+            ]);
+
+            return back()->with('success', "{$serviceRequest->sr_number} is out of coverage — sent to the office to quote.");
+        }
+
+        $serviceRequest->update([
+            'status'              => 'approved',
+            'approved_by_user_id' => auth()->id(),
+            'coverage_type'       => 'in_warranty',
+            'billing_status'      => 'not_applicable',
+        ]);
+
+        return back()->with('success', "{$serviceRequest->sr_number} approved — in warranty.");
     }
 
     public function reject(Request $request, ServiceRequest $serviceRequest)

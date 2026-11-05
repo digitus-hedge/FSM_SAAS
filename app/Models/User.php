@@ -48,6 +48,11 @@ class User extends Authenticatable
         return $this->belongsTo(Role::class);
     }
 
+    public function client(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Client::class);
+    }
+
     public function teamLead(): BelongsTo
     {
         return $this->belongsTo(self::class, 'team_lead_id');

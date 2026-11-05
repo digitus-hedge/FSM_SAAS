@@ -32,7 +32,12 @@
   --line:#E6E4EE; --soft:#F5F4FA;
   --yellow:{{ $brandColor }}; --yellow-soft:color-mix(in srgb, {{ $brandColor }} 18%, white); --amber:color-mix(in srgb, {{ $brandColor }} 60%, black 25%);
   --green:#00866F; --green-soft:#DDF7F1; --red:#C2381B; --red-soft:#FDECE7;
-  --font-body:{{ $fontBody }}; --font-display:{{ $fontDisplay }};
+ @php
+    // allow only safe characters for a CSS font-family list
+    $cssFont = fn ($f) => preg_replace('/[^A-Za-z0-9 ,\'"\-]/', '', (string) $f);
+@endphp
+  --font-body:{!! $cssFont($fontBody) !!}, system-ui, sans-serif;
+  --font-display:{!! $cssFont($fontDisplay) !!}, system-ui, sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html, body{height:100%}

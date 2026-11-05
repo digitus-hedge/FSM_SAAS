@@ -16,7 +16,11 @@ class RouteTechnicianMobile
             && ! $request->is('logout')
             && ! $request->is('field/logout')
             && ! $request->is('two-factor*')
-            && ! $request->is('profile/devices*')) {
+            && ! $request->is('profile/devices*')
+            // Let ForcePasswordChange finish its job first — without this, a field
+            // user who must change their password gets bounced forever between
+            // /change-password (sent here) and /technician/jobs (sent back there).
+            && ! $request->routeIs('password.change', 'password.change.submit')) {
             return redirect()->route('technician.jobs.index');
         }
 

@@ -474,7 +474,8 @@ Route::prefix('service-requests')->name('service-requests.')->group(function () 
 });
 
     Route::prefix('technician')->middleware(['auth'])->name('technician.')->group(function () {
-        Route::get('/jobs', [JobsController::class, 'index'])->name('jobs.index');
+        Route::get('/jobs', [JobsController::class, 'index'])->name('jobs.index');        // desktop dashboard
+        Route::get('/jobs/mobile', [JobsController::class, 'index'])->name('jobs.mobile'); // mobile Today view
         Route::get('/jobs/all', [JobsController::class, 'all'])->name('jobs.all');
         Route::get('/jobs/counts', [JobsController::class, 'liveCounts'])->name('jobs.counts');
         Route::get('/jobs/{serviceRequest}', [JobsController::class, 'show'])->name('jobs.show');
