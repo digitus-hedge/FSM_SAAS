@@ -71,7 +71,8 @@ body{background:#FBFAF6;color:#1B1A24;font-family:var(--font-body),system-ui,san
         <div class="card">
             <div class="ph">
                 <h3>Your service requests</h3>
-                <a href="#">View all →</a>
+                <a href="{{ route('portal.requests.index') }}">View all →</a>
+                <a href="{{ route('portal.requests.raise') }}" class="btn">+ Raise a new request</a>
             </div>
 
             @if ($requests->isEmpty())
@@ -96,8 +97,8 @@ body{background:#FBFAF6;color:#1B1A24;font-family:var(--font-body),system-ui,san
                 @if ($user->role?->code === 'client_admin')
                     <a href="#" class="btn">+ Raise a new request</a>
                 @endif
-                <a href="#" class="btn ghost">View quotes</a>
-                <a href="#" class="btn ghost">View invoices</a>
+                <a href="{{ route('portal.quotes.index') }}" class="btn ghost">View quotes</a>
+                <a href="{{ route('portal.invoices.index') }}" class="btn ghost">View invoices</a>
             </div>
             @if ($user->role?->code !== 'client_admin')
                 <div style="color:#8B89A0;font-size:12px;margin-top:12px">Raising a request is available to Client Admins only.</div>

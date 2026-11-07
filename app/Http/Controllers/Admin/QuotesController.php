@@ -22,31 +22,32 @@ class QuotesController extends Controller
     public function index(Request $request)
     {
         $this->guard();
-        $tab = $request->input('tab', 'draft');
+        $tab = $request->input('tab', 'waiting');
 
-        $base = fn() => Quote::query()
-            ->with(['serviceRequest:id,sr_number', 'client:id,name'])
-            ->orderByDesc('updated_at');
+        $base = fn() => ServiceRequest::query()
+            ->with(['site:id,name,address', 'client:id,name'])
+            ->withExists(['quotes as has_draft_quote' => fn($q) => $q->where('status', 'draft')])
+            ->orderByDesc('id');
 
         $items = match ($tab) {
-            'sent'       => $base()->where('status', 'sent')->get(),
-            'accepted'   => $base()->where('status', 'accepted')->get(),
-            'rejected'   => $base()->where('status', 'rejected')->get(),
-            'expired'    => $base()->where('status', 'expired')->get(),
-            'all'        => $base()->get(),
-            default      => $base()->where('status', 'draft')->get(),
+            'invoice' => $base()->where('billing_status', 'awaiting_invoice')->get(),
+            'all'     => $base()->get(),
+            default   => $base()->whereIn('billing_status', ['pending_quote', 'not_applicable'])
+                ->whereIn('status', ['pending', 'in_progress', 'pending_review', 'approved'])
+                ->whereDoesntHave('quotes', fn($q) => $q->whereIn('status', ['sent', 'accepted']))
+                ->get(),
         };
 
         $counts = [
-            'draft'    => Quote::where('status', 'draft')->count(),
-            'sent'     => Quote::where('status', 'sent')->count(),
-            'accepted' => Quote::where('status', 'accepted')->count(),
-            'rejected' => Quote::where('status', 'rejected')->count(),
-            'expired'  => Quote::where('status', 'expired')->count(),
-            'all'      => Quote::count(),
+            'waiting' => ServiceRequest::whereIn('billing_status', ['pending_quote', 'not_applicable'])
+                ->whereIn('status', ['pending', 'in_progress', 'pending_review', 'approved'])
+                ->whereDoesntHave('quotes', fn($q) => $q->whereIn('status', ['sent', 'accepted']))
+                ->count(),
+            'invoice' => ServiceRequest::where('billing_status', 'awaiting_invoice')->count(),
+            'all'     => ServiceRequest::count(),
         ];
 
-        return view('admin.quotes.index', compact('items', 'tab', 'counts'));
+        return view('admin.requests-review.index', compact('items', 'tab', 'counts'));
     }
 
     public function build(ServiceRequest $sr)
@@ -69,7 +70,7 @@ class QuotesController extends Controller
                     'client_id'            => $sr->client_id,
                     'source'               => 'builder',
                     'status'               => 'draft',
-                    'currency_code'        => 'AED',
+                    'currency_code'        => auth()->user()->tenant?->currency_code ?? 'AED',
                     'valid_until'          => now()->addDays(10),
                     'terms'                => 'Prices are before tax. Work starts after acceptance. Payment is due as stated on the invoice.',
                     'created_by_user_id'   => auth()->id(),
@@ -259,7 +260,7 @@ class QuotesController extends Controller
             'client_id'          => $sr->client_id,
             'source'             => 'uploaded_pdf',
             'status'             => 'draft',
-            'currency_code'      => 'AED',
+            'currency_code'      => auth()->user()->tenant?->currency_code ?? 'AED',
             'subtotal'           => $data['total'] - ($data['tax_included'] ?? 0),
             'tax_total'          => $data['tax_included'] ?? 0,
             'total'              => $data['total'],
@@ -340,7 +341,7 @@ class QuotesController extends Controller
             $contact = $contacts->firstWhere('name', $name);
             $via     = $contact?->whatsapp_number ? 'whatsapp' : 'email';
 
-            \App\Models\QuoteToken::create([
+             $token = \App\Models\QuoteToken::create([
                 'tenant_id'         => $quote->tenant_id,
                 'quote_id'          => $quote->id,
                 'client_contact_id' => $contact?->id,
@@ -349,10 +350,18 @@ class QuotesController extends Controller
                 'sent_via'          => $via,
                 'sent_at'           => now(),
             ]);
+
+            if ($via === 'email' && $contact?->email) {
+                \Illuminate\Support\Facades\Mail::to($contact->email)
+                    ->send(new \App\Mail\QuoteSentMail($token));
+            }
         }
 
         $quote->update(['status' => 'sent', 'sent_at' => now()]);
-        $quote->serviceRequest->update(['status' => 'quoted']);
+        $quote->serviceRequest->update([
+            'status'         => 'quoted',
+            'billing_status' => 'quoted',
+        ]);
 
         \App\Models\QuoteEvent::log($quote->id, 'sent', 'Sent to ' . implode(', ', $request->recipients));
 

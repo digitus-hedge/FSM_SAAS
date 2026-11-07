@@ -39,6 +39,11 @@ class Tenant extends Model
         return in_array($this->status, ['active', 'trial'], true);
     }
 
+    public function getCurrencyCodeAttribute()
+    {
+        return $this->base_currency;
+    }
+
     /* ────────────────────────────────────────
        Current-tenant context (set by TenantResolver middleware).
        Any tenant-scoped model reads from here.

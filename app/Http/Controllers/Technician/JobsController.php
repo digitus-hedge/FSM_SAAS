@@ -31,6 +31,39 @@ class JobsController extends Controller
             ->exists();
     }
 
+    private function missingProof(ServiceRequest $sr): array
+{
+    $rules = is_array($sr->proof_rules_snapshot)
+        ? $sr->proof_rules_snapshot
+        : (json_decode($sr->proof_rules_snapshot ?? '', true) ?? []);
+
+    $missing = [];
+
+    if (! empty($rules['require_before_photo'])) {
+        $has = Attachment::where('attachable_type', ServiceRequest::class)
+            ->where('attachable_id', $sr->id)
+            ->where('kind', 'before_photo')->exists();
+        if (! $has) $missing[] = 'a before photo';
+    }
+
+    if (! empty($rules['require_after_photo'])) {
+        $has = Attachment::where('attachable_type', ServiceRequest::class)
+            ->where('attachable_id', $sr->id)
+            ->where('kind', 'after_photo')->exists();
+        if (! $has) $missing[] = 'an after photo';
+    }
+
+    if (! empty($rules['require_signature'])
+        && ! $sr->customer_signature_attachment_id
+        && ! $sr->signature_waiver_otp_id) {
+        $missing[] = $sr->allow_signature_waiver
+            ? 'a customer signature or a verified waiver code'
+            : 'a customer signature';
+    }
+
+    return $missing;
+}
+
     private function haversineMeters(float $lat1, float $lng1, float $lat2, float $lng2): float
     {
         $earth = 6371000;
@@ -285,7 +318,8 @@ class JobsController extends Controller
             'is_on_hold'         => false,
         ]);
 
-        return back()->with('success', 'Punched in.');
+        $response = back()->with('success', 'Punched in.');
+        return $earlyWarning ? $response->with('warning', $earlyWarning) : $response;
     }
 
     public function hold(Request $request, ServiceRequest $serviceRequest)
@@ -390,13 +424,28 @@ class JobsController extends Controller
         if ($serviceRequest->status !== 'in_progress') {
             return back()->withErrors(['identifier' => 'Job is not in progress.']);
         }
+       
         if ($serviceRequest->is_on_hold) {
             return back()->withErrors(['identifier' => 'Resume the job before punching out.']);
+        }
+
+        $missing = $this->missingProof($serviceRequest);
+        if ($missing) {
+            return back()->withErrors([
+                'identifier' => 'Before punching out, add: ' . implode(', ', $missing) . '.',
+            ]);
         }
 
         $geo = $this->evaluateGeofence($serviceRequest, $data);
         if ($geo['block']) {
             return back()->withErrors(['identifier' => $geo['message']]);
+        }
+
+        $earlyWarning = null;
+        if ($serviceRequest->scheduled_eta_at
+            && now()->lt($serviceRequest->scheduled_eta_at->copy()->startOfDay())) {
+            $earlyWarning = "Heads up: {$serviceRequest->sr_number} is scheduled for "
+                . $serviceRequest->scheduled_eta_at->format('d M Y') . " — you're punching in early.";
         }
 
         $punch = ServiceRequestPunch::create([

@@ -49,7 +49,9 @@
   </div>
 
   <div class="main">
+
     @if (session('success'))<div class="banner green">@include('technician._icon', ['name'=>'check','size'=>19])<span>{{ session('success') }}</span></div>@endif
+    @if (session('warning'))<div class="banner amber">@include('technician._icon', ['name'=>'clock','size'=>19])<span>{{ session('warning') }}</span></div>@endif
     @if ($errors->any())<div class="banner red">@include('technician._icon', ['name'=>'x','size'=>19])<span>{{ $errors->first() }}</span></div>@endif
     @yield('content')
   </div>

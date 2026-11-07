@@ -254,7 +254,13 @@
     @csrf
     <input type="hidden" name="note" id="qc-pass-note">
   </form>
-
+    <button type="button" class="btn btn-outline-red" onclick="openQcFail()">
+    QC fail
+  </button>
+  <form id="qc-fail-form" method="POST" action="{{ route('admin.requests-review.qc-fail', $sr) }}" style="display:none">
+    @csrf
+    <input type="hidden" name="reason" id="qc-fail-reason">
+  </form>
   @elseif ($isAwaitingInv)
     {{-- Awaiting invoice — no demo button; Make invoice lives in the Billing card --}}
     <span style="color:var(--muted);font-size:13.5px">Waiting for invoice. Use <strong>Make invoice</strong> on the left.</span>
@@ -411,7 +417,33 @@ function openQcPass() {
   });
 }
 
-
+function openQcFail() {
+  const srNumber = @json($sr->sr_number);
+  Swal.fire({
+    title: 'QC fail ' + srNumber,
+    text:  'The job goes back to the technician for rework.',
+    input: 'textarea',
+    inputLabel: 'Reason *',
+    inputPlaceholder: 'e.g. Missing after-photo on unit 2',
+    inputAttributes: { 'aria-label': 'Rework reason', 'style': 'height:120px;resize:vertical' },
+    showCancelButton: true,
+    confirmButtonText: 'QC fail — send to rework',
+    cancelButtonText: 'Close',
+    reverseButtons: true,
+    customClass: { confirmButton: 'swal-btn-red' },
+    inputValidator: function (value) {
+      if (! value || ! value.trim())  return 'Please give a reason.';
+      if (value.trim().length < 3)    return 'Please give at least 3 characters.';
+      return null;
+    },
+    width: 480,
+  }).then(function (r) {
+    if (r.isConfirmed) {
+      document.getElementById('qc-fail-reason').value = r.value.trim();
+      document.getElementById('qc-fail-form').submit();
+    }
+  });
+}
 function openCancelRequest() {
   const srNumber = @json($sr->sr_number);
   Swal.fire({

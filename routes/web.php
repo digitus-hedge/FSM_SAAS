@@ -34,6 +34,15 @@ use App\Http\Controllers\FieldLoginController;
 use App\Http\Controllers\Technician\JobsController;
 use App\Http\Controllers\Technician\TeamController;
 use App\Http\Controllers\Tenant\DashboardController;
+use App\Http\Middleware\DenyClientRole;
+use App\Http\Controllers\Client\ClientPortalController;
+
+
+$denyClientRole = function ($request, $next) {
+    $clientCodes = ['client_user', 'client_admin', 'client_viewer'];
+    abort_if(in_array($request->user()?->role?->code, $clientCodes, true), 403);
+    return $next($request);
+};
 
 /*
 |--------------------------------------------------------------------------
@@ -178,6 +187,22 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('portal')->name('portal.')->group(function () {
         Route::get('/',         [ClientAuthController::class, 'dashboard'])->name('dashboard');
         Route::post('/sign-out', [ClientAuthController::class, 'signOut'])->name('sign-out');
+
+        Route::get('/requests/raise',  [ClientPortalController::class, 'raiseForm'])->name('requests.raise');
+        Route::post('/requests/raise', [ClientPortalController::class, 'raiseStore'])->name('requests.raise.store');
+        Route::get('/requests',                    [ClientPortalController::class, 'requests'])->name('requests.index');
+        Route::get('/requests/{serviceRequest}',   [ClientPortalController::class, 'show'])->name('requests.show');
+        Route::put('/requests/{serviceRequest}',   [ClientPortalController::class, 'update'])->name('requests.update');
+        Route::post('/requests/{serviceRequest}/cancel', [ClientPortalController::class, 'cancel'])->name('requests.cancel');
+
+        Route::get('/quotes',             [ClientPortalController::class, 'quotes'])->name('quotes.index');
+        Route::get('/quotes/{quote}',     [ClientPortalController::class, 'quoteShow'])->name('quotes.show');
+        Route::post('/quotes/{quote}/accept', [ClientPortalController::class, 'quoteAccept'])->name('quotes.accept');
+        Route::post('/quotes/{quote}/reject', [ClientPortalController::class, 'quoteReject'])->name('quotes.reject');
+
+        Route::get('/invoices',               [ClientPortalController::class, 'invoices'])->name('invoices.index');
+        Route::get('/invoices/{invoice}',     [ClientPortalController::class, 'invoiceShow'])->name('invoices.show');
+        Route::get('/invoices/{invoice}/pdf', [ClientPortalController::class, 'invoicePdf'])->name('invoices.pdf');
     });
     // Users (was Members) — Company Admins only
     Route::prefix('manage/users')->name('tenant.users.')->group(function () {
@@ -369,6 +394,7 @@ Route::prefix('admin/requests-review')->name('admin.requests-review.')->group(fu
     Route::get('/{sr}',  [RequestsReviewController::class, 'show'])->name('show');
     Route::post('/{sr}/qc-pass',  [RequestsReviewController::class, 'qcPass'])->name('qc-pass');
     Route::post('/{sr}/cancel',   [RequestsReviewController::class, 'cancel'])->name('cancel');
+    Route::post('requests-review/{sr}/qc-fail', [RequestsReviewController::class, 'qcFail'])->name('qc-fail');
 });
 
 // Quotes
@@ -433,7 +459,7 @@ Route::prefix('admin/operations-queue')->name('admin.operations-queue.')->group(
 
 
 // Service Requests
-Route::prefix('service-requests')->name('service-requests.')->group(function () {
+    Route::prefix('service-requests')->middleware(['auth', DenyClientRole::class])->name('service-requests.')->group(function () {
     Route::get('/',                       [ServiceRequestController::class, 'index'])->name('index');
     Route::get('/create',                 [ServiceRequestController::class, 'create'])->name('create');
     Route::post('/',                      [ServiceRequestController::class, 'store'])->name('store');
@@ -473,7 +499,7 @@ Route::prefix('service-requests')->name('service-requests.')->group(function () 
     //     ->name('attachments.delete');
 });
 
-    Route::prefix('technician')->middleware(['auth'])->name('technician.')->group(function () {
+    Route::prefix('technician')->middleware(['auth', DenyClientRole::class])->name('technician.')->group(function () {
         Route::get('/jobs', [JobsController::class, 'index'])->name('jobs.index');        // desktop dashboard
         Route::get('/jobs/mobile', [JobsController::class, 'index'])->name('jobs.mobile'); // mobile Today view
         Route::get('/jobs/all', [JobsController::class, 'all'])->name('jobs.all');

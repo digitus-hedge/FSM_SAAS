@@ -84,6 +84,30 @@ class RequestsReviewController extends Controller
         ->route('admin.requests-review.show', $sr)
         ->with('success', 'QC passed. Covered under ' . str_replace('_', ' ', $sr->coverage_type) . ' — job completed, no invoice needed.');
 }
+
+public function qcFail(Request $request, ServiceRequest $sr)
+{
+    $this->guard();
+    abort_unless($sr->status === 'pending_review', 422, 'QC can only fail a job that is in Pending Review.');
+
+    $data = $request->validate([
+        'reason' => 'required|string|min:3|max:1000',
+    ], [
+        'reason.required' => 'Please give a reason for failing QC.',
+        'reason.min'      => 'Please give at least 3 characters.',
+    ]);
+
+    $sr->update([
+        'status'           => 'in_progress',
+        'qc_reviewed_at'   => now(),
+        'qc_rework_reason' => $data['reason'],
+        'qc_rework_count'  => $sr->qc_rework_count + 1,
+    ]);
+
+    return redirect()
+        ->route('admin.requests-review.show', $sr)
+        ->with('success', 'QC failed — sent back to the technician for rework.');
+}
     public function cancel(Request $request, ServiceRequest $sr)
 {
     $this->guard();

@@ -28,13 +28,13 @@ class InvoicesController extends Controller
      * be invoiced — and then force-marked completed — before a technician was
      * ever assigned or any work was logged.
      */
-    private function ensureReadyToInvoice(ServiceRequest $sr): void
+    private function readyToInvoiceOrRedirect(ServiceRequest $sr)
     {
-        abort_unless(
-            $sr->status === 'awaiting_invoice',
-            422,
-            "{$sr->sr_number} isn't ready to invoice yet — it must pass QC review first (status: " . $sr->statusLabel() . ')'
-        );
+        if ($sr->status !== 'awaiting_invoice') {
+            return redirect()->route('service-requests.show', $sr)
+                ->with('error', "{$sr->sr_number} isn't ready to invoice yet — it must pass QC review first (status: " . $sr->statusLabel() . ').');
+        }
+        return null;
     }
 
     /* ========== LIST ========== */
@@ -95,7 +95,9 @@ class InvoicesController extends Controller
     public function build(ServiceRequest $sr)
 {
     $this->guard();
-    $this->ensureReadyToInvoice($sr);
+    if ($redirect = $this->readyToInvoiceOrRedirect($sr)) {
+        return $redirect;
+    }
     $sr->load(['client', 'site']);
 
     $invoice = Invoice::where('service_request_id', $sr->id)
@@ -273,7 +275,9 @@ class InvoicesController extends Controller
     public function uploadForm(ServiceRequest $sr)
     {
         $this->guard();
-        $this->ensureReadyToInvoice($sr);
+        if ($redirect = $this->readyToInvoiceOrRedirect($sr)) {
+            return $redirect;
+        }
         $sr->load(['client', 'site']);
         return view('admin.invoices.upload', compact('sr'));
     }
@@ -281,7 +285,9 @@ class InvoicesController extends Controller
     public function storeUpload(Request $request, ServiceRequest $sr)
     {
         $this->guard();
-        $this->ensureReadyToInvoice($sr);
+        if ($redirect = $this->readyToInvoiceOrRedirect($sr)) {
+            return $redirect;
+        }
 
         $data = $request->validate([
             'pdf'          => 'required|file|mimes:pdf|max:10240',
@@ -372,7 +378,12 @@ class InvoicesController extends Controller
     public function approve(Invoice $invoice)
     {
         $this->guard();
-        abort_unless($invoice->status === 'pending_approval', 422);
+    abort_unless($invoice->status === 'pending_approval', 422);
+
+    if ($invoice->submitted_by_user_id === auth()->id()) {
+        return redirect()->route('admin.invoices.show', $invoice)
+            ->with('error', 'You submitted this invoice — ask another admin or Finance to approve it.');
+    }
 
         DB::transaction(function () use ($invoice) {
             $invoice->update([
@@ -438,7 +449,7 @@ class InvoicesController extends Controller
             $contact = $contacts->firstWhere('name', $name);
             $via     = $contact?->whatsapp_number ? 'whatsapp' : 'email';
 
-            InvoiceToken::create([
+          $token = InvoiceToken::create([
                 'tenant_id'         => $invoice->tenant_id,
                 'invoice_id'        => $invoice->id,
                 'client_contact_id' => $contact?->id,
@@ -447,6 +458,11 @@ class InvoicesController extends Controller
                 'sent_via'          => $via,
                 'sent_at'           => now(),
             ]);
+
+            if ($via === 'email' && $contact?->email) {
+                \Illuminate\Support\Facades\Mail::to($contact->email)
+                    ->send(new \App\Mail\InvoiceSentMail($token));
+            }
         }
 
         $sr = $invoice->serviceRequest;

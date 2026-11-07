@@ -147,7 +147,8 @@ class ProvisionCompany implements ShouldQueue
                     (new InvitationMail($admin, $tenant, $invitationUrl))->afterCommit()
                 );
 
-            // Step 8 — starter master data: placeholder; slice 2 will fill real content.
+                        // Step 8 — starter master data (hold reasons).
+            (new \Database\Seeders\HoldReasonSeeder())->run($tenant->id);
 
             // Step 9 — audit entry
             $audit->log('company.created', [

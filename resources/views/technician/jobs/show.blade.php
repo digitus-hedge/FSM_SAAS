@@ -73,7 +73,7 @@
     </div>
 </div>
 @endif
-
+@unless ($isDone)
 <details class="card acc" style="margin-bottom:10px;padding:16px">
     <summary style="display:flex;align-items:center;gap:12px;cursor:pointer">
         <span style="width:36px;height:36px;border-radius:11px;background:var(--tint);color:var(--accent);display:grid;place-items:center;flex:0 0 auto">
@@ -95,6 +95,7 @@
         <button type="submit" class="btn dark block">Update time</button>
     </form>
 </details>
+@endunless
 
 @if ($showOverride)
 <details class="card acc" style="margin-bottom:10px;padding:16px">

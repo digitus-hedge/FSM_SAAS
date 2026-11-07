@@ -1,4 +1,5 @@
 <?php
+
 namespace Database\Seeders;
 
 use App\Models\HoldReason;
@@ -7,9 +8,9 @@ use Illuminate\Database\Seeder;
 
 class HoldReasonSeeder extends Seeder
 {
-    public function run(): void
+    public function run(?int $tenantId = null): void
     {
-        $tenantId = Tenant::current()?->id;
+        $tenantId = $tenantId ?? Tenant::current()?->id;
 
         if (!$tenantId || !Tenant::whereKey($tenantId)->exists()) {
             $this->command?->warn('HoldReasonSeeder skipped: no tenant context.');

@@ -3,13 +3,12 @@ namespace App\Mail;
 
 use App\Models\{Tenant, User};
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class ClientSignInLinkMail extends Mailable implements ShouldQueue
+class ClientSignInLinkMail extends Mailable
 {
     use Queueable, SerializesModels;
 
