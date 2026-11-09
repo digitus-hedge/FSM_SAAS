@@ -194,7 +194,11 @@
           <dt>Priority</dt><dd><span class="pill pill-{{ $sr->priorityColor() }}"><span class="pill-dot"></span>{{ $sr->priorityLabel() }}</span></dd>
           <dt>Service mode</dt><dd>{{ ucwords(str_replace('_', ' ', $sr->service_mode)) }}</dd>
           <dt>Coverage</dt><dd>{{ ucwords(str_replace('_', ' ', $sr->coverage_type)) }}</dd>
-          <dt>Source</dt><dd>{{ ucwords(str_replace('_', ' ', $sr->source)) }}</dd>
+          <dt>Source</dt><dd>
+              {{ $sr->source === 'front_desk' && $sr->createdBy?->role?->name
+                  ? $sr->createdBy->role->name
+                  : ucwords(str_replace('_', ' ', $sr->source)) }}
+          </dd>
           @if ($sr->client_po_reference)
             <dt>PO reference</dt><dd style="font-family:var(--font-body);letter-spacing:.03em">{{ $sr->client_po_reference }}</dd>
           @endif
@@ -248,10 +252,6 @@
                     @endphp
                   </div>
                 </div>
-
-                @if (!in_array($sr->status, ['completed', 'cancelled']))
-
-                @endif
               </div>
             @endforeach
           </div>
@@ -259,7 +259,7 @@
       </div>
     @endif
 
-    {{-- HISTORY --}}
+        {{-- HISTORY --}}
     <div class="card">
       <div class="card-head">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -269,77 +269,35 @@
       </div>
       <div class="card-body">
         <ol class="hist">
-          @if (in_array($sr->status, ['completed', 'awaiting_invoice']) && $sr->qc_reviewed_at)
-  <li>
-    <div class="hist-dot"></div>
-    <div class="hist-body">
-      <div class="hist-title">
-        {{ $sr->status === 'completed' ? 'Review → Completed' : 'Review → Awaiting invoice' }}
-      </div>
-      <div class="hist-sub">
-        QC passed
-        @if ($sr->status === 'completed')
-          — covered under {{ str_replace('_', ' ', $sr->coverage_type) }}, no invoice needed
-        @endif
-      </div>
-      <div class="hist-when">{{ $sr->qc_reviewed_at->format('d M, H:i') }}</div>
-    </div>
-  </li>
-@endif
-
-@if ($sr->last_punch_out_at)
-  <li>
-    <div class="hist-dot"></div>
-    <div class="hist-body">
-      <div class="hist-title">In progress → Pending review</div>
-      <div class="hist-sub">Technician punched out</div>
-      <div class="hist-when">{{ $sr->last_punch_out_at->format('d M, H:i') }}</div>
-    </div>
-  </li>
-@endif
-
-@if ($sr->first_punch_in_at)
-  <li>
-    <div class="hist-dot"></div>
-    <div class="hist-body">
-      <div class="hist-title">Assigned → In progress</div>
-      <div class="hist-sub">Technician punched in</div>
-      <div class="hist-when">{{ $sr->first_punch_in_at->format('d M, H:i') }}</div>
-    </div>
-  </li>
-@endif
-          @if ($sr->scheduled_eta_at && $sr->assigned_tech_user_id)
+          @forelse ($sr->statusHistory->sortByDesc('created_at') as $event)
             <li>
               <div class="hist-dot"></div>
               <div class="hist-body">
-                <div class="hist-title">Approved → Assigned</div>
-                <div class="hist-sub">Assigned to {{ $sr->assignedTech->name ?? 'technician' }}</div>
-                <div class="hist-when">{{ $sr->updated_at->format('d M, H:i') }}</div>
-              </div>
-            </li>
-          @endif
-
-          @if ($sr->approved_by_user_id)
-            <li>
-              <div class="hist-dot"></div>
-              <div class="hist-body">
-                <div class="hist-title">Pending → Approved</div>
-                <div class="hist-sub">
-                  {{ ucwords(str_replace('_', ' ', $sr->coverage_type)) }}@if ($sr->coverage_override_reason): {{ $sr->coverage_override_reason }}@endif
+                <div class="hist-title">
+                  {{ $event->from_status ? ucwords(str_replace('_',' ',$event->from_status)) : 'Created' }}
+                  →
+                  {{ ucwords(str_replace('_',' ',$event->to_status)) }}
                 </div>
-                <div class="hist-when">{{ optional($sr->sla_clock_started_at)->format('d M, H:i') ?? '—' }}</div>
+                <div class="hist-sub">
+                  @if ($event->actor_type === 'client')
+                    Client
+                  @elseif ($event->actor_type === 'system')
+                    System
+                  @else
+                    {{ $event->actor?->name ?? 'User' }}
+                  @endif
+                  @if ($event->reason) — {{ $event->reason }}@endif
+                </div>
+                <div class="hist-when">{{ $event->created_at->format('d M, H:i') }}</div>
               </div>
             </li>
-          @endif
-
-          <li>
-            <div class="hist-dot"></div>
-            <div class="hist-body">
-              <div class="hist-title">Request created</div>
-              <div class="hist-sub">{{ $sr->createdBy->name ?? '—' }}</div>
-              <div class="hist-when">{{ $sr->created_at->format('d M, H:i') }}</div>
-            </div>
-          </li>
+          @empty
+            <li>
+              <div class="hist-body">
+                <div class="hist-sub" style="color:var(--subtle)">No history recorded yet — this request predates status-history tracking.</div>
+              </div>
+            </li>
+          @endforelse
         </ol>
       </div>
     </div>
@@ -430,6 +388,19 @@
               Submit for review
             </button>
           </form>
+        @endif
+        @if ($sr->status === 'completed')
+          <button type="button" class="act-btn act-neutral" onclick="document.getElementById('reopen-modal').classList.add('show')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+            Reopen
+          </button>
+        @endif
+
+        @if ($sr->status === 'pending_review' && auth()->user()?->canDo('sr.qc'))
+          <a href="{{ route('admin.requests-review.show', $sr) }}" class="act-btn act-primary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Review quality check
+          </a>
         @endif
         @if ($sr->status === 'quoted')
     <a href="{{ route('admin.quotes.build', $sr) }}" class="act-btn act-primary">
@@ -728,7 +699,28 @@
   </form>
 </div>
 
-
+{{-- ============== REOPEN MODAL ============== --}}
+<div class="modal-backdrop" id="reopen-modal">
+  <form method="POST" action="{{ route('service-requests.reopen', $sr) }}" class="modal-card" id="reopen-form" style="max-width:500px">
+    @csrf
+    <div class="modal-head">
+      <h2>Reopen {{ $sr->sr_number }}</h2>
+      <p>Sends the job back to Rework. The SLA result already recorded does not change.</p>
+    </div>
+    <div class="modal-body">
+      <div class="field-group">
+        <label for="reopen_reason" class="field-lbl">Reason <span class="req">*</span></label>
+        <textarea name="reason" id="reopen_reason" class="note-area" maxlength="500"
+                  required autofocus placeholder="e.g. Client reports the same fault recurred"></textarea>
+        <small class="err-msg" id="reopen-err" style="display:none">Please enter a reason.</small>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="act-btn act-neutral" style="width:auto" onclick="document.getElementById('reopen-modal').classList.remove('show')">Close</button>
+      <button type="submit" class="act-btn act-primary" style="width:auto">Reopen</button>
+    </div>
+  </form>
+</div>
 {{-- ============== ASSIGN TECHNICIAN MODAL ============== --}}
 <div class="modal-backdrop" id="assign-modal">
   <form method="POST" action="{{ route('service-requests.assign', $sr) }}" class="modal-card" id="assign-form">
@@ -841,7 +833,17 @@
   if (priorityModal) {
     priorityModal.addEventListener('click', e => { if (e.target === priorityModal) priorityModal.classList.remove('show'); });
   }
-
+  const reopenModal = document.getElementById('reopen-modal');
+  const reopenForm  = document.getElementById('reopen-form');
+  const reopenErr   = document.getElementById('reopen-err');
+  const reopenTxt   = document.getElementById('reopen_reason');
+  if (reopenModal) {
+    reopenModal.addEventListener('click', e => { if (e.target === reopenModal) reopenModal.classList.remove('show'); });
+    reopenForm.addEventListener('submit', e => {
+      if (!reopenTxt.value.trim()) { e.preventDefault(); reopenErr.style.display = 'block'; reopenTxt.focus(); }
+    });
+    reopenTxt.addEventListener('input', () => { reopenErr.style.display = 'none'; });
+  }
   // Esc closes any open modal
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {

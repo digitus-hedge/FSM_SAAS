@@ -61,7 +61,7 @@ body{background:#FBFAF6;color:#1B1A24;font-family:var(--font-body),system-ui,san
         @endif
 
         <div class="head">
-            <div class="me">Welcome, {{ $user->name }} <span class="co">· {{ $tenant->name }}</span></div>
+            <div class="me">Welcome, {{ $user->name }} <span class="co">· {{ $user->client?->name ?? $tenant->name }}</span></div>
             <form method="POST" action="{{ route('portal.sign-out') }}" style="margin:0">
                 @csrf
                 <button type="submit" class="signout">Sign out</button>

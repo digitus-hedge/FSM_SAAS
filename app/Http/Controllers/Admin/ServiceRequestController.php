@@ -9,6 +9,7 @@ use App\Models\ProjectSite;
 use App\Models\ServiceCategory;
 use App\Models\ServiceRequest;
 use App\Models\User;
+use App\Models\Tenant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -106,7 +107,6 @@ class ServiceRequestController extends Controller
         // Stage tabs mapped to database statuses
         $stageStatuses = [
             'needs'     => 'pending',
-            'quote'     => 'waiting_for_quote',
             'quoted'    => 'quoted',
             'assign'    => 'approved',
             'assigned'  => 'assigned',
@@ -121,7 +121,7 @@ class ServiceRequestController extends Controller
         $activeStage = $request->input('stage', 'all');
 
         // Allow 'overdue' and 'all' alongside the regular statuses
-        $validStages = array_merge(array_keys($stageStatuses), ['overdue', 'all']);
+        $validStages = array_merge(array_keys($stageStatuses), ['quote', 'overdue', 'all']);
         if (! in_array($activeStage, $validStages, true)) {
             $activeStage = 'all';
         }
@@ -133,14 +133,15 @@ class ServiceRequestController extends Controller
         foreach ($stageStatuses as $key => $status) {
             $stageCounts[$key] = (clone $countQuery)
                 ->where('status', $status)
+                ->when($key === 'needs', fn($q) => $q->whereNull('quote_requested_at'))
                 ->count();
         }
 
-        // Overdue count — open + has SLA deadline + deadline in past
-        $stageCounts['overdue'] = (clone $countQuery)
-            ->whereNotIn('status', ['completed', 'cancelled','pending'])
-            ->whereNotNull('sla_resolution_due_at')
-            ->where('sla_resolution_due_at', '<', now())
+        // "Waiting for quote" is Pending with quote_requested_at set, not its own
+        // status (blueprint §7.6, "Send for quote").
+        $stageCounts['quote'] = (clone $countQuery)
+            ->where('status', 'pending')
+            ->whereNotNull('quote_requested_at')
             ->count();
 
         $stageCounts['all'] = (clone $countQuery)->count();
@@ -158,6 +159,10 @@ class ServiceRequestController extends Controller
             $query->whereNotIn('status', ['completed', 'cancelled','pending'])
                 ->whereNotNull('sla_resolution_due_at')
                 ->where('sla_resolution_due_at', '<', now());
+        } elseif ($activeStage === 'quote') {
+            $query->where('status', 'pending')->whereNotNull('quote_requested_at');
+        } elseif ($activeStage === 'needs') {
+            $query->where('status', 'pending')->whereNull('quote_requested_at');
         } elseif ($activeStage !== 'all') {
             $query->where('status', $stageStatuses[$activeStage]);
         }
@@ -265,7 +270,7 @@ class ServiceRequestController extends Controller
                 'sla_response_due_at'   => $policy ? $started->copy()->addMinutes((int) $policy->response_minutes) : null,
                 'sla_resolution_due_at' => $policy ? $started->copy()->addMinutes((int) $policy->resolution_minutes) : null,
             ]);
-
+            \App\Models\SrStatusHistory::log($sr, null, 'pending', 'user', auth()->id());
             return $sr;
         });
 
@@ -276,51 +281,39 @@ class ServiceRequestController extends Controller
     }
 
     public function show(ServiceRequest $service_request)
-    {
-        // $service_request->load([
-        //     'client',
-        //     'site',
-        //     'category',
-        //     'createdBy:id,name',
-        //     'assignedTech:id,name',
-        //     'teamLead:id,name',
-        //     'holdReason:id,label',
-        // ]);
+{
+    $service_request->load([
+        'client', 'site', 'category', 'createdBy:id,name,role_id', 'createdBy.role:id,name',
+        'assignedTech:id,name', 'teamLead:id,name', 'holdReason:id,label', 'attachmentsRel',
+    ]);
 
-        $service_request->load([
-            'client',
-            'site',
-            'category',
-            'createdBy:id,name',
-            'assignedTech:id,name',
-            'teamLead:id,name',
-            'holdReason:id,label',
-            'attachmentsRel',
-        ]);
+    $tenantId = auth()->user()->tenant_id;
 
-        $tenantId = auth()->user()->tenant_id;
+    $techRoleIds = DB::table('roles')
+        ->where('tenant_id', $tenantId)
+        ->whereIn('code', ['field_technician', 'team_lead'])
+        ->pluck('id');
 
-        // Find THIS tenant's field_technician + team_lead role ids — team leads can
-        // also be assigned a job directly, not just technicians under them.
-        $techRoleIds = DB::table('roles')
-            ->where('tenant_id', $tenantId)
-            ->whereIn('code', ['field_technician', 'team_lead'])
-            ->pluck('id');
+    $technicians = User::query()
+        ->with('role:id,code')
+        ->where('tenant_id', $tenantId)
+        ->when($techRoleIds->isNotEmpty(), fn($q) => $q->whereIn('role_id', $techRoleIds))
+        ->whereNull('deactivated_at')
+        ->orderBy('name')
+        ->get(['id', 'name', 'team_lead_id', 'role_id']);
 
-        $technicians = User::query()
-            ->with('role:id,code')
-            ->where('tenant_id', $tenantId)
-            ->when($techRoleIds->isNotEmpty(), fn($q) => $q->whereIn('role_id', $techRoleIds))
-            ->whereNull('deactivated_at')
-            ->orderBy('name')
-            ->get(['id', 'name', 'team_lead_id', 'role_id']);
+    $acceptedQuote = \App\Models\Quote::where('service_request_id', $service_request->id)
+        ->where('status', 'accepted')
+        ->orderByDesc('id')
+        ->first();
 
-        return view('admin.service-requests.show', [
-            'sr'          => $service_request,
-            'policy'      => $service_request->resolveSlaPolicy(),
-            'technicians' => $technicians,
-        ]);
-    }
+    return view('admin.service-requests.show', [
+        'sr'            => $service_request,
+        'policy'        => $service_request->resolveSlaPolicy(),
+        'technicians'   => $technicians,
+        'acceptedQuote' => $acceptedQuote,
+    ]);
+}
 
     public function edit(ServiceRequest $service_request)
     {
@@ -475,68 +468,75 @@ class ServiceRequestController extends Controller
      * ============================================================ */
 
     public function approve(Request $request, ServiceRequest $service_request)
-    {
-        $data = $request->validate([
-            'coverage' => ['required', 'in:in_contract,in_warranty,goodwill,needs_quote'],
-            'note'     => ['nullable', 'string', 'max:500'],
-        ]);
+{
+    $data = $request->validate([
+        'coverage' => ['required', 'in:in_contract,in_warranty,goodwill,needs_quote'],
+        'note'     => ['nullable', 'string', 'max:500'],
+    ]);
 
-        if ($data['coverage'] === 'needs_quote') {
-            $service_request->update([
-                'status'                   => 'quoted',
-                'coverage_type'            => 'out_of_coverage',
-                'billing_status'           => 'pending_quote',
-                'quote_requested_at'       => now(),
-                'coverage_override_reason' => $data['note'] ?? null,
-            ]);
-
-            return back()->with('success', "{$service_request->sr_number} marked for quoting.");
-        }
-
-        // In-contract / In-warranty / Goodwill — no billing needed, work is covered.
-        $policy  = $service_request->resolveSlaPolicy();
-        $started = now();
-
+    // Blueprint 7.1 "Send for quote": the request stays Pending with
+    // quote_requested_at set. No status change, so no history row.
+    if ($data['coverage'] === 'needs_quote') {
         $service_request->update([
-            'status'                   => 'approved',
-            'approved_by_user_id'      => auth()->id(),
-            'coverage_type'            => $data['coverage'],
-            'billing_status'           => 'not_applicable',
+            'coverage_type'            => 'out_of_coverage',
+            'quote_requested_at'       => now(),
             'coverage_override_reason' => $data['note'] ?? null,
-            'sla_clock_started_at'     => $started,
-            'sla_response_due_at'      => $policy ? $started->copy()->addMinutes((int) $policy->response_minutes) : null,
-            'sla_resolution_due_at'    => $policy ? $started->copy()->addMinutes((int) $policy->resolution_minutes) : null,
         ]);
-
-        return back()->with('success', "{$service_request->sr_number} approved — " . str_replace('_', ' ', $data['coverage']) . '.');
+        return back()->with('success', "{$service_request->sr_number} sent for quoting.");
     }
 
+    // In-contract / In-warranty / Goodwill: no billing needed, work is covered.
+    $fromStatus = $service_request->status;
+    $policy     = $service_request->resolveSlaPolicy();
+    $started    = now();
+
+    $service_request->update([
+        'status'                   => 'approved',
+        'approved_by_user_id'      => auth()->id(),
+        'coverage_type'            => $data['coverage'],
+        'billing_status'           => 'not_applicable',
+        'coverage_override_reason' => $data['note'] ?? null,
+        'sla_clock_started_at'     => $started,
+        'sla_response_due_at'      => $policy ? $started->copy()->addMinutes((int) $policy->response_minutes) : null,
+        'sla_resolution_due_at'    => $policy ? $started->copy()->addMinutes((int) $policy->resolution_minutes) : null,
+    ]);
+
+    \App\Models\SrStatusHistory::log($service_request, $fromStatus, 'approved', 'user', auth()->id(), $data['note'] ?? null, ['coverage' => $data['coverage']]);
+
+    return back()->with('success', "{$service_request->sr_number} approved — " . str_replace('_', ' ', $data['coverage']) . '.');
+}
+
     public function assign(Request $request, ServiceRequest $service_request)
-    {
-        $data = $request->validate([
-            'technician_id'          => ['required', 'exists:users,id'],
-            'arrival_time'           => ['required', 'date'],
-            'enforce_geofence'       => ['nullable', 'boolean'],
-            'allow_signature_waiver' => ['nullable', 'boolean'],
-            'note'                   => ['nullable', 'string', 'max:500'],
-        ]);
+{
+    $data = $request->validate([
+        'technician_id'          => ['required', 'exists:users,id'],
+        'arrival_time'           => ['required', 'date'],
+        'enforce_geofence'       => ['nullable', 'boolean'],
+        'allow_signature_waiver' => ['nullable', 'boolean'],
+        'note'                   => ['nullable', 'string', 'max:500'],
+    ]);
 
-        $tech = User::findOrFail($data['technician_id']);
+    $tech = User::findOrFail($data['technician_id']);
+    $fromStatus = $service_request->status;
 
-        // If the job is assigned straight to a team lead (no team_lead_id of their own),
-        // keep it visible on THEIR team-lead queue rather than leaving it ownerless.
-        $teamLeadUserId = $tech->team_lead_id ?? ($tech->role?->code === 'team_lead' ? $tech->id : null);
+    // If the job is assigned straight to a team lead (no team_lead_id of their own),
+    // keep it visible on THEIR team-lead queue rather than leaving it ownerless.
+    $teamLeadUserId = $tech->team_lead_id ?? ($tech->role?->code === 'team_lead' ? $tech->id : null);
 
-        $service_request->update([
-            'status'                 => 'assigned',
-            'assigned_tech_user_id'  => $tech->id,
-            'team_lead_user_id'      => $teamLeadUserId,              // auto-set from technician's team
-            'scheduled_eta_at'       => $data['arrival_time'],
-            'enforce_geofence'       => (bool) ($data['enforce_geofence'] ?? false),
-            'allow_signature_waiver' => (bool) ($data['allow_signature_waiver'] ?? false),
-        ]);
+    // Blueprint 7.1: a site marked "always enforce" can't be opted out of per job,
+    // whatever the admin ticked in the Assign modal.
+    $alwaysEnforce = (bool) ($service_request->site?->always_enforce_geofence ?? false);
 
-        // Note persistence — proper storage comes with sr_notes table (Release B).
+    $service_request->update([
+        'status'                 => 'assigned',
+        'assigned_tech_user_id'  => $tech->id,
+        'team_lead_user_id'      => $teamLeadUserId,              // auto-set from technician's team
+        'scheduled_eta_at'       => $data['arrival_time'],
+        'enforce_geofence'       => $alwaysEnforce || (bool) ($data['enforce_geofence'] ?? false),
+        'allow_signature_waiver' => (bool) ($data['allow_signature_waiver'] ?? false),
+    ]);
+    \App\Models\SrStatusHistory::log($service_request, $fromStatus, 'assigned', 'user', auth()->id(), null, ['technician_id' => $tech->id, 'technician_name' => $tech->name]);
+    // Note persistence — proper storage comes with sr_notes table (Release B).
         if (!empty($data['note'])) {
             $prefix = $service_request->coverage_override_reason ? $service_request->coverage_override_reason . "\n" : '';
             $service_request->update(['coverage_override_reason' => $prefix . 'Assign note: ' . $data['note']]);
@@ -551,24 +551,25 @@ class ServiceRequestController extends Controller
             'reason' => ['required', 'string', 'max:500'],
         ]);
 
+        $fromStatus = $service_request->status;
+
         $service_request->update([
             'status'              => 'cancelled',
             'cancellation_reason' => 'Rejected: ' . $data['reason'],
         ]);
-
+         \App\Models\SrStatusHistory::log($service_request, $fromStatus, 'cancelled', 'user', auth()->id(), 'Rejected: ' . $data['reason']);
         return redirect()->route('service-requests.show', $service_request)
             ->with('success', "{$service_request->sr_number} rejected.");
     }
 
     public function sendForQuote(ServiceRequest $service_request)
     {
+        // Blueprint 7.1: stays Pending with quote_requested_at set.
+        // Finance moves it to Quoted when the quote is actually sent.
         $service_request->update([
-            'status'             => 'quoted',
             'coverage_type'      => 'out_of_coverage',
-            'billing_status'     => 'pending_quote',
             'quote_requested_at' => now(),
         ]);
-
         return back()->with('success', "{$service_request->sr_number} sent for quoting.");
     }
 
@@ -615,26 +616,30 @@ class ServiceRequestController extends Controller
             'reason' => ['required', 'string', 'max:500'],
         ]);
 
+        $fromStatus = $service_request->status;
+
+
         $service_request->update([
             'status'              => 'cancelled',
             'cancellation_reason' => $data['reason'],
         ]);
-
+         \App\Models\SrStatusHistory::log($service_request, $fromStatus, 'cancelled', 'user', auth()->id(), $data['reason']);
         return redirect()->route('service-requests.show', $service_request)
             ->with('success', "{$service_request->sr_number} cancelled.");
     }
 
     public function markReview(ServiceRequest $service_request)
-{
-    abort_unless(
-        $service_request->status === 'in_progress',
-        422,
-        "{$service_request->sr_number} can only be submitted for review once work is in progress (status: " . $service_request->statusLabel() . ')'
-    );
+    {
+        abort_unless(
+            $service_request->status === 'in_progress',
+            422,
+            "{$service_request->sr_number} can only be submitted for review once work is in progress (status: " . $service_request->statusLabel() . ')'
+        );
 
-    $service_request->update(['status' => 'pending_review']);
-    return back()->with('success', "{$service_request->sr_number} submitted for review.");
-}
+        $service_request->update(['status' => 'pending_review']);
+        \App\Models\SrStatusHistory::log($service_request, 'in_progress', 'pending_review', 'user', auth()->id()); 
+        return back()->with('success', "{$service_request->sr_number} submitted for review.");
+    }
     
 
     /**
@@ -655,4 +660,37 @@ class ServiceRequestController extends Controller
 
         return response()->json($sites);
     }
+
+    public function reopen(Request $request, ServiceRequest $service_request)
+{
+    abort_unless(auth()->user()->canDo('sr.reopen'), 403);
+    abort_unless($service_request->status === 'completed', 422, 'Only a Completed request can be reopened.');
+
+    $data = $request->validate([
+        'reason' => ['required', 'string', 'min:3', 'max:500'],
+    ], [
+        'reason.required' => 'Please give a reason for reopening this request.',
+    ]);
+
+    $windowDays = Tenant::current()?->setting?->reopen_window_days ?? 14;
+
+    if ($windowDays === 0) {
+        abort(422, 'This company does not allow reopening completed requests. Create a follow-up job instead.');
+    }
+
+    $deadline = $service_request->completed_at?->copy()->addHours($windowDays * 24);
+    if (! $deadline || now()->greaterThan($deadline)) {
+        abort(422, 'The reopen window for this request has closed. Create a follow-up job instead.');
+    }
+
+    $service_request->update([
+        'status'              => 'rework',
+        'reopened_count'      => $service_request->reopened_count + 1,
+        'reopen_reason'       => $data['reason'],
+        'reopened_at'         => now(),
+        'reopened_by_user_id' => auth()->id(),
+    ]);
+     \App\Models\SrStatusHistory::log($service_request, 'completed', 'rework', 'user', auth()->id(), $data['reason']);
+    return back()->with('success', "{$service_request->sr_number} reopened — sent back to the technician for rework.");
+}
 }

@@ -90,9 +90,23 @@ class User extends Authenticatable
             return false;
         }
 
+        $permission = \App\Models\Permission::where('key', $key)->first();
+        if (! $permission) {
+            return false;
+        }
+
+        $override = \App\Models\UserPermissionOverride::where('user_id', $this->id)
+            ->where('permission_id', $permission->id)
+            ->where(fn ($q) => $q->whereNull('ends_at')->orWhere('ends_at', '>', now()))
+            ->first();
+
+        if ($override) {
+            return $override->level !== 'none';
+        }
+
         return \App\Models\RolePermission::where('tenant_id', $this->tenant_id)
             ->where('role_id', $this->role_id)
-            ->whereHas('permission', fn ($q) => $q->where('key', $key))
+            ->where('permission_id', $permission->id)
             ->where('level', '!=', 'none')
             ->exists();
     }

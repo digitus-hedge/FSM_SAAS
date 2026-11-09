@@ -36,7 +36,7 @@ use App\Http\Controllers\Technician\TeamController;
 use App\Http\Controllers\Tenant\DashboardController;
 use App\Http\Middleware\DenyClientRole;
 use App\Http\Controllers\Client\ClientPortalController;
-
+use App\Http\Controllers\Admin\CompanySettingsController;
 
 $denyClientRole = function ($request, $next) {
     $clientCodes = ['client_user', 'client_admin', 'client_viewer'];
@@ -54,7 +54,7 @@ Route::get('/admin/login',   [PlatformAuthView::class, 'login'])->name('platform
 Route::post('/admin/login',  [PlatformAuthView::class, 'loginStub'])->name('platform.login.attempt');
 Route::post('/admin/logout', [PlatformAuthView::class, 'logout'])
     ->middleware('auth:platform')->name('platform.logout');
-
+Route::get('/admin/usage', [\App\Http\Controllers\Admin\UsageController::class, 'index'])->name('admin.usage.index');
 /*
 |--------------------------------------------------------------------------
 | Company user sign-in (staff + clients on a tenant subdomain)
@@ -315,6 +315,11 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/', [\App\Http\Controllers\Admin\BrandingController::class, 'update'])->name('update');
     });
 
+    Route::prefix('admin/company-settings')->name('admin.company-settings.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\CompanySettingsController::class, 'index'])->name('index');
+        Route::put('/', [\App\Http\Controllers\Admin\CompanySettingsController::class, 'update'])->name('update');
+    });
+
     // Tax Rates
     Route::prefix('admin/tax-rates')->name('admin.tax-rates.')->group(function () {
         Route::get('/',                       [TaxRatesController::class, 'index'])->name('index');
@@ -394,7 +399,7 @@ Route::prefix('admin/requests-review')->name('admin.requests-review.')->group(fu
     Route::get('/{sr}',  [RequestsReviewController::class, 'show'])->name('show');
     Route::post('/{sr}/qc-pass',  [RequestsReviewController::class, 'qcPass'])->name('qc-pass');
     Route::post('/{sr}/cancel',   [RequestsReviewController::class, 'cancel'])->name('cancel');
-    Route::post('requests-review/{sr}/qc-fail', [RequestsReviewController::class, 'qcFail'])->name('qc-fail');
+    Route::post('/{sr}/qc-fail',   [RequestsReviewController::class, 'qcFail'])->name('qc-fail');
 });
 
 // Quotes
@@ -492,6 +497,7 @@ Route::prefix('admin/operations-queue')->name('admin.operations-queue.')->group(
     Route::post('/{service_request}/reject',         [ServiceRequestController::class, 'reject'])->name('reject');
     Route::post('/{service_request}/cancel',         [ServiceRequestController::class, 'cancel'])->name('cancel');
     Route::post('/{service_request}/mark-review',    [ServiceRequestController::class, 'markReview'])->name('mark-review');
+    Route::post('/{service_request}/reopen', [ServiceRequestController::class, 'reopen'])->name('reopen');
     Route::post('/{service_request}/assign',         [ServiceRequestController::class, 'assign'])->name('assign');
     Route::post('/{service_request}/send-for-quote', [ServiceRequestController::class, 'sendForQuote'])->name('send-for-quote');
     Route::post('/{service_request}/change-priority', [ServiceRequestController::class, 'changePriority'])->name('change-priority');
@@ -545,4 +551,6 @@ Route::prefix('admin/operations-queue')->name('admin.operations-queue.')->group(
         Route::get('/team/desktop/requests/create', [TeamController::class, 'createRequest'])->name('team.desktop.requests.create');
         Route::post('/team/desktop/requests', [TeamController::class, 'storeRequest'])->name('team.desktop.requests.store');
         Route::get('/team/sites-for-client', [TeamController::class, 'sitesForClient'])->name('team.sites-for-client');
+        Route::get('/team/requests/create', [TeamController::class, 'createRequest'])->name('team.requests.create');
+        Route::post('/team/requests', [TeamController::class, 'storeRequest'])->name('team.requests.store');
     });

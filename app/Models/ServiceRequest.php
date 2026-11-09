@@ -113,7 +113,10 @@ class ServiceRequest extends Model
         'client_star_rating',
         'client_nps_score',
         'client_feedback_comment',
-        'hold_started_at'
+        'hold_started_at',
+        'reopen_reason',
+        'reopened_at',
+        'reopened_by_user_id',
     ];
 
     protected $casts = [
@@ -144,6 +147,7 @@ class ServiceRequest extends Model
         'signature_gps_lat'       => 'decimal:7',
         'signature_gps_lng'       => 'decimal:7',
         'hold_started_at' => 'datetime',
+        'reopened_at' => 'datetime',
     ];
 
     /* ---------- Relationships ---------- */
@@ -169,7 +173,10 @@ class ServiceRequest extends Model
     {
         return $this->hasMany(\App\Models\Quote::class);
     }
-
+    public function statusHistory()
+    {
+        return $this->hasMany(\App\Models\SrStatusHistory::class)->orderBy('created_at');
+    }
     public function assignedTech()
     {
         return $this->belongsTo(User::class, 'assigned_tech_user_id');
@@ -337,7 +344,7 @@ class ServiceRequest extends Model
     public function slaState(): string
     {
         if (!$this->sla_clock_started_at) return 'not_started';
-
+         if (!$this->sla_resolution_due_at) return 'no_policy';
         $now = now();
         if ($this->sla_resolution_due_at && $now->greaterThan($this->sla_resolution_due_at)) {
             return 'resolution_breached';
@@ -358,6 +365,7 @@ class ServiceRequest extends Model
     {
         return match ($this->slaState()) {
             'not_started'         => 'Not started',
+            'no_policy'           => '—', 
             'on_track'            => 'On track',
             'at_risk'             => 'At risk',
             'response_breached'   => 'Response breached',
@@ -370,6 +378,7 @@ class ServiceRequest extends Model
         return match ($this->slaState()) {
             'on_track'  => 'green',
             'at_risk'   => 'amber',
+            'no_policy' => 'gray',
             default     => $this->sla_clock_started_at ? 'red' : 'gray',
         };
     }
@@ -377,5 +386,16 @@ class ServiceRequest extends Model
     public function invoices()
     {
         return $this->hasMany(\App\Models\Invoice::class);
+    }
+
+    /** Client portal only — rework is hidden per blueprint §7.7b; shown as In Progress. */
+    public function clientStatusLabel(): string
+    {
+        return $this->status === 'rework' ? 'In Progress' : $this->statusLabel();
+    }
+
+    public function clientStatusKey(): string
+    {
+        return $this->status === 'rework' ? 'in_progress' : $this->status;
     }
 }

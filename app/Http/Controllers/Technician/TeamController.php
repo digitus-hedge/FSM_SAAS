@@ -138,8 +138,11 @@ class TeamController extends Controller
     public function createRequest()
     {
         $tenantId = auth()->user()->tenant_id;
+        $view = request()->routeIs('technician.team.requests.create')
+            ? 'technician.team.requests-create-mobile'
+            : 'technician.team.requests-create';
 
-        return view('technician.team.requests-create', [
+        return view($view, [
             'clients'    => Client::where('tenant_id', $tenantId)->where('is_active', 1)->orderBy('name')->get(['id', 'name']),
             'categories' => ServiceCategory::where('tenant_id', $tenantId)->where('is_active', 1)->orderBy('name')->get(['id', 'name']),
         ]);
@@ -227,7 +230,9 @@ class TeamController extends Controller
             ]);
         }
 
-        return redirect()->route('technician.team.desktop.requests')->with('success', "Request {$sr->sr_number} created.");
+        $fromMobile = $request->routeIs('technician.team.requests.store');
+    return redirect()->route($fromMobile ? 'technician.team.index' : 'technician.team.desktop.requests')
+        ->with('success', "Request {$sr->sr_number} created.");
     }
 
     /**
@@ -251,39 +256,45 @@ class TeamController extends Controller
     }
 
     public function approve(Request $request, ServiceRequest $serviceRequest)
-    {
-        $this->authorizeTeamSr($serviceRequest);
-        abort_unless(in_array($serviceRequest->status, ['pending', 'quoted']), 422);
+{
+    $this->authorizeTeamSr($serviceRequest);
+    abort_unless(in_array($serviceRequest->status, ['pending', 'quoted']), 422);
 
-        $data = $request->validate([
-            'coverage_type' => ['required', 'in:in_warranty,out_of_coverage'],
-        ]);
+    $data = $request->validate([
+        'coverage_type' => ['required', 'in:in_warranty,out_of_coverage'],
+    ]);
 
-        if ($data['coverage_type'] === 'out_of_coverage') {
-            // Out of coverage — needs a priced quote sent to the client before work
-            // starts. Team leads can't see or build quotes themselves (Field View
-            // spec: "You cannot: see quotes, invoices, expense amounts or contract
-            // values"), so this hands off to the office's existing Quotes queue
-            // instead of approving straight to assignment.
-            $serviceRequest->update([
-                'status'             => 'quoted',
-                'coverage_type'      => 'out_of_coverage',
-                'billing_status'     => 'pending_quote',
-                'quote_requested_at' => now(),
-            ]);
-
-            return back()->with('success', "{$serviceRequest->sr_number} is out of coverage — sent to the office to quote.");
-        }
-
+    if ($data['coverage_type'] === 'out_of_coverage') {
+        // Blueprint 7.1 "Send for quote": the request stays Pending with
+        // quote_requested_at set, and Finance sees it in the Waiting for quote
+        // queue. Team leads can't see or build quotes themselves (Field View
+        // spec), so this hands off to the office. No status change, so no
+        // history row.
         $serviceRequest->update([
-            'status'              => 'approved',
-            'approved_by_user_id' => auth()->id(),
-            'coverage_type'       => 'in_warranty',
-            'billing_status'      => 'not_applicable',
+            'coverage_type'      => 'out_of_coverage',
+            'quote_requested_at' => now(),
         ]);
 
-        return back()->with('success', "{$serviceRequest->sr_number} approved — in warranty.");
+        return back()->with('success', "{$serviceRequest->sr_number} is out of coverage — sent to the office to quote.");
     }
+
+    $fromStatus = $serviceRequest->status;
+
+    $serviceRequest->update([
+        'status'              => 'approved',
+        'approved_by_user_id' => auth()->id(),
+        'coverage_type'       => 'in_warranty',
+        'billing_status'      => 'not_applicable',
+    ]);
+
+    // Blueprint 7.1: every transition writes sr_status_history.
+    \App\Models\SrStatusHistory::log(
+        $serviceRequest, $fromStatus, 'approved', 'user', auth()->id(),
+        null, ['coverage' => 'in_warranty']
+    );
+
+    return back()->with('success', "{$serviceRequest->sr_number} approved — in warranty.");
+}
 
     public function reject(Request $request, ServiceRequest $serviceRequest)
     {

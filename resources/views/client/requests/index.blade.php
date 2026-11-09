@@ -58,7 +58,7 @@ h1{font-family:'Figtree',sans-serif;font-size:22px;font-weight:800}
                     <b>{{ $sr->title }}</b>
                     <span>{{ $sr->site?->name }} · {{ $sr->created_at->format('d M Y') }}</span>
                 </div>
-                <span class="pill p-{{ str_replace('_','-',$sr->status) }}">{{ $sr->statusLabel() }}</span>
+                <span class="pill p-{{ str_replace('_','-',$sr->clientStatusKey()) }}">{{ $sr->clientStatusLabel() }}</span>
             </a>
         @empty
             <div class="empty">Nothing here.</div>

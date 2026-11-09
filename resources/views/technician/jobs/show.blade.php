@@ -107,9 +107,12 @@
         <span class="acc-chev">@include('technician._icon', ['name'=>'right','size'=>16])</span>
     </summary>
     <form method="POST" action="{{ route('technician.jobs.geofence-override', $serviceRequest) }}" enctype="multipart/form-data" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--line)">
-        @csrf
-        <input type="hidden" name="client_event_uuid" class="uuid-field">
-        <input type="hidden" name="gps_lat"><input type="hidden" name="gps_lng"><input type="hidden" name="gps_accuracy">
+    @csrf
+    <input type="hidden" name="client_event_uuid" class="uuid-field">
+    @php $lastGps = session('last_gps'); @endphp
+    <input type="hidden" name="gps_lat" value="{{ $lastGps['lat'] ?? '' }}">
+    <input type="hidden" name="gps_lng" value="{{ $lastGps['lng'] ?? '' }}">
+    <input type="hidden" name="gps_accuracy" value="{{ $lastGps['accuracy'] ?? '' }}">
         <div class="field">
             <label>Reason</label>
             <input type="text" name="reason" class="inp" required maxlength="255">
@@ -191,12 +194,22 @@
     @elseif ($isActive)
         <div style="display:flex;gap:8px">
             <label for="hold-toggle" class="btn" style="cursor:pointer">Put on hold</label>
-            <form method="POST" action="{{ route('technician.jobs.punch-out', $serviceRequest) }}" style="flex:1">
-                @csrf
-                <input type="hidden" name="client_event_uuid" class="uuid-field">
-                <input type="hidden" name="gps_lat"><input type="hidden" name="gps_lng"><input type="hidden" name="gps_accuracy">
-                <button type="submit" class="btn danger block gps-submit">Punch out</button>
-            </form>
+            @if (!empty($missingProof))
+                <div style="flex:1">
+                    <button type="button" class="btn danger block" disabled style="opacity:.5;cursor:not-allowed">Punch out</button>
+                    <div style="margin-top:6px;font-size:12px;color:var(--red)">Add {{ implode(' and ', $missingProof) }} to punch out.</div>
+                </div>
+            @else
+                <form method="POST" action="{{ route('technician.jobs.punch-out', $serviceRequest) }}" style="flex:1">
+                    @csrf
+                    <input type="hidden" name="client_event_uuid" class="uuid-field">
+                    @php $lastGps = session('last_gps'); @endphp
+                        <input type="hidden" name="gps_lat" value="{{ $lastGps['lat'] ?? '' }}">
+                        <input type="hidden" name="gps_lng" value="{{ $lastGps['lng'] ?? '' }}">
+                        <input type="hidden" name="gps_accuracy" value="{{ $lastGps['accuracy'] ?? '' }}">
+                    <button type="submit" class="btn danger block gps-submit">Punch out</button>
+                </form>
+            @endif
         </div>
     @endif
 </div>
@@ -217,6 +230,11 @@ document.addEventListener('DOMContentLoaded', function () {
             const form = btn.closest('form');
             if (form.dataset.gpsReady) return;
             e.preventDefault();
+
+            btn.disabled = true;
+            btn.dataset.originalText = btn.textContent;
+            btn.textContent = 'Getting location…';
+
             if (! navigator.geolocation) { form.submit(); return; }
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
@@ -230,7 +248,6 @@ document.addEventListener('DOMContentLoaded', function () {
             );
         });
     });
-
     const holdToggle = document.getElementById('hold-toggle');
     const holdWrap = document.getElementById('hold-sheet-wrap');
     const cancelBtn = document.getElementById('hold-cancel-btn');

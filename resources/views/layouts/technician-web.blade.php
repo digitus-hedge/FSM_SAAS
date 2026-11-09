@@ -193,6 +193,9 @@ h1,h2,h3,.fig{font-family:var(--font-display),var(--font-body),system-ui,sans-se
                     </div>
                 </div>
             </header>
+                @if (session('success'))<div class="banner green">@include('technician._icon', ['name'=>'check','size'=>19])<span>{{ session('success') }}</span></div>@endif
+            @if (session('warning'))<div class="banner amber">@include('technician._icon', ['name'=>'clock','size'=>19])<span>{{ session('warning') }}</span></div>@endif
+            @if ($errors->any())<div class="banner red">@include('technician._icon', ['name'=>'x','size'=>19])<span>{{ $errors->first() }}</span></div>@endif
 
             @yield('content')
         </div>

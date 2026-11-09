@@ -107,7 +107,13 @@
 @elseif ($isPendingReview)
   <div class="alert-amber">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-    Awaiting QC check. Pass QC to move this job to Awaiting Invoice.
+        @if ($sr->coverage_type === 'out_of_coverage' && $sr->invoice_mandatory)
+      Awaiting QC check. Pass QC to move this job to Awaiting Invoice.
+    @elseif ($sr->coverage_type === 'out_of_coverage')
+      Awaiting QC check. This category needs no invoice — pass QC to complete this job.
+    @else
+      Awaiting QC check. Pass QC to complete this job — covered under {{ str_replace('_',' ',$sr->coverage_type) }}, no invoice needed.
+    @endif
   </div>
 @elseif ($isCancelled)
   <div class="alert-grey">
@@ -236,9 +242,8 @@
   </div>
 
   {{-- ===== RIGHT — DEMO CARD (state-aware button) ===== --}}
-  <div class="card">
-  <h2>what the Service request module would do</h2>
-  <p>These buttons stand in for actions in other modules, so you can see how billing reacts.</p>
+    <div class="card">
+  <h2>QC review</h2>
 
 @if ($isCancelled)
   <span style="color:var(--muted);font-size:13.5px">This request has been cancelled.</span>
@@ -285,6 +290,74 @@
 
 </div>
 
+{{-- ===== PROOF TO REVIEW ===== --}}
+<div class="card" style="margin-bottom:16px">
+  <h2>Proof to review</h2>
+
+  <div style="margin-bottom:18px">
+    <div class="k" style="margin-bottom:8px">Before photos ({{ $beforePhotos->count() }})</div>
+    @if ($beforePhotos->isEmpty())
+      <span class="history-empty">None uploaded.</span>
+    @else
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px">
+        @foreach ($beforePhotos as $p)
+          <a href="{{ $p->url }}" target="_blank" style="display:block;border:1px solid var(--line);border-radius:8px;overflow:hidden;aspect-ratio:4/3">
+            <img src="{{ $p->url }}" style="width:100%;height:100%;object-fit:cover" alt="Before photo">
+          </a>
+        @endforeach
+      </div>
+    @endif
+  </div>
+
+  <div style="margin-bottom:18px">
+    <div class="k" style="margin-bottom:8px">After photos ({{ $afterPhotos->count() }})</div>
+    @if ($afterPhotos->isEmpty())
+      <span class="history-empty">None uploaded.</span>
+    @else
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px">
+        @foreach ($afterPhotos as $p)
+          <a href="{{ $p->url }}" target="_blank" style="display:block;border:1px solid var(--line);border-radius:8px;overflow:hidden;aspect-ratio:4/3">
+            <img src="{{ $p->url }}" style="width:100%;height:100%;object-fit:cover" alt="After photo">
+          </a>
+        @endforeach
+      </div>
+    @endif
+  </div>
+
+  <div style="margin-bottom:18px">
+    <div class="k" style="margin-bottom:8px">Signature</div>
+    @if ($signatureAtt)
+      <div style="display:flex;gap:16px;align-items:flex-start">
+        <a href="{{ $signatureAtt->url }}" target="_blank" style="display:block;width:160px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff">
+          <img src="{{ $signatureAtt->url }}" style="width:100%;display:block" alt="Customer signature">
+        </a>
+        <div style="font-size:13.5px">
+          <div><strong>{{ $sr->customer_signer_name ?? '—' }}</strong></div>
+          <div style="color:var(--muted)">{{ $sr->signed_at?->format('d M, H:i') ?? '—' }}</div>
+        </div>
+      </div>
+    @elseif ($sr->allow_signature_waiver && $sr->signature_waiver_otp_id)
+      <span class="history-empty">Signed by waiver code instead — no signature image on file.</span>
+    @else
+      <span class="history-empty">No signature on file yet.</span>
+    @endif
+  </div>
+
+  <div>
+    <div class="k" style="margin-bottom:8px">Technician notes ({{ $notes->count() }})</div>
+    @if ($notes->isEmpty())
+      <span class="history-empty">No notes logged.</span>
+    @else
+      @foreach ($notes as $note)
+        <div class="hist-row">
+          <strong>{{ $note->user?->name ?? 'Technician' }}</strong>
+          <span class="time" style="margin-left:8px">{{ $note->created_at->format('d M, H:i') }}</span>
+          <div style="margin-top:4px;color:var(--ink)">{{ $note->body }}</div>
+        </div>
+      @endforeach
+    @endif
+  </div>
+</div>
 {{-- ===== STATUS HISTORY ===== --}}
 <div class="card">
   <h2>Status history</h2>
@@ -292,14 +365,17 @@
   @php
   $events = [];
 
-  if ($sr->status === 'completed') {
+    if ($sr->status === 'completed') {
+      $note = $sr->coverage_type !== 'out_of_coverage'
+          ? 'QC pass — covered under ' . str_replace('_',' ',$sr->coverage_type) . ', no invoice needed'
+          : 'Invoice completed and approved';
       $events[] = [
           'from' => 'Pending Review',
           'to'   => 'Completed',
           'at'   => $sr->qc_reviewed_at ?? $sr->updated_at,
-          'note' => 'QC pass — covered under ' . str_replace('_',' ',$sr->coverage_type) . ', no invoice needed',
+          'note' => $note,
       ];
-  } elseif ($isInvoiced) {
+  }elseif ($isInvoiced) {
       $events[] = [
           'from' => 'Awaiting Invoice',
           'to'   => 'Invoiced',

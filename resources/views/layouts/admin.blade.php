@@ -154,7 +154,8 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
                || request()->routeIs('admin.tenant-holidays.*')
                || request()->routeIs('admin.vendors.*')
                || request()->routeIs('admin.terminology.*')
-               || request()->routeIs('admin.tenant-business-hours.*');
+               || request()->routeIs('admin.tenant-business-hours.*')
+               || request()->routeIs('admin.company-settings.*');
 
     $brandSub   = $isPlatform ? 'Platform console' : ($u?->tenant?->name ?? 'Workspace');
     $brandHome  = $isPlatform ? route('admin.dashboard') : route('tenant.dashboard');
@@ -253,6 +254,10 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
 
                     <a href="{{ route('admin.terminology.index') }}" class="nav-item {{ request()->routeIs('admin.terminology.*') ? 'active' : '' }}">Terminology</a>
                     <a href="{{ route('admin.branding.index') }}" class="nav-item {{ request()->routeIs('admin.branding.*') ? 'active' : '' }}">Branding</a>
+                    <a href="{{ route('admin.company-settings.index') }}" class="nav-item {{ request()->routeIs('admin.company-settings.*') ? 'active' : '' }}">Company settings</a>
+                    <a href="{{ route('admin.usage.index') }}" class="nav-item {{ request()->routeIs('admin.usage.*') ? 'active' : '' }}">
+                        Usage
+                    </a>
                 </div>
             </details>
         @endif

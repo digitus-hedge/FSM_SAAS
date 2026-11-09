@@ -21,11 +21,15 @@ p{color:#5F5D6E;font-size:14px;line-height:1.55;margin-bottom:24px}
     <div class="code">Error 404</div>
     <h1>We couldn't find that page</h1>
     <p>It may have been moved, or the link might be out of date.</p>
-    @auth
-        <a href="{{ Illuminate\Support\Facades\Auth::guard('platform')->check() ? route('admin.dashboard') : route('tenant.dashboard') }}" class="btn">Back to dashboard</a>
+    @php
+        $isPlatform = \Illuminate\Support\Facades\Auth::guard('platform')->check();
+        $isTenant   = \Illuminate\Support\Facades\Auth::check();
+    @endphp
+    @if ($isPlatform || $isTenant)
+        <a href="{{ $isPlatform ? route('admin.dashboard') : route('tenant.dashboard') }}" class="btn">Back to dashboard</a>
     @else
         <a href="{{ route('login') }}" class="btn">Back to sign in</a>
-    @endauth
+    @endif
 </div>
 </body>
 </html>

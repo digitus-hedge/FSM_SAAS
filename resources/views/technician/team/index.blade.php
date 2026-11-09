@@ -27,7 +27,7 @@
         </a>
     </div>
 </div>
-
+<a href="{{ route('technician.team.requests.create') }}" class="btn dark block" style="margin-bottom:14px;text-decoration:none;text-align:center">+ Raise a request</a>
 <div class="grid3" style="grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:18px">
     <div class="card center" style="padding:16px 6px">
         <div style="font-family:var(--font-display);font-size:22px;font-weight:800">{{ $teamMembers->count() }}</div>

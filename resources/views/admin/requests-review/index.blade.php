@@ -163,17 +163,8 @@
 
 </style>
 
-<h1 class="page-h1">Requests</h1>
-<p class="page-sub">A stand-in for the request list. It is here so that billing has requests to work on.</p>
-<div class="banner">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-        <line x1="12" y1="9" x2="12" y2="13" />
-        <line x1="12" y1="17" x2="12.01" y2="17" />
-    </svg>
-    The request pages belong to the Service request module. Only the billing parts are real here.
-</div>
-
+<h1 class="page-h1">Billing requests</h1>
+<p class="page-sub">Requests waiting for a quote or an invoice.</p>
 <div class="tab-strip">
     <a href="{{ route('admin.requests-review.index',['tab'=>'waiting']) }}" class="{{ $tab==='waiting'?'active':'' }}">Waiting for quote <span style="color:var(--muted);font-weight:400">{{ $counts['waiting'] }}</span></a>
     <a href="{{ route('admin.requests-review.index',['tab'=>'invoice']) }}" class="{{ $tab==='invoice'?'active':'' }}">Awaiting invoice <span style="color:var(--muted);font-weight:400">{{ $counts['invoice'] }}</span></a>
@@ -216,15 +207,17 @@
                 </td>
                 <td><span class="pill {{ $st[0] }}">{{ $st[1] }}</span></td>
                 <td style="color:var(--muted)">{{ $sr->coverage_type ? ucwords(str_replace('_', ' ', $sr->coverage_type)) : '—' }}</td>
-               <td>
-    @if ($sr->billing_status === 'awaiting_invoice')
+                  <td>
+    @if ($sr->billing_status === 'pending_invoice')
         <span class="pill pill-awaiting">Pending invoice</span>
     @elseif ($sr->billing_status === 'invoiced')
         <span class="pill pill-quoted">Invoiced</span>
     @elseif ($sr->billing_status === 'paid')
         <span class="pill pill-completed">Paid</span>
-    @elseif ($sr->billing_status === 'quoted')
-        <span class="pill pill-quoted">Quoted</span>
+    @elseif ($sr->billing_status === 'partially_paid')
+        <span class="pill pill-awaiting">Partially paid</span>
+    @elseif ($sr->billing_status === 'written_off')
+        <span class="pill pill-na">Written off</span>
     @else
         <span class="pill pill-na">Not applicable</span>
     @endif
@@ -237,15 +230,15 @@
 
     {{-- WAITING or ALL tab: Make quote / Open quote --}}
    @if (in_array($tab, ['waiting','all']))
-    @php
+      @php
         // Hide Make quote on these states — nothing to quote
-        $quotableStatus  = ! in_array($sr->status, ['cancelled','completed','quoted','awaiting_invoice','invoiced','paid']);
-        $quotableBilling = $sr->billing_status === 'pending_quote';
+        $quotableStatus = ! in_array($sr->status, ['cancelled','completed','quoted','awaiting_invoice']);
+        $hasActiveQuote = $sr->quotes()->whereIn('status', ['sent','accepted'])->exists();
     @endphp
 
     @if ($draft)
         <a href="{{ $draft->source === 'builder' ? route('admin.quotes.edit', $draft) : route('admin.quotes.show', $draft) }}" class="btn-primary">Open quote</a>
-    @elseif ($quotableStatus && $quotableBilling)
+    @elseif ($quotableStatus && ! $hasActiveQuote)
         <button type="button" class="btn-primary" onclick="openMakeQuote({{ $sr->id }})">Make quote</button>
     @endif
 @endif

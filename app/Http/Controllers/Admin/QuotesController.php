@@ -20,35 +20,36 @@ class QuotesController extends Controller
 
 
     public function index(Request $request)
-    {
-        $this->guard();
-        $tab = $request->input('tab', 'waiting');
+{
+    $this->guard();
+    $tenantId = auth()->user()->tenant_id;
+    $tab = $request->input('tab', 'all');
 
-        $base = fn() => ServiceRequest::query()
-            ->with(['site:id,name,address', 'client:id,name'])
-            ->withExists(['quotes as has_draft_quote' => fn($q) => $q->where('status', 'draft')])
-            ->orderByDesc('id');
+    $base = fn () => Quote::query()
+        ->where('tenant_id', $tenantId)
+        ->with(['serviceRequest:id,sr_number', 'client:id,name'])
+        ->orderByDesc('id');
 
-        $items = match ($tab) {
-            'invoice' => $base()->where('billing_status', 'awaiting_invoice')->get(),
-            'all'     => $base()->get(),
-            default   => $base()->whereIn('billing_status', ['pending_quote', 'not_applicable'])
-                ->whereIn('status', ['pending', 'in_progress', 'pending_review', 'approved'])
-                ->whereDoesntHave('quotes', fn($q) => $q->whereIn('status', ['sent', 'accepted']))
-                ->get(),
-        };
+    $items = match ($tab) {
+        'sent'     => $base()->where('status', 'sent')->get(),
+        'accepted' => $base()->where('status', 'accepted')->get(),
+        'rejected' => $base()->where('status', 'rejected')->get(),
+        'expired'  => $base()->where('status', 'expired')->get(),
+        'all'      => $base()->get(),
+        default    => $base()->where('status', 'draft')->get(),
+    };
 
-        $counts = [
-            'waiting' => ServiceRequest::whereIn('billing_status', ['pending_quote', 'not_applicable'])
-                ->whereIn('status', ['pending', 'in_progress', 'pending_review', 'approved'])
-                ->whereDoesntHave('quotes', fn($q) => $q->whereIn('status', ['sent', 'accepted']))
-                ->count(),
-            'invoice' => ServiceRequest::where('billing_status', 'awaiting_invoice')->count(),
-            'all'     => ServiceRequest::count(),
-        ];
+    $counts = [
+        'draft'    => Quote::where('tenant_id', $tenantId)->where('status', 'draft')->count(),
+        'sent'     => Quote::where('tenant_id', $tenantId)->where('status', 'sent')->count(),
+        'accepted' => Quote::where('tenant_id', $tenantId)->where('status', 'accepted')->count(),
+        'rejected' => Quote::where('tenant_id', $tenantId)->where('status', 'rejected')->count(),
+        'expired'  => Quote::where('tenant_id', $tenantId)->where('status', 'expired')->count(),
+        'all'      => Quote::where('tenant_id', $tenantId)->count(),
+    ];
 
-        return view('admin.requests-review.index', compact('items', 'tab', 'counts'));
-    }
+    return view('admin.quotes.index', compact('items', 'tab', 'counts'));
+}
 
     public function build(ServiceRequest $sr)
     {
@@ -360,7 +361,7 @@ class QuotesController extends Controller
         $quote->update(['status' => 'sent', 'sent_at' => now()]);
         $quote->serviceRequest->update([
             'status'         => 'quoted',
-            'billing_status' => 'quoted',
+            
         ]);
 
         \App\Models\QuoteEvent::log($quote->id, 'sent', 'Sent to ' . implode(', ', $request->recipients));

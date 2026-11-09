@@ -43,6 +43,10 @@ class Tenant extends Model
     {
         return $this->base_currency;
     }
+    public function setting(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(TenantSetting::class);
+    }
 
     /* ────────────────────────────────────────
        Current-tenant context (set by TenantResolver middleware).

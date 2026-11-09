@@ -36,7 +36,7 @@
         <span>Needs approval</span>
         <b>{{ $needsApprovalCount }}</b>
     </a>
-    <a href="{{ route('technician.team.desktop.requests') }}" class="kpi dark" style="text-decoration:none">
+    <a href="{{ route('technician.team.desktop.requests') }}" class="kpi{{ $toAssignCount > 0 ? ' dark' : '' }}" style="text-decoration:none">
         <span>To assign</span>
         <b>{{ $toAssignCount }}</b>
     </a>

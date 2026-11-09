@@ -45,7 +45,7 @@ class DashboardController extends Controller
             };
         }
 
-        $days = max(1, $from->diffInDays($to) + 1);
+        $days = max(1, (int) round($from->diffInDays($to)) + 1);
 
         // ─── 1. KPI Tiles ───────────────────────────────────────────────
 
@@ -159,6 +159,7 @@ class DashboardController extends Controller
             $compl = ServiceRequest::where('status', 'completed')
                 ->where('priority', $p)
                 ->whereBetween(DB::raw('COALESCE(completed_at, updated_at)'), [$from, $to])
+                ->whereNotNull('sla_resolution_due_at') 
                 ->count();
             $met = ServiceRequest::where('status', 'completed')
                 ->where('priority', $p)

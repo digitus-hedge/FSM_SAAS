@@ -23,6 +23,14 @@ class JobsController extends Controller
         abort_unless((int) $sr->assigned_tech_user_id === (int) auth()->id(), 403);
     }
 
+    private function authorizeView(ServiceRequest $sr): void
+{
+    $uid = auth()->id();
+    $isAssignedTech = (int) $sr->assigned_tech_user_id === (int) $uid;
+    $isOwnTeamLead  = $sr->team_lead_user_id && (int) $sr->team_lead_user_id === (int) $uid;
+
+    abort_unless($isAssignedTech || $isOwnTeamLead, 403);
+}
     private function alreadyApplied(int $srId, string $punchType, string $uuid): bool
     {
         return ServiceRequestPunch::where('service_request_id', $srId)
@@ -218,14 +226,15 @@ class JobsController extends Controller
 
     public function show(ServiceRequest $serviceRequest)
     {
-        $this->authorizeTech($serviceRequest);
+        $this->authorizeView($serviceRequest);
         $serviceRequest->load(['client', 'site', 'holdReason']);
         $holdReasons = HoldReason::active()->orderBy('label')->get();
         $pendingOverride = GeofenceOverrideRequest::where('service_request_id', $serviceRequest->id)
             ->where('technician_user_id', auth()->id())
             ->latest('id')->first();
+        $missingProof = $serviceRequest->status === 'in_progress' ? $this->missingProof($serviceRequest) : [];
 
-        return view('technician.jobs.show', compact('serviceRequest', 'holdReasons', 'pendingOverride'));
+        return view('technician.jobs.show', compact('serviceRequest', 'holdReasons', 'pendingOverride', 'missingProof'));
     }
 
     public function accept(ServiceRequest $serviceRequest)
@@ -283,7 +292,12 @@ class JobsController extends Controller
 
         $geo = $this->evaluateGeofence($serviceRequest, $data);
         if ($geo['block']) {
-            return back()->withErrors(['identifier' => $geo['message']]);
+            return back()->withErrors(['identifier' => $geo['message']])
+                ->with('last_gps', [
+                    'lat'      => $data['gps_lat'] ?? null,
+                    'lng'      => $data['gps_lng'] ?? null,
+                    'accuracy' => $data['gps_accuracy'] ?? null,
+                ]);
         }
 
         $punch = ServiceRequestPunch::create([
@@ -310,6 +324,13 @@ class JobsController extends Controller
 
         if ($geo['override']) {
             $geo['override']->update(['used_punch_id' => $punch->id, 'status' => 'used']);
+        }
+
+        $earlyWarning = null;
+        if ($serviceRequest->scheduled_eta_at
+            && now()->lt($serviceRequest->scheduled_eta_at->copy()->startOfDay())) {
+            $earlyWarning = "Heads up: {$serviceRequest->sr_number} is scheduled for "
+                . $serviceRequest->scheduled_eta_at->format('d M Y') . " — you're punching in early.";
         }
 
         $serviceRequest->update([
@@ -441,13 +462,6 @@ class JobsController extends Controller
             return back()->withErrors(['identifier' => $geo['message']]);
         }
 
-        $earlyWarning = null;
-        if ($serviceRequest->scheduled_eta_at
-            && now()->lt($serviceRequest->scheduled_eta_at->copy()->startOfDay())) {
-            $earlyWarning = "Heads up: {$serviceRequest->sr_number} is scheduled for "
-                . $serviceRequest->scheduled_eta_at->format('d M Y') . " — you're punching in early.";
-        }
-
         $punch = ServiceRequestPunch::create([
             'tenant_id'              => $serviceRequest->tenant_id,
             'service_request_id'    => $serviceRequest->id,
@@ -548,7 +562,7 @@ class JobsController extends Controller
 
     public function photos(ServiceRequest $serviceRequest)
     {
-        $this->authorizeTech($serviceRequest);
+        $this->authorizeView($serviceRequest);
         $photos = Attachment::where('attachable_type', ServiceRequest::class)
             ->where('attachable_id', $serviceRequest->id)
             ->whereIn('kind', ['before_photo', 'after_photo'])
@@ -595,7 +609,7 @@ class JobsController extends Controller
 
     public function notes(ServiceRequest $serviceRequest)
     {
-        $this->authorizeTech($serviceRequest);
+        $this->authorizeView($serviceRequest);
         $notes = SrNote::where('service_request_id', $serviceRequest->id)->with('user')->orderByDesc('id')->get();
 
         return view('technician.jobs.notes', compact('serviceRequest', 'notes'));
@@ -623,7 +637,7 @@ class JobsController extends Controller
 
     public function expenses(ServiceRequest $serviceRequest)
     {
-        $this->authorizeTech($serviceRequest);
+        $this->authorizeView($serviceRequest);
         $expenses = ServiceRequestExpense::where('service_request_id', $serviceRequest->id)->with('category')->orderByDesc('id')->get();
 
         return view('technician.jobs.expenses', compact('serviceRequest', 'expenses'));

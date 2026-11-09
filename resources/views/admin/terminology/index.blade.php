@@ -74,18 +74,14 @@
       </table>
     </div>
   </div>
-
   {{-- Live preview sample --}}
   <div class="sample">
-    Sample: Create a <strong id="sample-sing">service request</strong>.
-    Showing 12 <strong id="sample-plur">service requests</strong>.
+    Example sentence using your words: "Create a <strong id="sample-sing">service request</strong>."
+    and "e.g. 12 <strong id="sample-plur">service requests</strong> found."
   </div>
-
   <div style="display:flex;gap:10px;margin-top:8px">
     <button type="submit" class="btn btn-primary">Save</button>
   </div>
-
-  <div class="proto">Design prototype. Names and numbers are examples.</div>
 </form>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.all.min.js"></script>

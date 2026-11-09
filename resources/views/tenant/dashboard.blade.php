@@ -246,12 +246,14 @@
   </section>
 
   {{-- ============== SLA RATE ============== --}}
-  @php $slaClass = $slaPct >= 90 ? 'good' : ($slaPct >= 75 ? 'warn' : 'bad'); @endphp
+  @php $slaClass = $slaCompleted === 0 ? '' : ($slaPct >= 90 ? 'good' : ($slaPct >= 75 ? 'warn' : 'bad')); @endphp
   <div class="dx-card dx-sla">
     <div class="dx-eyebrow" style="text-transform:none;letter-spacing:.2px;font-weight:600">SLA compliance</div>
-    <div class="n tnum">{{ $slaPct }}%</div>
-    <div class="meta {{ $slaClass }}">{{ $slaMet }} met · {{ $slaMissed }} missed of {{ $slaCompleted }}</div>
-    <div class="dx-track"><i style="width:{{ min(100, $slaPct) }}%"></i></div>
+    <div class="n tnum">{{ $slaCompleted > 0 ? $slaPct.'%' : '—' }}</div>
+    <div class="meta {{ $slaClass }}">
+      {{ $slaCompleted > 0 ? "{$slaMet} met · {$slaMissed} missed of {$slaCompleted}" : 'No SLA-tracked jobs completed in this period' }}
+    </div>
+    <div class="dx-track"><i style="width:{{ $slaCompleted > 0 ? min(100, $slaPct) : 0 }}%"></i></div>
   </div>
 
   {{-- ============== TIME STRIP ============== --}}
@@ -337,7 +339,7 @@
       <h4>Period summary · {{ $from->format('d M') }} – {{ $to->format('d M Y') }}</h4>
       <div class="stats">
         <div><span>Completed</span><b class="tnum">{{ number_format($completed) }}</b><small>/{{ number_format($createdInPeriod) }}</small></div>
-        <div><span>SLA met/missed</span><b class="tnum">{{ $slaPct }}%</b><small>{{ $slaMet }}/{{ $slaMissed }}</small></div>
+        <div><span>SLA met/missed</span><b class="tnum">{{ $slaCompleted > 0 ? $slaPct.'%' : '—' }}</b><small>{{ $slaCompleted > 0 ? "{$slaMet}/{$slaMissed}" : '' }}</small></div>
         <div><span>First-time fix</span><b class="tnum">{{ $firstFixPct }}%</b></div>
       </div>
     </div>

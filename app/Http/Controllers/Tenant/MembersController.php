@@ -20,6 +20,9 @@ class MembersController extends Controller
     /** Role codes that represent a login for someone at a customer company, not your own staff. */
     private const CLIENT_ROLE_CODES = ['client_user', 'client_admin', 'client_viewer'];
 
+    /** The four overridable permission keys shown as checkboxes on the user form. */
+    private const EXTRA_PERMS = ['sr.approve', 'sr.qc', 'expense.approve', 'sr.assign'];
+
     public function __construct(private AuditLogger $audit) {}   // ← added
 
     public function index(Request $request)
@@ -58,13 +61,18 @@ class MembersController extends Controller
         $tenant = Tenant::current();
         abort_unless($tenant, 404);
 
+        $roles = Role::where('tenant_id', $tenant->id)->orderBy('name')->get();
+        $roleDefaults = $this->roleDefaultsFor($tenant, self::EXTRA_PERMS);
+
         return view('tenant.users.form', [
             'user'            => null,
-            'roles'           => Role::where('tenant_id', $tenant->id)->orderBy('name')->get(),
+            'roles'           => $roles,
             'clients'         => Client::where('tenant_id', $tenant->id)->orderBy('name')->get(),
             'clientRoleCodes' => self::CLIENT_ROLE_CODES,
             'teamLeads'       => $this->teamLeadOptions($tenant),
             'tenant'          => $tenant,
+            'roleDefaults'    => $roleDefaults,
+            'effectivePerms'  => collect($roles->first()?->id ? ($roleDefaults[$roles->first()->id] ?? []) : [])->all(),
         ]);
     }
 
@@ -104,7 +112,7 @@ class MembersController extends Controller
             'item_id'   => $user->id,
             'new'       => $user->only(['name', 'email', 'phone', 'role_id', 'employee_code', 'client_id', 'team_lead_id']),
         ]);
-
+        $this->syncExtraPermissionOverrides($user, $data);
         if ($isClientRole) {
             $signInUrl = $this->buildClientSignInUrl($tenant);
             return redirect()->route('tenant.users.index')
@@ -134,6 +142,10 @@ class MembersController extends Controller
     {
         $this->ensureSameTenant($user);
 
+        $applicable = self::EXTRA_PERMS;
+        $effectivePerms = collect($applicable)->mapWithKeys(fn ($key) => [$key => $user->canDo($key)]);
+        $roleDefaults = $this->roleDefaultsFor($user->tenant, $applicable);
+
         return view('tenant.users.form', [
             'user'            => $user,
             'roles'           => Role::where('tenant_id', $user->tenant_id)->orderBy('name')->get(),
@@ -141,6 +153,12 @@ class MembersController extends Controller
             'clientRoleCodes' => self::CLIENT_ROLE_CODES,
             'teamLeads'       => $this->teamLeadOptions($user->tenant, $user->id),
             'tenant'          => $user->tenant,
+            'effectivePerms'  => $effectivePerms,
+            'roleDefaults'    => $roleDefaults,
+            'activeOverrides' => \App\Models\UserPermissionOverride::where('user_id', $user->id)
+                ->whereHas('permission', fn ($q) => $q->whereIn('key', $applicable))
+                ->get()
+                ->keyBy(fn ($o) => $o->permission->key),
         ]);
     }
 
@@ -181,7 +199,7 @@ class MembersController extends Controller
                 'new'       => array_intersect_key($after,  array_flip($changed)),
             ]);
         }
-
+         $this->syncExtraPermissionOverrides($user, $data);
         return redirect()
             ->route('tenant.users.index')
             ->with('success', "{$user->name} was updated.");
@@ -277,6 +295,31 @@ class MembersController extends Controller
     }
 
     /**
+     * Per-role default on/off state for each overridable permission key, straight
+     * from role_permissions (level != 'none'). Used both to seed the Add-user form
+     * before a $user exists, and to hand the Edit-user form's JS the same table so
+     * it can re-check the right boxes if the admin changes the role mid-edit.
+     */
+    private function roleDefaultsFor(Tenant $tenant, array $applicable): array
+    {
+        $permissionIds = \App\Models\Permission::whereIn('key', $applicable)->pluck('id', 'key');
+        $roles = Role::where('tenant_id', $tenant->id)->get();
+
+        $roleDefaults = [];
+        foreach ($roles as $role) {
+            foreach ($applicable as $key) {
+                $level = \App\Models\RolePermission::where('tenant_id', $tenant->id)
+                    ->where('role_id', $role->id)
+                    ->where('permission_id', $permissionIds[$key] ?? null)
+                    ->value('level');
+                $roleDefaults[$role->id][$key] = ($level ?? 'none') !== 'none';
+            }
+        }
+
+        return $roleDefaults;
+    }
+
+    /**
      * Email and phone are both required (not just unique-if-present).
      * client_id is required when (and only when) the chosen role is a client
      * role (client_user / client_admin / client_viewer) — that's what ties a
@@ -319,6 +362,11 @@ class MembersController extends Controller
             'role_id.required'   => 'Choose a role.',
             'client_id.exists'   => 'Choose a valid client company.',
             'team_lead_id.exists' => 'Choose a valid team lead.',
+         ], [
+            'extra_perms'           => ['sometimes', 'array'],
+            'extra_perms.*'         => [Rule::in(['sr.approve', 'sr.qc', 'expense.approve', 'sr.assign'])],
+            'extra_perms_ends_at'   => ['sometimes', 'array'],
+            'extra_perms_ends_at.*' => ['nullable', 'date', 'after_or_equal:today'],
         ]);
 
         $role = Role::find($data['role_id']);
@@ -389,5 +437,45 @@ class MembersController extends Controller
             'targetUser' => $user,
             'devices'    => $devices,
         ]);
+    }
+
+    private function syncExtraPermissionOverrides(User $user, array $data): void
+    {
+        $applicable = self::EXTRA_PERMS;
+        $ticked     = $data['extra_perms'] ?? [];
+        $endsAtMap  = $data['extra_perms_ends_at'] ?? [];
+
+        foreach ($applicable as $key) {
+            $permission = \App\Models\Permission::where('key', $key)->first();
+            if (! $permission) continue;
+
+            $defaultLevel = \App\Models\RolePermission::where('tenant_id', $user->tenant_id)
+                ->where('role_id', $user->role_id)
+                ->where('permission_id', $permission->id)
+                ->value('level');
+            $defaultOn = ($defaultLevel ?? 'none') !== 'none';
+            $wantsOn   = in_array($key, $ticked, true);
+
+            if ($wantsOn === $defaultOn) {
+                // Ticked state matches the role's own default — no personal override needed.
+                \App\Models\UserPermissionOverride::where('user_id', $user->id)
+                    ->where('permission_id', $permission->id)
+                    ->delete();
+                continue;
+            }
+
+            // Ticked state differs from the role default — grant or deny for this person only.
+            \App\Models\UserPermissionOverride::updateOrCreate(
+                ['user_id' => $user->id, 'permission_id' => $permission->id],
+                [
+                    'tenant_id' => $user->tenant_id,
+                    'level'     => $wantsOn ? 'full' : 'none',
+                    'reason'    => $wantsOn
+                        ? 'Extra permission granted at user creation/edit'
+                        : 'Role permission switched off for this person',
+                    'ends_at'   => $endsAtMap[$key] ?? null,
+                ]
+            );
+        }
     }
 }

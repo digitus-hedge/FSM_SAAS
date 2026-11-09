@@ -117,7 +117,34 @@ h1{font-family:var(--font-display);font-size:28px;font-weight:700;letter-spacing
             @endif
         </div>
     </div>
+@php
+    $activeOverrides = $activeOverrides ?? collect();
+    $effectivePerms  = $effectivePerms ?? collect();
+    $roleDefaults    = $roleDefaults ?? [];
+@endphp
+<div class="client-box" id="extra-perms-field" style="display:none">
+    <div class="field" style="margin-bottom:8px"><label>Extra permissions</label>
+        <span class="hint">These set a personal extra on top of the role. Leave "Ends on" blank for no expiry.</span>
+    </div>
 
+    @foreach ([
+        'sr.approve'      => ['label' => 'Approve requests (own team)', 'roles' => ['team_lead'], 'defaultOn' => true],
+        'sr.qc'            => ['label' => 'Pass quality check (own team)', 'roles' => ['team_lead'], 'defaultOn' => false],
+        'expense.approve'  => ['label' => 'Approve expenses (own team)', 'roles' => ['team_lead'], 'defaultOn' => false],
+        'sr.assign'        => ['label' => 'Assign jobs', 'roles' => ['team_lead', 'front_desk'], 'defaultOn' => true],
+    ] as $permKey => $cfg)
+        @php
+            $override = $activeOverrides->get($permKey);
+            $checked  = $user ? $effectivePerms->get($permKey, $cfg['defaultOn']) : $cfg['defaultOn'];
+            $endsAt   = $override?->ends_at?->format('Y-m-d');
+        @endphp
+        <label class="perm-row" data-perm="{{ $permKey }}" data-roles="{{ implode(',', $cfg['roles']) }}" style="display:flex;align-items:center;gap:10px;margin-bottom:10px;font-weight:400">
+            <input type="checkbox" name="extra_perms[]" value="{{ $permKey }}" class="perm-check" @checked($checked)>
+            <span style="flex:1">{{ $cfg['label'] }}</span>
+            <input type="date" name="extra_perms_ends_at[{{ $permKey }}]" class="perm-end" value="{{ $endsAt }}" style="width:150px;height:34px;font-size:12px" placeholder="Ends on">
+        </label>
+    @endforeach
+</div>
     <div class="actions">
         <button type="submit" class="btn">{{ $user ? 'Save changes' : 'Create user' }}</button>
         <a href="{{ route('tenant.users.index') }}" class="btn ghost">Cancel</a>
@@ -130,6 +157,7 @@ h1{font-family:var(--font-display);font-size:28px;font-weight:700;letter-spacing
 <script>
 (function () {
     var clientRoleCodes = @json($clientRoleCodes);
+    var roleDefaults = @json($roleDefaults);
     var roleSelect   = document.getElementById('role_id');
     var clientField  = document.getElementById('client-field');
     var clientSelect = document.getElementById('client_id');
@@ -138,24 +166,43 @@ h1{font-family:var(--font-display);font-size:28px;font-weight:700;letter-spacing
     var emailInput   = document.getElementById('field-email');
     var emailHint    = document.getElementById('email-hint');
 
-    function toggleFields() {
-        var opt = roleSelect.options[roleSelect.selectedIndex];
-        var code = opt ? opt.getAttribute('data-code') : null;
-        var client = code !== null && clientRoleCodes.indexOf(code) !== -1;
-        var technician = code === 'field_technician';
+    var extraPermsField = document.getElementById('extra-perms-field');
 
-        clientField.style.display = client ? '' : 'none';
-        clientSelect.required = client;
-        emailInput.required = client;
-        emailHint.textContent = client ? '(required — client users sign in with email)' : '(or leave blank if phone-only)';
-        if (!client) clientSelect.value = '';
+function toggleFields(applyRoleDefaults) {
+    var opt = roleSelect.options[roleSelect.selectedIndex];
+    var code = opt ? opt.getAttribute('data-code') : null;
+    var roleId = opt ? opt.value : null;
+    var client = code !== null && clientRoleCodes.indexOf(code) !== -1;
+    var technician = code === 'field_technician';
 
-        teamLeadField.style.display = technician ? '' : 'none';
-        if (!technician) teamLeadSelect.value = '';
-    }
+    clientField.style.display = client ? '' : 'none';
+    clientSelect.required = client;
+    emailInput.required = client;
+    emailHint.textContent = client ? '(required — client users sign in with email)' : '(or leave blank if phone-only)';
+    if (!client) clientSelect.value = '';
 
-    roleSelect.addEventListener('change', toggleFields);
-    toggleFields();
+    teamLeadField.style.display = technician ? '' : 'none';
+    if (!technician) teamLeadSelect.value = '';
+
+    var anyPermRowVisible = false;
+    document.querySelectorAll('.perm-row').forEach(function (row) {
+        var roles = row.getAttribute('data-roles').split(',');
+        var permKey = row.getAttribute('data-perm');
+        var visible = code !== null && roles.indexOf(code) !== -1;
+        row.style.display = visible ? '' : 'none';
+        var checkbox = row.querySelector('.perm-check');
+        if (!visible) {
+            checkbox.checked = false;
+        } else if (applyRoleDefaults && roleId && roleDefaults[roleId] && (permKey in roleDefaults[roleId])) {
+            checkbox.checked = !!roleDefaults[roleId][permKey];
+        }
+        if (visible) anyPermRowVisible = true;
+    });
+    extraPermsField.style.display = anyPermRowVisible ? '' : 'none';
+}
+
+    roleSelect.addEventListener('change', function () { toggleFields(true); });
+    toggleFields(false);
 })();
 </script>
 @endsection

@@ -42,7 +42,7 @@ h1{font-family:'Figtree',sans-serif;font-size:22px;font-weight:800;margin-bottom
 
     <div class="num">{{ $sr->sr_number }}</div>
     <h1>{{ $sr->title }}</h1>
-    <span class="pill p-{{ str_replace('_','-',$sr->status) }}">{{ $sr->statusLabel() }}</span>
+    <span class="pill p-{{ str_replace('_','-',$sr->clientStatusKey()) }}">{{ $sr->clientStatusLabel() }}</span>
 
     <div class="card">
         <h3>Details</h3>
