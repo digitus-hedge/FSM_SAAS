@@ -58,31 +58,47 @@ class PublicQuoteController extends Controller
         return redirect()->route('public.quote.show', $token)->with('accepted', 1);
     }
 
+    
     public function reject(Request $request, string $token) {
-        [$quote, $t] = $this->resolve($token);
+    [$quote, $t] = $this->resolve($token);
 
-        $data = $request->validate([
-            'name'   => 'required|string|max:150',
-            'reason' => 'nullable|string|max:500',
+    $data = $request->validate([
+        'name'   => 'required|string|max:150',
+        'reason' => 'nullable|string|max:500',
+    ]);
+
+    $quote->update([
+        'status'              => 'rejected',
+        'responded_at'        => now(),
+        'responded_by_name'   => $data['name'],
+        'responded_ip'        => $request->ip(),
+        'rejection_reason'    => $data['reason'] ?? null,
+    ]);
+
+    // Blueprint 7.1: Quoted -> Cancelled when the client rejects. Reason recorded.
+    $sr = $quote->serviceRequest;
+    if ($sr && $sr->status === 'quoted') {
+        $fromStatus = $sr->status;
+        $reason = 'Quote rejected by client (' . $data['name'] . ')'
+            . (! empty($data['reason']) ? ': ' . $data['reason'] : '.');
+
+        $sr->update([
+            'status'              => 'cancelled',
+            'cancellation_reason' => $reason,
         ]);
 
-        $quote->update([
-            'status'              => 'rejected',
-            'responded_at'        => now(),
-            'responded_by_name'   => $data['name'],
-            'responded_ip'        => $request->ip(),
-            'rejection_reason'    => $data['reason'] ?? null,
-        ]);
-
-        QuoteEvent::create([
-            'tenant_id'   => $quote->tenant_id,
-            'quote_id'    => $quote->id,
-            'user_id'     => null,
-            'type'        => 'rejected',
-            'label'       => 'Rejected by '.$data['name'],
-            'occurred_at' => now(),
-        ]);
-
-        return redirect()->route('public.quote.show', $token)->with('rejected', 1);
+        \App\Models\SrStatusHistory::log($sr, $fromStatus, 'cancelled', 'client', null, $reason);
     }
+
+    QuoteEvent::create([
+        'tenant_id'   => $quote->tenant_id,
+        'quote_id'    => $quote->id,
+        'user_id'     => null,
+        'type'        => 'rejected',
+        'label'       => 'Rejected by '.$data['name'],
+        'occurred_at' => now(),
+    ]);
+
+    return redirect()->route('public.quote.show', $token)->with('rejected', 1);
+}
 }

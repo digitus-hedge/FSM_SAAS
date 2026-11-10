@@ -523,27 +523,31 @@ class ServiceRequestController extends Controller
     // keep it visible on THEIR team-lead queue rather than leaving it ownerless.
     $teamLeadUserId = $tech->team_lead_id ?? ($tech->role?->code === 'team_lead' ? $tech->id : null);
 
-    // Blueprint 7.1: a site marked "always enforce" can't be opted out of per job,
-    // whatever the admin ticked in the Assign modal.
-    $alwaysEnforce = (bool) ($service_request->site?->always_enforce_geofence ?? false);
+    // Blueprint: "Enforce geofence can be ticked only for a site with saved
+    // coordinates." A site without lat/lng can never end up enforced, whether it
+    // came from the assigner's tick or the site's always-enforce flag.
+    $site             = $service_request->site;
+    $hasCoordinates   = $site && $site->lat !== null && $site->lng !== null;
+    $alwaysEnforce    = $hasCoordinates && (bool) ($site->always_enforce_geofence ?? false);
+    $requestedEnforce = $hasCoordinates && (bool) ($data['enforce_geofence'] ?? false);
 
     $service_request->update([
         'status'                 => 'assigned',
         'assigned_tech_user_id'  => $tech->id,
         'team_lead_user_id'      => $teamLeadUserId,              // auto-set from technician's team
         'scheduled_eta_at'       => $data['arrival_time'],
-        'enforce_geofence'       => $alwaysEnforce || (bool) ($data['enforce_geofence'] ?? false),
+        'enforce_geofence'       => $alwaysEnforce || $requestedEnforce,
         'allow_signature_waiver' => (bool) ($data['allow_signature_waiver'] ?? false),
     ]);
     \App\Models\SrStatusHistory::log($service_request, $fromStatus, 'assigned', 'user', auth()->id(), null, ['technician_id' => $tech->id, 'technician_name' => $tech->name]);
     // Note persistence — proper storage comes with sr_notes table (Release B).
-        if (!empty($data['note'])) {
-            $prefix = $service_request->coverage_override_reason ? $service_request->coverage_override_reason . "\n" : '';
-            $service_request->update(['coverage_override_reason' => $prefix . 'Assign note: ' . $data['note']]);
-        }
-
-        return back()->with('success', "Request {$service_request->sr_number} assigned to {$tech->name}.");
+    if (!empty($data['note'])) {
+        $prefix = $service_request->coverage_override_reason ? $service_request->coverage_override_reason . "\n" : '';
+        $service_request->update(['coverage_override_reason' => $prefix . 'Assign note: ' . $data['note']]);
     }
+
+    return back()->with('success', "Request {$service_request->sr_number} assigned to {$tech->name}.");
+}
 
     public function reject(Request $request, ServiceRequest $service_request)
     {

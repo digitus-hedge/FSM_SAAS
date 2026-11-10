@@ -288,6 +288,21 @@ public function quoteReject(Request $request, Quote $quote)
         'rejection_reason'  => $data['reason'] ?? null,
     ]);
 
+    // Blueprint 7.1: Quoted -> Cancelled when the client rejects. Reason recorded.
+    $sr = $quote->serviceRequest;
+    if ($sr && $sr->status === 'quoted') {
+        $fromStatus = $sr->status;
+        $reason = 'Quote rejected by client'
+            . (! empty($data['reason']) ? ': ' . $data['reason'] : '.');
+
+        $sr->update([
+            'status'              => 'cancelled',
+            'cancellation_reason' => $reason,
+        ]);
+
+        \App\Models\SrStatusHistory::log($sr, $fromStatus, 'cancelled', 'user', $user->id, $reason);
+    }
+
     QuoteEvent::create([
         'tenant_id'   => $quote->tenant_id,
         'quote_id'    => $quote->id,
@@ -299,7 +314,6 @@ public function quoteReject(Request $request, Quote $quote)
 
     return redirect()->route('portal.quotes.show', $quote)->with('success', 'Quote rejected.');
 }
-
 /* ========== INVOICES (read-only, no payment) ========== */
 
 private function scopedInvoices()
