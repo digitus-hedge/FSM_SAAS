@@ -102,11 +102,11 @@ class DashboardController extends Controller
 
         $reworkCount = ServiceRequest::where(function ($q) {
                 $q->where('status', 'rework')
-                  ->orWhereExists(function ($sub) {
-                      $sub->select(DB::raw(1))->from('sr_events')
-                          ->whereColumn('sr_events.service_request_id', 'service_requests.id')
-                          ->where('sr_events.type', 'rework');
-                  });
+                ->orWhereExists(function ($sub) {
+                    $sub->select(DB::raw(1))->from('sr_status_history')
+                        ->whereColumn('sr_status_history.service_request_id', 'service_requests.id')
+                        ->where('sr_status_history.to_status', 'rework');
+                });
             })
             ->whereBetween('created_at', [$from, $to])
             ->count();
