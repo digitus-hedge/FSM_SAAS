@@ -25,6 +25,7 @@
   $fmt = fn ($m) => \App\Http\Controllers\Tenant\DashboardController::fmtMinutes($m);
   $completionPct = $createdInPeriod > 0 ? round(($completed / $createdInPeriod) * 100, 1) : 0;
   $slaMissed = max(0, $slaCompleted - $slaMet);
+  $byStatusMax = max((int) ($byStatusMax ?? 0), 1);
   $openTotal = collect($byStatus)->sum('count');
 
   // Last 14 days of completions for the banner mini-bars
