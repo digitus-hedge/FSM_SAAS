@@ -82,6 +82,16 @@ class JobsController extends Controller
         return $earth * $c;
     }
 
+    private function approvedOverride(ServiceRequest $sr): ?GeofenceOverrideRequest
+    {
+        return GeofenceOverrideRequest::where('service_request_id', $sr->id)
+            ->where('technician_user_id', auth()->id())
+            ->where('status', 'approved')
+            ->whereNull('used_punch_id')
+            ->where(fn ($q) => $q->whereNull('valid_until')->orWhere('valid_until', '>', now()))
+            ->latest('id')->first();
+    }
+
     private function evaluateGeofence(ServiceRequest $sr, array $data): array
     {
         $result = ['within' => true, 'block' => false, 'distance' => null, 'gps_status' => 'ok', 'message' => null, 'override' => null];
@@ -98,6 +108,17 @@ class JobsController extends Controller
         if (! empty($data['gps_accuracy']) && $data['gps_accuracy'] > 150) {
             $result['gps_status'] = 'low_accuracy';
             if ($sr->enforce_geofence) {
+                // An approved geofence override also covers a weak GPS signal.
+                $override = $this->approvedOverride($sr);
+                if ($override) {
+                    $result['override'] = $override;
+                    $result['within'] = false;
+                    $site = $sr->site;
+                    if ($site && $site->lat && $site->lng) {
+                        $result['distance'] = (int) round($this->haversineMeters((float) $data['gps_lat'], (float) $data['gps_lng'], (float) $site->lat, (float) $site->lng));
+                    }
+                    return $result;
+                }
                 $result['block'] = true;
                 $result['message'] = 'GPS signal is too weak (accuracy over 150m). Move to an open area and try again.';
             }
@@ -123,12 +144,7 @@ class JobsController extends Controller
 
         $result['within'] = false;
 
-        $override = GeofenceOverrideRequest::where('service_request_id', $sr->id)
-            ->where('technician_user_id', auth()->id())
-            ->where('status', 'approved')
-            ->whereNull('used_punch_id')
-            ->where(fn ($q) => $q->whereNull('valid_until')->orWhere('valid_until', '>', now()))
-            ->latest('id')->first();
+        $override = $this->approvedOverride($sr);
 
         if ($override) {
             $result['override'] = $override;

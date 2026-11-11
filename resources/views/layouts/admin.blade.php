@@ -138,15 +138,15 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
     $u          = $isPlatform
                   ? \Illuminate\Support\Facades\Auth::guard('platform')->user()
                   : auth()->user();
-    $hasOps     = $u?->canDo('client.manage') || $u?->canDo('site.manage') || $u?->canDo('category.manage');
+    $hasOps     = $u?->canDo('client.manage') || $u?->canDo('site.manage') || $u?->canDo('category.manage') || $u?->canDo('asset.view');
     $hasSetup   = $u?->canDo('settings.manage');
     $hasPeople  = $u?->canDo('user.manage') || $u?->canDo('role.manage') || $u?->canDo('audit.view');
 
     $opsOpen    = request()->routeIs('admin.clients.*')
                || request()->routeIs('admin.sites.*')
+               || request()->routeIs('admin.assets.*')
                || request()->routeIs('admin.service-categories.*')
                || request()->routeIs('admin.team-lead-categories.*');
-
     $setupOpen  = request()->routeIs('admin.sla-policies.*')
                || request()->routeIs('admin.tax-rates.*')
                || request()->routeIs('admin.hold-reasons.*')
@@ -200,6 +200,9 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
                     @endif
                     @if ($u->canDo('site.manage'))
                         <a href="{{ route('admin.sites.index') }}" class="nav-item {{ request()->routeIs('admin.sites.*') ? 'active' : '' }}">Sites</a>
+                    @endif
+                    @if ($u->canDo('asset.view'))
+                        <a href="{{ route('admin.assets.index') }}" class="nav-item {{ request()->routeIs('admin.assets.*') ? 'active' : '' }}">{{ term_title('asset') }}</a>
                     @endif
                     @if ($u->canDo('category.manage'))
                         <a href="{{ route('admin.service-categories.index') }}" class="nav-item {{ request()->routeIs('admin.service-categories.*') ? 'active' : '' }}">Service Categories</a>

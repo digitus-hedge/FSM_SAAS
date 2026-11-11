@@ -191,6 +191,19 @@
             @if ($sr->category?->code)<span style="color:var(--muted);font-size:11px;font-weight:400">· {{ $sr->category->code }}</span>@endif
             @if ($sr->category?->service_domain)<div style="font-size:11px;color:var(--muted);margin-top:2px;font-weight:400">Domain: {{ $sr->category->service_domain }}</div>@endif
           </dd>
+          @if ($sr->primaryAsset)
+            <dt>Asset</dt><dd>
+              <span style="font-weight:600">{{ $sr->primaryAsset->asset_code }}</span> · {{ $sr->primaryAsset->name }}
+              @if ($sr->primaryAsset->warranty_status === 'in_warranty')
+                <div style="font-size:11px;color:var(--green);margin-top:2px;font-weight:500">In warranty until {{ $sr->primaryAsset->warranty_expiry_date->format('d M Y') }}</div>
+              @elseif ($sr->primaryAsset->warranty_status === 'expired')
+                <div style="font-size:11px;color:var(--red);margin-top:2px;font-weight:500">Warranty expired {{ $sr->primaryAsset->warranty_expiry_date->format('d M Y') }}</div>
+              @endif
+              @if ($sr->primaryAsset->is_decommissioned)
+                <div style="font-size:11px;color:var(--muted);margin-top:2px;font-weight:400">This asset is now decommissioned.</div>
+              @endif
+            </dd>
+          @endif
           <dt>Priority</dt><dd><span class="pill pill-{{ $sr->priorityColor() }}"><span class="pill-dot"></span>{{ $sr->priorityLabel() }}</span></dd>
           <dt>Service mode</dt><dd>{{ ucwords(str_replace('_', ' ', $sr->service_mode)) }}</dd>
           <dt>Coverage</dt><dd>{{ ucwords(str_replace('_', ' ', $sr->coverage_type)) }}</dd>

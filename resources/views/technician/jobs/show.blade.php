@@ -146,6 +146,14 @@
     </a>
 </div>
 
+@if ($isActive && \App\Models\Tenant::current()?->hasFeature('assets_full'))
+<a href="{{ route('technician.scan.index') }}" class="card tap" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;margin-bottom:16px">
+    <span class="tile-ic">@include('technician._icon', ['name'=>'camera','size'=>21])</span>
+    <span style="flex:1;font-weight:700">Scan asset</span>
+    @include('technician._icon', ['name'=>'right','size'=>18])
+</a>
+@endif
+
 @unless ($isDone)
 <input type="checkbox" id="hold-toggle" style="display:none">
 <div class="sheetwrap" id="hold-sheet-wrap" style="display:none;align-items:flex-end;justify-content:center">

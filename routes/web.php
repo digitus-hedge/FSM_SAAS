@@ -33,10 +33,17 @@ use App\Http\Controllers\Client\ClientAuthController;
 use App\Http\Controllers\FieldLoginController;
 use App\Http\Controllers\Technician\JobsController;
 use App\Http\Controllers\Technician\TeamController;
+use App\Http\Controllers\Technician\ScanController;
 use App\Http\Controllers\Tenant\DashboardController;
 use App\Http\Middleware\DenyClientRole;
 use App\Http\Controllers\Client\ClientPortalController;
 use App\Http\Controllers\Admin\CompanySettingsController;
+use App\Http\Controllers\Admin\AssetsController;
+use App\Http\Controllers\Admin\AssetImportController;
+use App\Http\Controllers\QrController;
+use App\Http\Controllers\Admin\AssetLabelsController;
+use App\Http\Controllers\Admin\Asset360Controller;
+use App\Http\Middleware\EnsurePlanFeature;
 
 $denyClientRole = function ($request, $next) {
     $clientCodes = ['client_user', 'client_admin', 'client_viewer'];
@@ -114,7 +121,7 @@ Route::post('/invitation/{token}', [AuthController::class, 'acceptInvitation'])-
 
 
 
-Route::get('/q/{token}',          [PublicQuoteController::class, 'show'])->name('public.quote.show');
+Route::get('/q/{token}',          [QrController::class, 'resolve'])->name('public.quote.show');
 Route::get('/q/{token}/pdf',      [PublicQuoteController::class, 'pdf'])->name('public.quote.pdf');
 Route::post('/q/{token}/accept',   [PublicQuoteController::class, 'accept'])->name('public.quote.accept');
 Route::post('/q/{token}/reject',   [PublicQuoteController::class, 'reject'])->name('public.quote.reject');
@@ -472,6 +479,10 @@ Route::prefix('admin/operations-queue')->name('admin.operations-queue.')->group(
     // AJAX — sites for a client
     Route::get('/sites/for-client',       [ServiceRequestController::class, 'sitesForClient'])->name('sites.for-client');
 
+    // AJAX — assets at a site, and one asset's warranty and recent requests
+    Route::get('/assets/for-site',        [ServiceRequestController::class, 'assetsForSite'])->name('assets.for-site');
+    Route::get('/assets/{asset}/summary', [ServiceRequestController::class, 'assetSummary'])->name('assets.summary');
+
     // Serve attachment files via Laravel (no need for storage:link symlink to work)
     Route::get('/file/{service_request}/attachments/{filename}', function (
         \App\Models\ServiceRequest $service_request,
@@ -553,4 +564,40 @@ Route::prefix('admin/operations-queue')->name('admin.operations-queue.')->group(
         Route::get('/team/sites-for-client', [TeamController::class, 'sitesForClient'])->name('team.sites-for-client');
         Route::get('/team/requests/create', [TeamController::class, 'createRequest'])->name('team.requests.create');
         Route::post('/team/requests', [TeamController::class, 'storeRequest'])->name('team.requests.store');
+
+        // Raise a request from an asset QR scan (assets_full: Professional and above)
+        Route::middleware(EnsurePlanFeature::class . ':assets_full')->group(function () {
+            Route::get('/scan',                 [ScanController::class, 'index'])->name('scan.index');
+            Route::get('/scan/resolve',         [ScanController::class, 'resolve'])->name('scan.resolve');
+            Route::get('/scan/asset/{asset}',   [ScanController::class, 'create'])->whereNumber('asset')->name('scan.create');
+            Route::post('/scan/asset/{asset}',  [ScanController::class, 'store'])->whereNumber('asset')->name('scan.store');
+        });
+    });
+
+    // Assets
+    Route::prefix('admin/assets')->middleware(['auth', DenyClientRole::class])->name('admin.assets.')->group(function () {
+
+        // assets_basic — every plan
+        Route::get('/',                      [AssetsController::class, 'index'])->name('index');
+        Route::get('/create',                [AssetsController::class, 'create'])->name('create');
+        Route::post('/',                     [AssetsController::class, 'store'])->name('store');
+        Route::get('/{asset}/edit',          [AssetsController::class, 'edit'])->name('edit');
+        Route::put('/{asset}',               [AssetsController::class, 'update'])->name('update');
+        Route::post('/{asset}/decommission', [AssetsController::class, 'decommission'])->name('decommission');
+
+        // assets_full — Professional and above (QR labels, import, Asset 360).
+        // "labels" and "import" stay before "/{asset}".
+        Route::middleware(EnsurePlanFeature::class . ':assets_full')->group(function () {
+            Route::get('labels',                [AssetLabelsController::class, 'many'])->name('labels');
+            Route::get('{asset}/label',         [AssetLabelsController::class, 'one'])->name('label');
+
+            Route::get('import',                [AssetImportController::class, 'show'])->name('import');
+            Route::get('import/sample',         [AssetImportController::class, 'sample'])->name('import.sample');
+            Route::post('import',               [AssetImportController::class, 'upload'])->name('import.upload');
+            Route::get('import/{job}',          [AssetImportController::class, 'preview'])->name('import.preview');
+            Route::post('import/{job}/commit',  [AssetImportController::class, 'commit'])->name('import.commit');
+            Route::get('import/{job}/errors',   [AssetImportController::class, 'errors'])->name('import.errors');
+
+            Route::get('/{asset}', [Asset360Controller::class, 'show'])->whereNumber('asset')->name('show');
+        });
     });

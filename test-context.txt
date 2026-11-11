@@ -1,0 +1,291 @@
+=== TEST FILES ===
+C:\FSM_SAAS\tests\TestCase.php
+C:\FSM_SAAS\tests\Feature\ExampleTest.php
+C:\FSM_SAAS\tests\Feature\MemberRolesTest.php
+C:\FSM_SAAS\tests\Feature\TenantIsolationTest.php
+C:\FSM_SAAS\tests\Unit\ExampleTest.php
+
+=== FACTORIES ===
+UserFactory.php
+
+=== SEEDERS ===
+data
+BrandFontSeeder.php
+DatabaseSeeder.php
+DemoTenantsSeeder.php
+HoldReasonSeeder.php
+PermissionCatalogSeeder.php
+PlanSeeder.php
+PlatformUserSeeder.php
+
+=== phpunit.xml (env lines) ===
+        <env name="APP_ENV" value="testing"/>
+        <env name="APP_MAINTENANCE_DRIVER" value="file"/>
+        <env name="BCRYPT_ROUNDS" value="4"/>
+        <env name="CACHE_STORE" value="array"/>
+        <env name="DB_CONNECTION" value="sqlite"/> 
+        <env name="DB_DATABASE" value=":memory:"/>
+        <env name="MAIL_MAILER" value="array"/>
+        <env name="PULSE_ENABLED" value="false"/>
+        <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="SESSION_DRIVER" value="array"/>
+        <env name="TELESCOPE_ENABLED" value="false"/>
+
+=== tests/TestCase.php ===
+<?php
+
+namespace Tests;
+
+use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+
+abstract class TestCase extends BaseTestCase
+{
+    //
+}
+
+=== FIRST FEATURE TEST ===
+<?php
+
+namespace Tests\Feature;
+
+// use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class ExampleTest extends TestCase
+{
+    /**
+     * A basic test example.
+     */
+    public function test_the_application_returns_a_successful_response(): void
+    {
+        $response = $this->get('/');
+
+        $response->assertStatus(200);
+    }
+}
+
+=== app/Models/User.php ===
+<?php
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\{BelongsTo, BelongsToMany, HasMany};
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
+
+class User extends Authenticatable
+{
+    use HasApiTokens, HasFactory, Notifiable;
+
+    protected $fillable = [
+        'tenant_id', 'role_id',
+        'name', 'email', 'phone', 'employee_code',
+        'password',
+        'team_lead_id', 'client_id',
+        'client_access', 'site_scope_json',
+        'must_change_password',
+        'failed_login_count', 'locked_until',
+        'two_factor_secret', 'two_factor_confirmed_at',
+        'aiywah_account_id',
+        'last_sign_in_at', 'deactivated_at',
+    ];
+
+    protected $hidden = ['password', 'remember_token', 'two_factor_secret'];
+
+    protected $casts = [
+        'email_verified_at'       => 'datetime',
+        'password'                => 'hashed',
+        'must_change_password'    => 'boolean',
+        'two_factor_secret'       => 'encrypted',
+        'two_factor_confirmed_at' => 'datetime',
+        'locked_until'            => 'datetime',
+        'last_sign_in_at'         => 'datetime',
+        'deactivated_at'          => 'datetime',
+        'site_scope_json'         => 'array',
+    ];
+
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
+    }
+
+    public function role(): BelongsTo
+    {
+        return $this->belongsTo(Role::class);
+    }
+
+    public function client(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Client::class);
+    }
+
+    public function teamLead(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'team_lead_id');
+    }
+
+    public function overrides(): HasMany
+    {
+        return $this->hasMany(UserPermissionOverride::class);
+    }
+
+    public function skills(): HasMany
+    {
+        return $this->hasMany(UserSkill::class);
+    }
+
+    /** True if this user is currently signed-in-eligible. */
+    public function isActive(): bool
+    {
+        return $this->deactivated_at === null
+            && ($this->locked_until === null || $this->locked_until->isPast())
+            && $this->tenant?->isActive();
+    }
+    public function hasAccessToTenant(\App\Models\Tenant $tenant): bool
+    {
+        return $this->tenant_id === $tenant->id
+            && $this->deactivated_at === null;
+    }
+    /**
+     * Does this tenant user hold the given permission key at any level above 'none'?
+     * Reads directly from role_permissions. Overrides come later (ACC-11 full engine).
+     */
+    public function canDo(string $key): bool
+    {
+        if (! $this->role_id || ! $this->tenant_id) {
+            return false;
+        }
+
+        $permission = \App\Models\Permission::where('key', $key)->first();
+        if (! $permission) {
+            return false;
+        }
+
+        $override = \App\Models\UserPermissionOverride::where('user_id', $this->id)
+            ->where('permission_id', $permission->id)
+            ->where(fn ($q) => $q->whereNull('ends_at')->orWhere('ends_at', '>', now()))
+            ->first();
+
+        if ($override) {
+            return $override->level !== 'none';
+        }
+
+        return \App\Models\RolePermission::where('tenant_id', $this->tenant_id)
+            ->where('role_id', $this->role_id)
+            ->where('permission_id', $permission->id)
+            ->where('level', '!=', 'none')
+            ->exists();
+    }
+
+    public function coveredCategories(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            ServiceCategory::class,
+            'service_category_team_leads',
+            'team_lead_user_id',
+            'service_category_id'
+        )->withTimestamps();
+    }
+}
+
+=== app/Models/Role.php ===
+<?php
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class Role extends Model
+{
+    use SoftDeletes;
+
+    protected $fillable = ['tenant_id', 'code', 'name', 'is_standard', 'based_on_code'];
+
+    protected $casts = [
+        'is_standard' => 'boolean',
+    ];
+
+    public function tenant()
+    {
+        return $this->belongsTo(Tenant::class);
+    }
+
+    public function permissions()
+    {
+        return $this->hasMany(RolePermission::class);
+    }
+
+    public function users()
+    {
+        return $this->hasMany(User::class);
+    }
+}
+
+=== app/Models/Concerns/BelongsToTenant.php ===
+<?php
+
+namespace App\Models\Concerns;
+
+use App\Models\Tenant;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Scope;
+
+/**
+ * Any Eloquent model with this trait is automatically:
+ *   1. Scoped on read  — queries return ONLY rows for the current tenant.
+ *   2. Scoped on write — new rows get the current tenant_id auto-filled.
+ *
+ * To bypass (e.g. a platform-admin console), use:
+ *   SomeModel::withoutGlobalScope(TenantScope::class)->get();
+ */
+trait BelongsToTenant
+{
+    public static function bootBelongsToTenant(): void
+    {
+        static::addGlobalScope(new TenantScope);
+
+        static::creating(function (Model $model) {
+            if (! $model->tenant_id && $tenant = Tenant::current()) {
+                $model->tenant_id = $tenant->id;
+            }
+        });
+    }
+
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
+    }
+}
+
+class TenantScope implements Scope
+{
+    public function apply(Builder $builder, Model $model): void
+    {
+        if ($tenant = Tenant::current()) {
+            $builder->where($model->getTable() . '.tenant_id', $tenant->id);
+        }
+        // No current tenant = no filter applied. Platform admins and
+        // CLI jobs that explicitly scope themselves still work.
+    }
+}
+
+=== app/Http/Middleware/DenyClientRole.php ===
+<?php
+
+namespace App\Http\Middleware;
+
+use Closure;
+use Illuminate\Http\Request;
+
+class DenyClientRole
+{
+    public function handle(Request $request, Closure $next)
+    {
+        $clientCodes = ['client_user', 'client_admin', 'client_viewer'];
+        abort_if(in_array($request->user()?->role?->code, $clientCodes, true), 403);
+        return $next($request);
+    }
+}

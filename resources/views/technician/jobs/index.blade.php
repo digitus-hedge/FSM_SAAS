@@ -49,6 +49,19 @@
 </a>
 @endif
 
+@if (\App\Models\Tenant::current()?->hasFeature('assets_full'))
+<a href="{{ route('technician.scan.index') }}" class="card tap" style="display:block;text-decoration:none;color:inherit;margin-bottom:14px">
+    <div style="display:flex;align-items:center;gap:12px">
+        <span class="tick ok" style="background:var(--accent);color:var(--accent-ink)">@include('technician._icon', ['name'=>'camera','size'=>16])</span>
+        <div style="flex:1">
+            <div style="font-weight:700">Scan asset</div>
+            <div class="sub">Raise a request from an asset QR label</div>
+        </div>
+        @include('technician._icon', ['name'=>'right','size'=>20])
+    </div>
+</a>
+@endif
+
 <div class="tabs" role="tablist">
     <a href="#" id="tabbtn-today" data-tab="today" aria-selected="true" onclick="return techTab(event,'today')">Today</a>
     <a href="#" id="tabbtn-upcoming" data-tab="upcoming" aria-selected="false" onclick="return techTab(event,'upcoming')">Upcoming</a>

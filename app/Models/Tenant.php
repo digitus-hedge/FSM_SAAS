@@ -38,6 +38,11 @@ class Tenant extends Model
     {
         return in_array($this->status, ['active', 'trial'], true);
     }
+     /** Does this company's plan include the feature? No plan = no feature. */
+    public function hasFeature(string $key): bool
+    {
+        return (bool) $this->plan?->hasFeature($key);
+    }
 
     public function getCurrencyCodeAttribute()
     {

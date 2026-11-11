@@ -7,6 +7,8 @@ use App\Models\ProjectSite;
 use App\Models\ServiceCategory;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use App\Models\Asset;
+
 
 class ServiceRequestRequest extends FormRequest
 {
@@ -34,6 +36,10 @@ class ServiceRequestRequest extends FormRequest
                     ->where('is_active', 1)
                     ->whereNull('deleted_at'),
             ],
+            'primary_asset_id' => [
+                'nullable', 'integer',
+                Rule::exists('assets', 'id')->where('tenant_id', $tenantId)->whereNull('deleted_at'),
+            ],
             'priority' => ['required', Rule::in(array_keys(\App\Models\ServiceRequest::PRIORITIES))],
             'title'    => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:10000'],
@@ -57,6 +63,21 @@ class ServiceRequestRequest extends FormRequest
                     $v->errors()->add('project_site_id', 'This site does not belong to the chosen client.');
                 }
             }
+
+            // Asset (optional): must be at the chosen site, and not decommissioned
+            // unless it is the one already saved on this request.
+            $assetId = $this->input('primary_asset_id');
+            if ($assetId && ! $v->errors()->has('primary_asset_id')) {
+                $asset     = Asset::where('id', $assetId)->where('tenant_id', $tenantId)->first();
+                $saved     = $this->route('service_request');
+                $unchanged = $saved && (int) $saved->primary_asset_id === (int) $assetId;
+
+                if ($asset && (int) $asset->project_site_id !== (int) $siteId) {
+                    $v->errors()->add('primary_asset_id', 'This asset is not at the chosen site.');
+                } elseif ($asset && $asset->status === 'decommissioned' && ! $unchanged) {
+                    $v->errors()->add('primary_asset_id', 'A decommissioned asset cannot be chosen for a new request.');
+                }
+            }
         });
     }
 
@@ -66,6 +87,7 @@ class ServiceRequestRequest extends FormRequest
             'client_id'           => 'Client',
             'project_site_id'     => 'Site',
             'service_category_id' => 'Category',
+            'primary_asset_id'    => 'Asset',
             'priority'            => 'Priority',
             'title'               => 'Title',
             'description'         => 'Description',

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Technician;
 
 use App\Http\Controllers\Controller;
+use App\Models\Asset;
 use App\Models\Attachment;
 use App\Models\Client;
 use App\Models\FieldEventLog;
@@ -13,6 +14,7 @@ use App\Models\ServiceRequest;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class TeamController extends Controller
 {
@@ -142,9 +144,31 @@ class TeamController extends Controller
             ? 'technician.team.requests-create-mobile'
             : 'technician.team.requests-create';
 
+        // Opened from an asset QR landing page: fill client, site, category and asset.
+        $prefill = null;
+        if (request()->filled('asset')) {
+            $asset = Asset::where('tenant_id', $tenantId)->selectable()->find((int) request()->input('asset'));
+            if ($asset) {
+                $prefill = [
+                    'client_id'           => $asset->client_id,
+                    'project_site_id'     => $asset->project_site_id,
+                    'service_category_id' => $asset->service_category_id,
+                    'primary_asset_id'    => $asset->id,
+                    'sites'               => ProjectSite::where('tenant_id', $tenantId)
+                        ->where(function ($q) use ($asset) {
+                            $q->where('client_id', $asset->client_id)->orWhereNull('client_id');
+                        })
+                        ->where('is_active', 1)
+                        ->orderBy('name')
+                        ->get(['id', 'name', 'client_id']),
+                ];
+            }
+        }
+
         return view($view, [
             'clients'    => Client::where('tenant_id', $tenantId)->where('is_active', 1)->orderBy('name')->get(['id', 'name']),
             'categories' => ServiceCategory::where('tenant_id', $tenantId)->where('is_active', 1)->orderBy('name')->get(['id', 'name']),
+            'prefill'    => $prefill,
         ]);
     }
 
@@ -153,9 +177,23 @@ class TeamController extends Controller
         $tenantId = auth()->user()->tenant_id;
 
         $data = $request->validate([
-            'client_id'           => ['required', 'exists:clients,id'],
-            'project_site_id'     => ['required', 'exists:project_sites,id'],
-            'service_category_id' => ['required', 'exists:service_categories,id'],
+            'client_id'           => [
+                'required', 'integer',
+                Rule::exists('clients', 'id')->where('tenant_id', $tenantId)->whereNull('deleted_at'),
+            ],
+            'project_site_id'     => [
+                'required', 'integer',
+                Rule::exists('project_sites', 'id')->where('tenant_id', $tenantId)->whereNull('deleted_at'),
+            ],
+            'service_category_id' => [
+                'required', 'integer',
+                Rule::exists('service_categories', 'id')
+                    ->where('tenant_id', $tenantId)->where('is_active', 1)->whereNull('deleted_at'),
+            ],
+            'primary_asset_id'    => [
+                'nullable', 'integer',
+                Rule::exists('assets', 'id')->where('tenant_id', $tenantId)->whereNull('deleted_at'),
+            ],
             'priority'            => ['required', 'in:' . implode(',', array_keys(ServiceRequest::PRIORITIES))],
             'title'               => ['required', 'string', 'max:190'],
             'description'         => ['nullable', 'string', 'max:2000'],
@@ -164,7 +202,26 @@ class TeamController extends Controller
             'attachments.*'        => ['file', 'max:10240'],
         ]);
 
+        $site = ProjectSite::where('tenant_id', $tenantId)->find($data['project_site_id']);
+        if ($site && $site->client_id && (int) $site->client_id !== (int) $data['client_id']) {
+            return back()->withInput()->withErrors(['project_site_id' => 'This site does not belong to the chosen client.']);
+        }
+
+        // Optional asset: must be at the chosen site and not decommissioned.
+        if (! empty($data['primary_asset_id'])) {
+            $asset = Asset::where('tenant_id', $tenantId)->find($data['primary_asset_id']);
+            if (! $asset || (int) $asset->project_site_id !== (int) $data['project_site_id']) {
+                return back()->withInput()->withErrors(['primary_asset_id' => 'This asset is not at the chosen site.']);
+            }
+            if ($asset->status === 'decommissioned') {
+                return back()->withInput()->withErrors(['primary_asset_id' => 'A decommissioned asset cannot be chosen for a new request.']);
+            }
+        }
+
         $cat = ServiceCategory::where('tenant_id', $tenantId)->findOrFail($data['service_category_id']);
+
+        // A request raised from an asset's QR page is tagged as such.
+        $source = ($request->boolean('from_qr') && ! empty($data['primary_asset_id'])) ? 'qr_scan' : 'front_desk';
 
         $proofSnapshot = [
             'require_before_photo' => (bool) $cat->require_before_photo,
@@ -181,12 +238,13 @@ class TeamController extends Controller
             'client_id'              => $data['client_id'],
             'project_site_id'        => $data['project_site_id'],
             'service_category_id'    => $data['service_category_id'],
+            'primary_asset_id'       => $data['primary_asset_id'] ?? null,
             'priority'               => $data['priority'],
             'title'                  => $data['title'],
             'description'            => $data['description'] ?? null,
             'client_po_reference'    => $data['client_po_reference'] ?? null,
             'service_mode'           => 'on_site',
-            'source'                 => 'front_desk',
+            'source'                 => $source,
             'coverage_type'          => 'out_of_coverage',
             'status'                 => 'pending',
             'billing_status'         => 'not_applicable',
@@ -206,6 +264,9 @@ class TeamController extends Controller
             'sla_response_due_at'   => $policy ? $started->copy()->addMinutes((int) $policy->response_minutes) : null,
             'sla_resolution_due_at' => $policy ? $started->copy()->addMinutes((int) $policy->resolution_minutes) : null,
         ]);
+
+        // Blueprint 7.1: every transition writes sr_status_history.
+        \App\Models\SrStatusHistory::log($sr, null, 'pending', 'user', auth()->id());
 
         // D25 — attachments the team lead adds when raising the request themselves.
         foreach ($request->file('attachments', []) as $file) {
@@ -300,7 +361,9 @@ class TeamController extends Controller
     {
         $this->authorizeTeamSr($serviceRequest);
         $data = $request->validate(['reason' => ['required', 'string', 'max:500']]);
+        $fromStatus = $serviceRequest->status;
         $serviceRequest->update(['status' => 'cancelled', 'cancellation_reason' => $data['reason']]);
+        \App\Models\SrStatusHistory::log($serviceRequest, $fromStatus, 'cancelled', 'user', auth()->id(), 'Rejected: ' . $data['reason']);
         return back()->with('success', 'Rejected.');
     }
 
@@ -308,7 +371,13 @@ class TeamController extends Controller
     {
         $this->authorizeTeamSr($serviceRequest);
         $data = $request->validate(['assigned_tech_user_id' => ['required', 'in:' . implode(',', $this->teamMemberIds())]]);
+        $fromStatus = $serviceRequest->status;
         $serviceRequest->update(['assigned_tech_user_id' => $data['assigned_tech_user_id'], 'status' => 'assigned']);
+        $tech = User::find($data['assigned_tech_user_id']);
+        \App\Models\SrStatusHistory::log(
+            $serviceRequest, $fromStatus, 'assigned', 'user', auth()->id(), null,
+            ['technician_id' => $tech?->id, 'technician_name' => $tech?->name]
+        );
         return back()->with('success', 'Assigned.');
     }
 

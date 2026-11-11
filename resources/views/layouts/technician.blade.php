@@ -79,6 +79,9 @@
       <div class="dl">
           <a href="{{ route('technician.jobs.index') }}" class="dit">@include('technician._icon', ['name'=>'home','size'=>22])<span class="grow">Today</span></a>
           <a href="{{ route('technician.jobs.all') }}" class="dit">@include('technician._icon', ['name'=>'list','size'=>22])<span class="grow">All my jobs</span></a>
+          @if (\App\Models\Tenant::current()?->hasFeature('assets_full'))
+          <a href="{{ route('technician.scan.index') }}" class="dit">@include('technician._icon', ['name'=>'camera','size'=>22])<span class="grow">Scan asset</span></a>
+          @endif
           <a href="{{ route('technician.notifications') }}" class="dit">@include('technician._icon', ['name'=>'bell','size'=>22])<span class="grow">Notifications</span></a>
           @if ($isTeamLead)
           <a href="{{ route('technician.team.index') }}" class="dit">@include('technician._icon', ['name'=>'users','size'=>22])<span class="grow">Team</span>@if ($needsActionCount)<span class="chip sm" style="--c:var(--red)">{{ $needsActionCount }}</span>@endif</a>

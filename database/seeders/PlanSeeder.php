@@ -21,6 +21,8 @@ class PlanSeeder extends Seeder
                 'whatsapp'     => false,
                 'form_builder' => false,
                 'reports_pdf'  => false,
+                'assets_basic' => true,   // assets list, create, edit (all plans)
+                'assets_full'  => false,  // QR, Asset 360, scan, import (Pro+)
             ],
         ]);
 
@@ -34,6 +36,8 @@ class PlanSeeder extends Seeder
                 'whatsapp'     => true,
                 'form_builder' => true,
                 'reports_pdf'  => true,
+                'assets_basic' => true,
+                'assets_full'  => true,
             ],
         ]);
 
@@ -47,6 +51,8 @@ class PlanSeeder extends Seeder
                 'whatsapp'     => true,
                 'form_builder' => true,
                 'reports_pdf'  => true,
+                'assets_basic' => true,
+                'assets_full'  => true,
             ],
         ]);
     }

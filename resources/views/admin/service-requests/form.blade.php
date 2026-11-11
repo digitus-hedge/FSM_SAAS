@@ -207,8 +207,22 @@
           @error('service_category_id') <small class="err-inline">{{ $message }}</small> @enderror
         </div>
 
+        {{-- ASSET (optional, filtered by site) --}}
+        <div class="field {{ $errors->has('primary_asset_id') ? 'has-error' : '' }}">
+          <label for="primary_asset_id" class="lbl">Asset <span class="opt">(optional)</span></label>
+          <select id="primary_asset_id" name="primary_asset_id" class="select"
+                  data-selected="{{ old('primary_asset_id', $sr->primary_asset_id) }}">
+            <option value="">Choose a site first</option>
+          </select>
+          @error('primary_asset_id') <small class="err-inline">{{ $message }}</small> @enderror
+        </div>
+
+        {{-- Asset warranty and recent requests --}}
+        <div class="full" id="asset-info"
+             style="display:none;background:#FCFBF8;border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:12px"></div>
+
         {{-- PRIORITY --}}
-        <div class="field {{ $errors->has('priority') ? 'has-error' : '' }}">
+        <div class="field full {{ $errors->has('priority') ? 'has-error' : '' }}">
           <label class="lbl">Priority <span class="req">*</span></label>
           <div class="priority-row" id="priority-row">
             @foreach ($priorities as $key => $label)
@@ -425,6 +439,80 @@
       siteSel.disabled = false;
     }
   }
+
+  /* -------- Asset (filtered by site) -------- */
+  const assetSel   = document.getElementById('primary_asset_id');
+  const assetInfo  = document.getElementById('asset-info');
+  const catSel     = document.getElementById('service_category_id');
+  const assetsUrl  = "{{ route('service-requests.assets.for-site') }}";
+  const summaryTpl = "{{ route('service-requests.assets.summary', ['asset' => '__ID__']) }}";
+  const ajaxHeaders = { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' };
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  let assetsMap = {};
+
+  async function loadAssets(siteId, selectedId) {
+    assetInfo.style.display = 'none';
+    assetsMap = {};
+    if (!siteId) {
+      assetSel.innerHTML = '<option value="">Choose a site first</option>';
+      return;
+    }
+    assetSel.innerHTML = '<option value="">Loading assets…</option>';
+    try {
+      const qs = new URLSearchParams({ site_id: siteId });
+      if (selectedId) qs.set('include', selectedId);
+      const res = await fetch(`${assetsUrl}?${qs}`, { headers: ajaxHeaders });
+      const assets = await res.json();
+      let html = '<option value="">' + (assets.length ? 'No asset' : 'No assets at this site') + '</option>';
+      assets.forEach(a => {
+        assetsMap[a.id] = a;
+        const sel = String(a.id) === String(selectedId) ? 'selected' : '';
+        html += `<option value="${a.id}" ${sel}>${esc(a.label)}</option>`;
+      });
+      assetSel.innerHTML = html;
+      if (assetSel.value) showAsset(assetSel.value, false);
+    } catch (err) {
+      assetSel.innerHTML = '<option value="">Could not load assets</option>';
+      console.error(err);
+    }
+  }
+
+  async function showAsset(id, fillCategory) {
+    const a = assetsMap[id];
+    if (fillCategory && a && a.service_category_id) {
+      const want = String(a.service_category_id);
+      if (Array.from(catSel.options).some(o => o.value === want)) catSel.value = want;
+    }
+    try {
+      const res = await fetch(summaryTpl.replace('__ID__', encodeURIComponent(id)), { headers: ajaxHeaders });
+      const d = await res.json();
+      if (assetSel.value !== String(id)) return;   // selection changed while loading
+
+      const warranty = d.warranty_status === 'in_warranty'
+        ? `<span style="color:var(--green);font-weight:700">In warranty until ${esc(d.warranty_expiry)}</span>`
+        : d.warranty_status === 'expired'
+          ? `<span style="color:var(--red);font-weight:700">Warranty expired ${esc(d.warranty_expiry)}</span>`
+          : '<span style="color:var(--muted)">No warranty date</span>';
+
+      const recent = d.recent.length
+        ? d.recent.map(r => `<div style="margin-top:4px"><a href="${esc(r.url)}" target="_blank" style="color:var(--ink)">${esc(r.sr_number)}</a>
+            <span style="color:var(--muted)"> · ${esc(r.title)} · ${esc(r.status_label)} · ${esc(r.date)}</span></div>`).join('')
+        : '<div style="color:var(--muted);margin-top:4px">No previous requests for this asset.</div>';
+
+      assetInfo.innerHTML = `<div><strong>${esc(d.asset_code)}</strong> · ${esc(d.name)} — ${warranty}</div>
+        <div class="section-sublabel" style="margin:10px 0 0">Recent requests</div>${recent}`;
+      assetInfo.style.display = 'block';
+    } catch (err) { console.error(err); }
+  }
+
+  assetSel.addEventListener('change', () => {
+    if (assetSel.value) showAsset(assetSel.value, true);
+    else assetInfo.style.display = 'none';
+  });
+  siteSel.addEventListener('change', () => loadAssets(siteSel.value, ''));
+  clientSel.addEventListener('change', () => loadAssets('', ''));
+
+  loadAssets(siteSel.value || siteSel.dataset.selected, assetSel.dataset.selected);
 
   /* -------- Attachments: drag-drop + preview + remove -------- */
   const dropZone = document.getElementById('drop-zone');

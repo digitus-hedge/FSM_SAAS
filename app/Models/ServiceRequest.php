@@ -398,4 +398,9 @@ class ServiceRequest extends Model
     {
         return $this->status === 'rework' ? 'in_progress' : $this->status;
     }
+
+        public function primaryAsset()
+    {
+        return $this->belongsTo(Asset::class, 'primary_asset_id')->withTrashed();
+    }
 }

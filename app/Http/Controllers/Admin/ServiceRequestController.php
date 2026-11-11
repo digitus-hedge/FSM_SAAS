@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ServiceRequestRequest;
+use App\Models\Asset;
 use App\Models\Client;
 use App\Models\ProjectSite;
 use App\Models\ServiceCategory;
@@ -206,15 +207,41 @@ class ServiceRequestController extends Controller
 
 
 
-    public function create()
+    public function create(Request $request)
     {
+        $tenantId = auth()->user()->tenant_id;
+        $sr       = new ServiceRequest(['priority' => 'medium']);
+        $sites    = collect();
+        $fromQr   = false;
+
+        // Opened from an asset QR landing page: fill client, site, category and asset.
+        if ($request->filled('asset')) {
+            $asset = Asset::where('tenant_id', $tenantId)->selectable()->find((int) $request->input('asset'));
+            if ($asset) {
+                $sr->client_id           = $asset->client_id;
+                $sr->project_site_id     = $asset->project_site_id;
+                $sr->service_category_id = $asset->service_category_id;
+                $sr->primary_asset_id    = $asset->id;
+                $fromQr = true;
+
+                $sites = ProjectSite::where('tenant_id', $tenantId)
+                    ->where(function ($q) use ($asset) {
+                        $q->where('client_id', $asset->client_id)->orWhereNull('client_id');
+                    })
+                    ->where('is_active', 1)
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'client_id']);
+            }
+        }
+
         return view('admin.service-requests.form', [
-            'sr'         => new ServiceRequest(['priority' => 'medium']),
+            'sr'         => $sr,
             'mode'       => 'create',
             'clients'    => Client::active()->orderBy('name')->get(['id', 'name']),
             'categories' => ServiceCategory::where('is_active', 1)->orderBy('name')->get(['id', 'name']),
-            'sites'      => collect(),
+            'sites'      => $sites,
             'priorities' => ServiceRequest::PRIORITIES,
+            'fromQr'     => $fromQr,
         ]);
     }
 
@@ -238,19 +265,23 @@ class ServiceRequestController extends Controller
             'category_code'        => $cat->code ?? null,
         ];
 
-        $sr = DB::transaction(function () use ($data, $tenantId, $cat, $proofSnapshot, $teamLeadId) {
+        // A request raised from an asset's QR page is tagged as such.
+        $source = ($request->boolean('from_qr') && ! empty($data['primary_asset_id'])) ? 'qr_scan' : 'front_desk';
+
+        $sr = DB::transaction(function () use ($data, $tenantId, $cat, $proofSnapshot, $teamLeadId, $source) {
             $sr = ServiceRequest::create([
                 'tenant_id'              => $tenantId,
                 'sr_number'              => ServiceRequest::nextSrNumber($tenantId),
                 'client_id'              => $data['client_id'],
                 'project_site_id'        => $data['project_site_id'],
                 'service_category_id'    => $data['service_category_id'],
+                'primary_asset_id'       => $data['primary_asset_id'] ?? null,
                 'priority'               => $data['priority'],
                 'title'                  => $data['title'],
                 'description'            => $data['description'] ?? null,
                 'client_po_reference'    => $data['client_po_reference'] ?? null,
                 'service_mode'           => 'on_site',
-                'source'                 => 'front_desk',
+                'source'                 => $source,
                 'coverage_type'          => 'out_of_coverage',
                 'status'                 => 'pending',
                 'billing_status'         => 'not_applicable',
@@ -282,8 +313,8 @@ class ServiceRequestController extends Controller
 
     public function show(ServiceRequest $service_request)
 {
-    $service_request->load([
-        'client', 'site', 'category', 'createdBy:id,name,role_id', 'createdBy.role:id,name',
+        $service_request->load([
+        'client', 'site', 'category', 'primaryAsset', 'createdBy:id,name,role_id', 'createdBy.role:id,name',
         'assignedTech:id,name', 'teamLead:id,name', 'holdReason:id,label', 'attachmentsRel',
     ]);
 
@@ -663,6 +694,55 @@ class ServiceRequestController extends Controller
             ->get(['id', 'name', 'site_type', 'client_id']);
 
         return response()->json($sites);
+    }
+        /**
+     * AJAX — selectable assets at a site (decommissioned ones are hidden,
+     * unless it is the asset already saved on this request).
+     */
+    public function assetsForSite(Request $request)
+    {
+        $tenantId = auth()->user()->tenant_id;
+        $siteId   = (int) $request->input('site_id');
+        $include  = (int) $request->input('include');
+
+        $assets = Asset::where('tenant_id', $tenantId)
+            ->where('project_site_id', $siteId)
+            ->where(fn ($q) => $q->selectable()
+                ->when($include, fn ($qq) => $qq->orWhere('id', $include)))
+            ->orderBy('asset_code')
+            ->get(['id', 'asset_code', 'name', 'service_category_id']);
+
+        return response()->json($assets->map(fn ($a) => [
+            'id'                  => $a->id,
+            'label'               => $a->asset_code . ' — ' . $a->name,
+            'service_category_id' => $a->service_category_id,
+        ]));
+    }
+
+    /**
+     * AJAX — warranty status and the last 3 requests for one asset.
+     */
+    public function assetSummary(Asset $asset)
+    {
+        $recent = ServiceRequest::where('primary_asset_id', $asset->id)
+            ->orderByDesc('id')
+            ->limit(3)
+            ->get(['id', 'sr_number', 'title', 'status', 'created_at']);
+
+        return response()->json([
+            'id'              => $asset->id,
+            'asset_code'      => $asset->asset_code,
+            'name'            => $asset->name,
+            'warranty_status' => $asset->warranty_status,
+            'warranty_expiry' => $asset->warranty_expiry_date?->format('d M Y'),
+            'recent'          => $recent->map(fn ($r) => [
+                'sr_number'    => $r->sr_number,
+                'title'        => $r->title,
+                'status_label' => $r->statusLabel(),
+                'date'         => $r->created_at?->format('d M Y'),
+                'url'          => route('service-requests.show', $r),
+            ]),
+        ]);
     }
 
     public function reopen(Request $request, ServiceRequest $service_request)
