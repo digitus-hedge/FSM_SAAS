@@ -1,0 +1,232 @@
+@extends('layouts.admin')
+
+@php
+    $contracts      = $contracts      ?? collect();
+    $clients        = $clients        ?? collect();
+    $perPage        = $perPage        ?? 10;
+    $perPageOptions = $perPageOptions ?? [10, 25, 50, 100];
+    $statusClass    = ['draft' => 'status-off', 'active' => 'status-ok', 'expiring_soon' => 'status-warn', 'expired' => 'status-bad', 'renewed' => 'status-off', 'cancelled' => 'status-off'];
+    $hasFilter      = request()->filled('q') || request()->filled('client_id') || request()->filled('contract_type')
+                   || request()->filled('status') || request()->filled('expiry') || request()->boolean('has_cap');
+    $showMoney      = $showMoney ?? false;
+    $canManage      = auth()->user()?->canDo('contract.manage');
+@endphp
+
+@section('title', $plural)
+
+@section('content')
+<style>
+  .page-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+  .page-head h1{font-family:var(--font-display),sans-serif;font-size:34px;font-weight:800;line-height:1.08;letter-spacing:-.02em;margin:0;color:#0F0F17}
+  .page-head p{color:#5F5D6E;font-size:14px;margin-top:6px}
+  .btn{display:inline-flex;align-items:center;gap:8px;border-radius:12px;padding:11px 20px;font-family:var(--font-body),sans-serif;font-size:14px;font-weight:700;border:1px solid transparent;cursor:pointer;text-decoration:none;transition:all .12s;white-space:nowrap}
+  .btn-primary{background:var(--amber);color:#fff}
+  .btn-primary:hover{background:color-mix(in srgb, var(--amber) 85%, black 15%)}
+  .toolbar{display:flex;align-items:stretch;margin-bottom:16px;background:#fff;border:1px solid #E5E4EC;border-radius:14px;padding:4px;overflow:hidden;flex-wrap:wrap}
+  .tb-search{flex:1;min-width:220px;position:relative;display:flex;align-items:center}
+  .tb-search input{width:100%;border:0;outline:none;background:transparent;font-family:var(--font-body);font-size:14px;color:#0F0F17;padding:12px 16px}
+  .tb-search input::placeholder{color:#9A98A7}
+  .tb-spin{position:absolute;right:14px;width:12px;height:12px;border:2px solid #E5E4EC;border-top-color:var(--amber);border-radius:50%;display:none;animation:sspin .8s linear infinite}
+  @keyframes sspin{to{transform:rotate(360deg)}}
+  .tb-sel{border:0;background:transparent;font-family:var(--font-body);font-size:14px;font-weight:600;color:#0F0F17;padding:10px 32px 10px 16px;outline:none;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235F5D6E' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;border-left:1px solid #E5E4EC;min-width:130px}
+  .tb-clear{display:inline-flex;align-items:center;gap:4px;font-size:12.5px;font-weight:700;color:#B33636;text-decoration:none;padding:0 16px;border-left:1px solid #E5E4EC}
+  .tb-clear:hover{background:#FFF5F5}
+  .card{background:#fff;border:1px solid #E5E4EC;border-radius:16px;overflow:hidden}
+  .tblwrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;min-width:1000px;font-size:14px}
+  thead th{text-align:left;padding:16px 20px;font-weight:600;font-size:13px;color:#5F5D6E;background:#FAFAFC;border-bottom:1px solid #EEEDF3;white-space:nowrap}
+  tbody td{padding:18px 20px;border-bottom:1px solid #F2F1F6;vertical-align:middle;color:#0F0F17}
+  tbody tr:last-child td{border-bottom:0}
+  tbody tr{cursor:pointer;transition:background .1s}
+  tbody tr:hover{background:#FAFAFC}
+  .code-pill{display:inline-block;font-family:var(--font-body);font-size:12px;font-weight:600;color:var(--amber);background:var(--yellow-soft);padding:4px 10px;border-radius:6px;letter-spacing:.02em;white-space:nowrap}
+  .cell-name{font-weight:700;color:#0F0F17}
+  .cell-muted{color:#5F5D6E}
+  .status{display:inline-flex;align-items:center;font-size:12.5px;font-weight:700;padding:5px 12px;border-radius:999px;letter-spacing:.01em;white-space:nowrap}
+  .status-ok{background:#E6F7EC;color:#1D7A3A}
+  .status-off{background:#F2F1F6;color:#5F5D6E}
+  .status-warn{background:#FEF3C7;color:#92400E}
+  .status-bad{background:#FDECE7;color:#C2381B}
+  .empty{padding:70px 20px;text-align:center;color:#5F5D6E;font-size:14px}
+  .empty h4{font-family:var(--font-display);font-size:18px;font-weight:700;color:#0F0F17;margin:0 0 4px}
+  .empty a{color:var(--amber);text-decoration:none;font-weight:700}
+  .foot{padding:16px 20px;background:#FCFBFF;border-top:1px solid #EEEDF3;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;font-size:13px;color:#5F5D6E}
+  .foot strong{color:#0F0F17}
+  .per-page{display:flex;align-items:center;gap:8px;font-size:12.5px;color:#5F5D6E}
+  .per-page select{font-family:var(--font-body);font-size:12.5px;padding:7px 24px 7px 12px;border-radius:999px;border:1px solid #E5E4EC;background:#fff;color:#0F0F17;outline:none;cursor:pointer}
+  .pg-nav{display:flex;gap:4px}
+  .pg-nav a,.pg-nav span{display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:32px;padding:0 10px;font-size:12.5px;font-weight:700;color:#0F0F17;background:#fff;border:1px solid #E5E4EC;border-radius:8px;text-decoration:none}
+  .pg-nav a:hover{background:#F2F1F6}
+  .pg-nav .on{background:var(--amber);border-color:var(--amber);color:#fff}
+  .pg-nav .off{color:#9A98A7;background:#F2F1F6;cursor:not-allowed;pointer-events:none}
+  .alert-err{background:#FDECE7;border:1px solid #F2C2C2;color:#C2381B;padding:12px 14px;border-radius:10px;margin-bottom:14px;font-size:13.5px}
+  .alert-ok{background:#E6F7EC;border:1px solid #BFE5CB;color:#1D7A3A;padding:12px 14px;border-radius:10px;margin-bottom:14px;font-size:13.5px}
+  .btn-ghost{background:#fff;color:#0F0F17;border-color:#E5E4EC}
+  .btn-ghost:hover{border-color:#0F0F17}
+</style>
+
+<div class="page-head">
+  <div>
+    <h1>{{ $plural }}</h1>
+    <p>Service agreements, AMCs and warranties for your clients.</p>
+  </div>
+  @if ($canManage)
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <a href="{{ route('admin.contracts.create') }}" class="btn btn-primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        New {{ strtolower($label) }}
+      </a>
+    </div>
+  @endif
+</div>
+
+@if (session('error'))
+  <div class="alert-err">{{ session('error') }}</div>
+@endif
+@if (session('success'))
+  <div class="alert-ok">{{ session('success') }}</div>
+@endif
+
+<form method="GET" class="toolbar" id="contract-filter">
+  <div class="tb-search">
+    <input type="text" name="q" value="{{ request('q') }}" placeholder="Search by number or client" autocomplete="off" id="contract-search">
+    <span class="tb-spin" id="contract-spin"></span>
+  </div>
+  <select name="client_id" class="tb-sel auto-submit">
+    <option value="">All clients</option>
+    @foreach ($clients as $c)
+      <option value="{{ $c->id }}" @selected((string) request('client_id') === (string) $c->id)>{{ $c->name }}</option>
+    @endforeach
+  </select>
+  <select name="contract_type" class="tb-sel auto-submit">
+    <option value="">All types</option>
+    @foreach (\App\Models\Contract::TYPES as $k => $v)
+      <option value="{{ $k }}" @selected(request('contract_type') === $k)>{{ $v }}</option>
+    @endforeach
+  </select>
+  <select name="status" class="tb-sel auto-submit">
+    <option value="">All status</option>
+    @foreach (\App\Models\Contract::STATUSES as $k => $v)
+      <option value="{{ $k }}" @selected(request('status') === $k)>{{ $v }}</option>
+    @endforeach
+  </select>
+  <select name="expiry" class="tb-sel auto-submit">
+    <option value="">Any expiry</option>
+    <option value="30"      @selected(request('expiry') === '30')>Ends within 30 days</option>
+    <option value="60"      @selected(request('expiry') === '60')>Ends within 60 days</option>
+    <option value="90"      @selected(request('expiry') === '90')>Ends within 90 days</option>
+    <option value="expired" @selected(request('expiry') === 'expired')>Already ended</option>
+  </select>
+  <select name="has_cap" class="tb-sel auto-submit">
+    <option value="">Any cap</option>
+    <option value="1" @selected(request()->boolean('has_cap'))>Has a call cap</option>
+  </select>
+  @if ($hasFilter)
+    <a href="{{ route('admin.contracts.index') }}" class="tb-clear">× Clear</a>
+  @endif
+  <input type="hidden" name="per_page" value="{{ $perPage }}">
+</form>
+
+<div class="card">
+  <div class="tblwrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Number</th><th>Client</th><th>Type</th><th>Status</th><th>Start</th><th>End</th><th>Calls used</th>@if ($showMoney)<th>Value</th>@endif<th>Covers</th>
+        </tr>
+      </thead>
+      <tbody>
+        @forelse ($contracts as $c)
+          <tr onclick="window.location='{{ route('admin.contracts.show', $c) }}'">
+            <td><span class="code-pill">{{ $c->contract_number }}</span></td>
+            <td class="cell-name">{{ $c->client?->name ?? '—' }}</td>
+            <td class="cell-muted">{{ $c->type_label }}</td>
+            <td><span class="status {{ $statusClass[$c->status] ?? 'status-off' }}">{{ $c->status_label }}</span></td>
+            <td class="cell-muted">{{ $c->start_date?->format('d M Y') }}</td>
+            <td class="cell-muted">{{ $c->end_date?->format('d M Y') }}</td>
+            <td class="cell-muted">
+              @if ($c->max_calls)
+                <span @if ($c->calls_used_current_period > $c->max_calls) style="color:#C2381B;font-weight:700" @elseif ($c->calls_used_current_period >= $c->max_calls * 0.8) style="color:#92400E;font-weight:700" @endif>{{ $c->calls_used_current_period }} of {{ $c->max_calls }}</span>
+              @else
+                {{ $c->calls_used_current_period }} · no cap
+              @endif
+            </td>
+            @if ($showMoney)
+              <td class="cell-muted">{{ $c->annual_value !== null ? number_format((float) $c->annual_value, 3) : '—' }}</td>
+            @endif
+            <td class="cell-muted">
+              {{ $c->sites_count ? $c->sites_count . ' ' . \Illuminate\Support\Str::plural('site', $c->sites_count) : 'All sites' }}
+              · {{ $c->categories_count ? $c->categories_count . ' ' . \Illuminate\Support\Str::plural('category', $c->categories_count) : 'All categories' }}
+            </td>
+          </tr>
+        @empty
+          <tr>
+            <td colspan="{{ $showMoney ? 9 : 8 }}" class="empty">
+              @if ($hasFilter)
+                <h4>No {{ strtolower($plural) }} match.</h4>
+                <p>Try different words or <a href="{{ route('admin.contracts.index') }}">clear all filters</a>.</p>
+              @else
+                <h4>No {{ strtolower($plural) }} yet.</h4>
+                @if ($canManage)
+                  <p><a href="{{ route('admin.contracts.create') }}">Add your first {{ strtolower($label) }}</a> to cover a client's work.</p>
+                @endif
+              @endif
+            </td>
+          </tr>
+        @endforelse
+      </tbody>
+    </table>
+  </div>
+
+  <div class="foot">
+    <div>
+      @if ($contracts->total() > 0)
+        Showing <strong>{{ $contracts->firstItem() }}</strong>–<strong>{{ $contracts->lastItem() }}</strong>
+        of <strong>{{ number_format($contracts->total()) }}</strong>
+      @else
+        No results
+      @endif
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <label class="per-page">
+        Rows:
+        <select onchange="window.location = this.value">
+          @foreach ($perPageOptions as $opt)
+            <option value="{{ request()->fullUrlWithQuery(['per_page' => $opt, 'page' => 1]) }}" @selected($perPage === $opt)>{{ $opt }}</option>
+          @endforeach
+        </select>
+      </label>
+
+      @if ($contracts->hasPages())
+        <nav class="pg-nav">
+          @if ($contracts->onFirstPage()) <span class="off">‹</span>
+          @else <a href="{{ $contracts->previousPageUrl() }}">‹</a> @endif
+          @php
+            $cur = $contracts->currentPage(); $last = $contracts->lastPage();
+            $show = collect(range(1, $last))->filter(fn ($p) => $p === 1 || $p === $last || abs($p - $cur) <= 1)->values();
+          @endphp
+          @foreach ($show as $i => $p)
+            @if ($i > 0 && $p - $show[$i - 1] > 1) <span>…</span> @endif
+            @if ($p === $cur) <span class="on">{{ $p }}</span>
+            @else <a href="{{ $contracts->url($p) }}">{{ $p }}</a> @endif
+          @endforeach
+          @if ($contracts->hasMorePages()) <a href="{{ $contracts->nextPageUrl() }}">›</a>
+          @else <span class="off">›</span> @endif
+        </nav>
+      @endif
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const form = document.getElementById('contract-filter');
+  const search = document.getElementById('contract-search');
+  const spin = document.getElementById('contract-spin');
+  let timer = null;
+  search.addEventListener('input', () => { clearTimeout(timer); spin.style.display = 'block'; timer = setTimeout(() => form.submit(), 400); });
+  search.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); clearTimeout(timer); form.submit(); } });
+  document.querySelectorAll('.auto-submit').forEach(s => s.addEventListener('change', () => form.submit()));
+})();
+</script>
+@endsection

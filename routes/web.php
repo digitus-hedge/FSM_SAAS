@@ -44,6 +44,8 @@ use App\Http\Controllers\QrController;
 use App\Http\Controllers\Admin\AssetLabelsController;
 use App\Http\Controllers\Admin\Asset360Controller;
 use App\Http\Middleware\EnsurePlanFeature;
+use App\Http\Controllers\Admin\ContractsController;
+
 
 $denyClientRole = function ($request, $next) {
     $clientCodes = ['client_user', 'client_admin', 'client_viewer'];
@@ -601,3 +603,22 @@ Route::prefix('admin/operations-queue')->name('admin.operations-queue.')->group(
             Route::get('/{asset}', [Asset360Controller::class, 'show'])->whereNumber('asset')->name('show');
         });
     });
+
+    Route::prefix('admin/contracts')
+      ->middleware(['auth', DenyClientRole::class, EnsurePlanFeature::class . ':contracts'])
+      ->name('admin.contracts.')->group(function () {
+          Route::get('/',                 [ContractsController::class, 'index'])->name('index');
+          Route::get('/create',           [ContractsController::class, 'create'])->name('create');
+          Route::post('/',                [ContractsController::class, 'store'])->name('store');
+          Route::get('/{contract}',       [ContractsController::class, 'show'])->name('show');
+          Route::get('/{contract}/edit',  [ContractsController::class, 'edit'])->name('edit');
+          Route::put('/{contract}',       [ContractsController::class, 'update'])->name('update');
+          Route::delete('/{contract}',    [ContractsController::class, 'destroy'])->name('destroy');
+          Route::post('/{contract}/activate', [ContractsController::class, 'activate'])->name('activate');
+          Route::post('/{contract}/renew',    [ContractsController::class, 'renew'])->name('renew');
+          Route::post('/{contract}/cancel',   [ContractsController::class, 'cancel'])->name('cancel');
+          Route::get('/{contract}/documents/{document}',    [ContractsController::class, 'documentDownload'])->whereNumber('document')->name('documents.download');
+          Route::delete('/{contract}/documents/{document}', [ContractsController::class, 'documentDestroy'])->whereNumber('document')->name('documents.destroy');
+      });
+
+

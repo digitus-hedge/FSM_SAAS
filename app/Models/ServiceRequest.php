@@ -59,6 +59,8 @@ class ServiceRequest extends Model
         'coverage_override_by_user_id',
         'coverage_override_reason',
         'contract_choice_pending',
+        'contract_choice_reason',
+        'contract_over_cap',
         'quote_requested_at',
         'follow_up_of_sr_id',
         'invoice_mandatory',
@@ -122,6 +124,7 @@ class ServiceRequest extends Model
     protected $casts = [
         'is_master_sr'            => 'boolean',
         'contract_choice_pending' => 'boolean',
+        'contract_over_cap'       => 'boolean',
         'invoice_mandatory'       => 'boolean',
         'enforce_geofence'        => 'boolean',
         'allow_signature_waiver'  => 'boolean',
@@ -167,6 +170,11 @@ class ServiceRequest extends Model
     public function createdBy()
     {
         return $this->belongsTo(User::class, 'created_by_user_id');
+    }
+
+    public function contract()
+    {
+        return $this->belongsTo(Contract::class, 'contract_id')->withTrashed();
     }
 
     public function quotes()
@@ -304,6 +312,26 @@ class ServiceRequest extends Model
     }
 
 
+
+    /**
+     * Response and resolution targets in minutes (contract requirements 6.8, D10).
+     * A contract that covers this request replaces the target it sets; the other comes from the policy.
+     * Returns [responseMinutes|null, resolutionMinutes|null].
+     */
+    public function slaMinutes(): array
+    {
+        $policy = $this->resolveSlaPolicy();
+        $resp   = $policy ? (int) $policy->response_minutes : null;
+        $reso   = $policy ? (int) $policy->resolution_minutes : null;
+
+        if ($this->contract_id && $this->coverage_type === 'in_contract') {
+            $c = $this->contract;
+            if ($c && $c->response_sla_minutes)   $resp = (int) $c->response_sla_minutes;
+            if ($c && $c->resolution_sla_minutes) $reso = (int) $c->resolution_sla_minutes;
+        }
+
+        return [$resp, $reso];
+    }
 
     /**
      * Return the list of attachments stored on disk for this SR.

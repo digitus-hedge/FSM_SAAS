@@ -135,6 +135,16 @@
   .att-rm{position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;background:rgba(27,26,36,.72);border:0;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .12s}
   .att-rm:hover{background:var(--red)}
   .att-rm svg{width:12px;height:12px}
+
+  /* Contracts */
+  .choice-banner{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:#FEF3C7;border:1px solid #FCD34D;color:#92400E;padding:12px 16px;border-radius:12px;font-size:13px;font-weight:600;margin-bottom:16px}
+  .suggest-box{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13px;margin-bottom:14px}
+  .suggest-box .t{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.03em;margin-bottom:4px}
+  .cand{display:block;padding:12px 14px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;cursor:pointer;font-size:13px}
+  .cand:has(input:checked){border-color:var(--amber);background:var(--yellow-soft)}
+  .cand .sub{display:block;color:var(--muted);font-size:12px;font-weight:400;margin-top:3px}
+  .cand input{margin-right:8px;accent-color:var(--amber)}
+  .act-btn[disabled]{opacity:.55;cursor:not-allowed}
 </style>
 
 @php
@@ -143,6 +153,12 @@
     'in_progress' => 'amber', 'pending_review' => 'orange', 'awaiting_invoice' => 'orange',
     'rework' => 'red', 'completed' => 'green', 'cancelled' => 'gray',
   ];
+  $contractsOn    = $contractsOn ?? false;
+  $coverage       = $coverage ?? null;
+  $canSeeContract = $canSeeContract ?? false;
+  $canChoose      = $canChoose ?? false;
+  $choicePending  = $contractsOn && $sr->status === 'pending' && $sr->contract_choice_pending;
+  $coverageLabel  = ['in_contract' => 'In contract', 'in_warranty' => 'In warranty', 'out_of_coverage' => 'Out of coverage', 'goodwill' => 'Goodwill'];
 @endphp
 
 <div class="breadcrumb">
@@ -165,6 +181,31 @@
 <div class="grid">
   {{-- ========== LEFT COLUMN ========== --}}
   <div>
+
+    {{-- CONTRACT CHOICE BANNER --}}
+    @if ($choicePending)
+      <div class="choice-banner">
+        <div>
+          @if ($sr->contract_choice_reason === 'cap_reached')
+            @if ($canSeeContract && $sr->contract)
+              Contract {{ $sr->contract->contract_number }} has used {{ $sr->contract->calls_used_current_period }} of {{ $sr->contract->max_calls }} calls.
+            @else
+              The contract call cap is reached.
+            @endif
+            A manager must decide how to continue.
+          @else
+            Choose a contract before you approve.
+            @if ($coverage) {{ $coverage['candidates']->count() }} contracts match this request. Choose the one that applies. @endif
+          @endif
+        </div>
+        @if ($canChoose)
+          <button type="button" class="act-btn act-primary" style="width:auto"
+                  onclick="document.getElementById('{{ $sr->contract_choice_reason === 'cap_reached' ? 'decision-modal' : 'choose-modal' }}').classList.add('show')">
+            {{ $sr->contract_choice_reason === 'cap_reached' ? 'Decide' : 'Choose contract' }}
+          </button>
+        @endif
+      </div>
+    @endif
 
     {{-- OVERVIEW --}}
     <div class="card">
@@ -206,7 +247,16 @@
           @endif
           <dt>Priority</dt><dd><span class="pill pill-{{ $sr->priorityColor() }}"><span class="pill-dot"></span>{{ $sr->priorityLabel() }}</span></dd>
           <dt>Service mode</dt><dd>{{ ucwords(str_replace('_', ' ', $sr->service_mode)) }}</dd>
-          <dt>Coverage</dt><dd>{{ ucwords(str_replace('_', ' ', $sr->coverage_type)) }}</dd>
+          <dt>Coverage</dt><dd>
+            {{ ucwords(str_replace('_', ' ', $sr->coverage_type)) }}
+            @if ($sr->contract_id && $canSeeContract && $sr->contract)
+              <div style="font-size:12px;color:var(--muted);font-weight:400;margin-top:2px">
+                <a class="link" href="{{ route('admin.contracts.show', $sr->contract) }}">{{ $sr->contract->contract_number }}</a>
+                @if ($sr->contract->max_calls) · {{ $sr->contract->calls_used_current_period }} of {{ $sr->contract->max_calls }} calls @endif
+              </div>
+            @endif
+            @if ($sr->contract_over_cap)<div style="font-size:12px;color:var(--red);font-weight:600;margin-top:2px">Over the cap</div>@endif
+          </dd>
           <dt>Source</dt><dd>
               {{ $sr->source === 'front_desk' && $sr->createdBy?->role?->name
                   ? $sr->createdBy->role->name
@@ -355,10 +405,18 @@
       <div class="card-body" style="padding:16px 20px;display:flex;flex-direction:column;gap:10px">
 
         @if ($sr->status === 'pending')
+          @if ($choicePending)
+            <button type="button" class="act-btn act-primary" disabled title="Choose a contract before you approve.">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Approve
+            </button>
+            <div style="font-size:12px;color:var(--muted);margin-top:-4px">Choose a contract before you approve.</div>
+          @else
           <button type="button" class="act-btn act-primary" onclick="document.getElementById('approve-modal').classList.add('show')">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
             Approve
           </button>
+          @endif
 
           <!-- <form method="POST" action="{{ route('service-requests.send-for-quote', $sr) }}" class="needs-confirm"
                 data-confirm-title="Send for quote?"
@@ -534,6 +592,12 @@
           @endif
         </div>
       @endif
+      @if ($sr->coverage_type === 'in_contract' && $sr->contract && ($sr->contract->response_sla_minutes || $sr->contract->resolution_sla_minutes))
+        <div style="padding:10px 20px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)">
+          @if ($canSeeContract) Contract {{ $sr->contract->contract_number }} sets @else The contract sets @endif
+          {{ collect([$sr->contract->response_sla_minutes ? 'the response time (' . $sr->contract->response_sla_minutes . ' min)' : null, $sr->contract->resolution_sla_minutes ? 'the resolution time (' . $sr->contract->resolution_sla_minutes . ' min)' : null])->filter()->implode(' and ') }}.
+        </div>
+      @endif
     </div>
 
     {{-- BILLING --}}
@@ -582,6 +646,7 @@
 
 
 {{-- ============== APPROVE MODAL ============== --}}
+@if (! $contractsOn)
 <div class="modal-backdrop" id="approve-modal">
   <form method="POST" action="{{ route('service-requests.approve', $sr) }}" class="modal-card" id="approve-form">
     @csrf
@@ -614,6 +679,113 @@
     </div>
   </form>
 </div>
+
+
+@else
+@php
+  $sugType  = $coverage['type'] ?? 'out_of_coverage';
+  $sugValue = ['in_contract' => 'in_contract', 'in_warranty' => 'in_warranty', 'out_of_coverage' => 'needs_quote'][$sugType];
+  $options  = ['in_contract' => 'In contract', 'in_warranty' => 'In warranty', 'goodwill' => 'Goodwill', 'needs_quote' => 'Needs a quote'];
+  if (! ($coverage['contract'] ?? null)) unset($options['in_contract']);
+  $sugText  = $canSeeContract ? ($coverage['reason'] ?? '') : ($coverageLabel[$sugType] ?? '');
+@endphp
+<div class="modal-backdrop" id="approve-modal">
+  <form method="POST" action="{{ route('service-requests.approve', $sr) }}" class="modal-card" id="approve-form">
+    @csrf
+    <div class="modal-head">
+      <h2>Approve request {{ $sr->sr_number }}</h2>
+      <p>Accept the suggested coverage or change it with a reason.</p>
+    </div>
+    <div class="modal-body">
+      <div class="suggest-box">
+        <div class="t">SUGGESTED COVERAGE</div>
+        <div style="font-weight:600">{{ $sugText }}</div>
+      </div>
+      <div class="field-group">
+        <label class="field-lbl">Coverage <span class="req">*</span></label>
+        @foreach ($options as $value => $label)
+          <label class="radio-row">
+            <input type="radio" name="coverage" value="{{ $value }}" required @checked($value === $sugValue)>
+            <span class="radio-dot"></span><span>{{ $label }}</span>
+          </label>
+        @endforeach
+        <small class="err-msg" id="coverage-err" style="display:none">Choose a coverage type.</small>
+      </div>
+      <div class="field-group" style="margin-top:16px">
+        <label for="note" class="field-lbl">Reason <span class="opt" id="note-opt">(optional)</span><span class="req" id="note-req" style="display:none">* required when you change the coverage</span></label>
+        <textarea name="note" id="note" class="note-area" maxlength="500" placeholder="e.g. Called client first — confirmed warranty valid"></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="act-btn act-neutral" style="width:auto" onclick="document.getElementById('approve-modal').classList.remove('show')">Close</button>
+      <button type="submit" class="act-btn act-primary" style="width:auto">Approve</button>
+    </div>
+  </form>
+</div>
+@endif
+
+{{-- ============== CHOOSE CONTRACT MODAL ============== --}}
+@if ($choicePending && $canChoose && $sr->contract_choice_reason === 'several' && $coverage)
+<div class="modal-backdrop" id="choose-modal">
+  <form method="POST" action="{{ route('service-requests.choose-contract', $sr) }}" class="modal-card">
+    @csrf
+    <div class="modal-head">
+      <h2>Choose a contract</h2>
+      <p>{{ $coverage['candidates']->count() }} contracts match this request. Choose the one that applies.</p>
+    </div>
+    <div class="modal-body">
+      @foreach ($coverage['candidates'] as $c)
+        <label class="cand">
+          <input type="radio" name="contract_id" value="{{ $c->id }}" required>
+          <strong>{{ $c->contract_number }}</strong> · {{ $c->type_label }} · ends {{ $c->end_date->format('d M Y') }}
+          <span class="sub">
+            Calls: {{ $c->calls_used_current_period }}{{ $c->max_calls ? ' of ' . $c->max_calls : ' (no cap)' }}
+            @if ($c->capReached()) <span style="color:var(--red);font-weight:600"> · cap reached</span>@endif
+            · Response {{ $c->response_sla_minutes ? $c->response_sla_minutes . ' min' : 'normal policy' }}
+            · Resolution {{ $c->resolution_sla_minutes ? $c->resolution_sla_minutes . ' min' : 'normal policy' }}
+          </span>
+          <span class="sub">Covers {{ $c->sites_count ? 'this site' : 'all sites' }} and {{ $c->categories_count ? 'this category' : 'all categories' }}.</span>
+        </label>
+      @endforeach
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="act-btn act-neutral" style="width:auto" onclick="document.getElementById('choose-modal').classList.remove('show')">Close</button>
+      <button type="submit" class="act-btn act-primary" style="width:auto">Use this contract</button>
+    </div>
+  </form>
+</div>
+@endif
+
+{{-- ============== CAP DECISION MODAL ============== --}}
+@if ($choicePending && $canChoose && $sr->contract_choice_reason === 'cap_reached')
+<div class="modal-backdrop" id="decision-modal">
+  <form method="POST" action="{{ route('service-requests.contract-decision', $sr) }}" class="modal-card" id="decision-form">
+    @csrf
+    <div class="modal-head">
+      <h2>Call cap reached</h2>
+      <p>
+        @if ($sr->contract)Contract {{ $sr->contract->contract_number }} has used {{ $sr->contract->calls_used_current_period }} of {{ $sr->contract->max_calls }} calls.@endif
+        Your choice also approves the request, except for Out of coverage.
+      </p>
+    </div>
+    <div class="modal-body">
+      <div class="field-group">
+        <label class="radio-row"><input type="radio" name="decision" value="count" required><span class="radio-dot"></span><span>Count it anyway (over the cap)</span></label>
+        <label class="radio-row"><input type="radio" name="decision" value="goodwill"><span class="radio-dot"></span><span>Goodwill (no billing, no call counted)</span></label>
+        <label class="radio-row"><input type="radio" name="decision" value="out"><span class="radio-dot"></span><span>Out of coverage (send for a quote)</span></label>
+      </div>
+      <div class="field-group" style="margin-top:16px">
+        <label for="decision_reason" class="field-lbl">Reason <span class="opt">(required for Goodwill)</span></label>
+        <textarea name="reason" id="decision_reason" class="note-area" maxlength="500"></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="act-btn act-neutral" style="width:auto" onclick="document.getElementById('decision-modal').classList.remove('show')">Close</button>
+      <button type="submit" class="act-btn act-primary" style="width:auto">Confirm</button>
+    </div>
+  </form>
+</div>
+@endif
 
 
 {{-- ============== CANCEL REQUEST MODAL ============== --}}
@@ -857,6 +1029,23 @@
     });
     reopenTxt.addEventListener('input', () => { reopenErr.style.display = 'none'; });
   }
+  // Contracts: a reason is required when the coverage differs from the suggestion
+  const sug = @json($contractsOn ? ($sugValue ?? null) : null);
+  if (sug && approveForm) {
+    const noteReq = document.getElementById('note-req'), noteOpt = document.getElementById('note-opt'), noteBox = document.getElementById('note');
+    const sync = () => {
+      const c = approveForm.querySelector('input[name="coverage"]:checked');
+      const differs = c && c.value !== sug && c.value !== 'needs_quote';
+      noteReq.style.display = differs ? '' : 'none'; noteOpt.style.display = differs ? 'none' : '';
+      noteBox.required = !!differs;
+    };
+    approveForm.querySelectorAll('input[name="coverage"]').forEach(r => r.addEventListener('change', sync));
+    sync();
+  }
+  ['choose-modal', 'decision-modal'].forEach(id => {
+    const m = document.getElementById(id);
+    if (m) m.addEventListener('click', e => { if (e.target === m) m.classList.remove('show'); });
+  });
   // Esc closes any open modal
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {

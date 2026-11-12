@@ -138,13 +138,17 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
     $u          = $isPlatform
                   ? \Illuminate\Support\Facades\Auth::guard('platform')->user()
                   : auth()->user();
-    $hasOps     = $u?->canDo('client.manage') || $u?->canDo('site.manage') || $u?->canDo('category.manage') || $u?->canDo('asset.view');
+    $showContracts = ! $isPlatform
+                  && $u?->canDo('contract.view')
+                  && \App\Models\Tenant::current()?->hasFeature('contracts');   // Contracts and AMCs: Professional and above
+    $hasOps     = $u?->canDo('client.manage') || $u?->canDo('site.manage') || $u?->canDo('category.manage') || $u?->canDo('asset.view') || $showContracts;
     $hasSetup   = $u?->canDo('settings.manage');
     $hasPeople  = $u?->canDo('user.manage') || $u?->canDo('role.manage') || $u?->canDo('audit.view');
 
     $opsOpen    = request()->routeIs('admin.clients.*')
                || request()->routeIs('admin.sites.*')
                || request()->routeIs('admin.assets.*')
+               || request()->routeIs('admin.contracts.*')
                || request()->routeIs('admin.service-categories.*')
                || request()->routeIs('admin.team-lead-categories.*');
     $setupOpen  = request()->routeIs('admin.sla-policies.*')
@@ -156,6 +160,12 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
                || request()->routeIs('admin.terminology.*')
                || request()->routeIs('admin.tenant-business-hours.*')
                || request()->routeIs('admin.company-settings.*');
+
+    // Who sees the Work and Money sections (same role-name checks as before)
+    $roleName    = $isPlatform ? null : $u?->role?->name;
+    $isAdminRole = $roleName === 'Company Admin';
+    $showWork    = ! $isPlatform && ($u?->canDo('sr.view') || $isAdminRole);
+    $showMoney   = ! $isPlatform && ($isAdminRole || $roleName === 'Finance');
 
     $brandSub   = $isPlatform ? 'Platform console' : ($u?->tenant?->name ?? 'Workspace');
     $brandHome  = $isPlatform ? route('admin.dashboard') : route('tenant.dashboard');
@@ -185,13 +195,112 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
             Dashboard
         </a>
 
-        {{-- OPERATIONS --}}
+        {{-- ─────────── WORK ─────────── --}}
+        @if ($showWork)
+            <div class="nav-label">Work</div>
+            @if ($u?->canDo('sr.view'))
+                <a href="{{ route('service-requests.index') }}" class="nav-item {{ request()->routeIs('service-requests.*') ? 'active' : '' }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                        <polyline points="10 9 9 9 8 9"/>
+                    </svg>
+                    Service Requests
+
+                    <!-- {{ term_title('service_request') }} -->
+                </a>
+            @endif
+
+            @if ($u->role?->name === 'Company Admin')
+            @php
+                $opsAlertCount = \App\Models\ServiceRequest::whereNotIn('status', ['completed','cancelled'])
+                    ->whereNotNull('sla_resolution_due_at')
+                    ->where('sla_resolution_due_at', '<', now())
+                    ->count();
+            @endphp
+            <a href="{{ route('admin.operations-queue.index') }}" class="nav-item {{ request()->routeIs('admin.operations-queue.*') ? 'active' : '' }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+                </svg>
+                Operations queue
+                @if ($opsAlertCount > 0)
+                <!-- <span style="margin-left:auto;background:var(--red);color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;min-width:20px;text-align:center">{{ $opsAlertCount }}</span> -->
+                @endif
+            </a>
+            @endif
+        @endif
+
+        {{-- ─────────── MONEY ─────────── --}}
+        @if ($showMoney)
+            <div class="nav-label">Money</div>
+            @if ($u->role?->name === 'Company Admin')
+              @php
+                $draftQuotesCount = \App\Models\Quote::where('status','draft')->count();
+              @endphp
+              <a href="{{ route('admin.quotes.index') }}" class="nav-item {{ request()->routeIs('admin.quotes.*') ? 'active' : '' }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                Quotes
+                @if ($draftQuotesCount > 0)
+                  <!-- <span style="margin-left:auto;background:var(--yellow);color:var(--ink);font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px">{{ $draftQuotesCount }}</span> -->
+                @endif
+              </a>
+            @endif
+
+                    @if ($u->role?->name === 'Company Admin')
+              @php
+                $billingCount = \App\Models\ServiceRequest::whereIn('billing_status', ['pending_quote','awaiting_invoice'])->count();
+              @endphp
+              <a href="{{ route('admin.requests-review.index') }}" class="nav-item {{ request()->routeIs('admin.requests-review.*')  ? 'active' : '' }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                Billing Requests
+                @if ($billingCount > 0)
+                  <!-- <span style="margin-left:auto;background:var(--yellow);color:var(--ink);font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px">{{ $billingCount }}</span> -->
+                @endif
+              </a>
+            @endif
+
+            @if ($u->role?->name === 'Company Admin' || $u->role?->name === 'Finance')
+              @php
+                $invCount = \App\Models\Invoice::whereIn('status', ['draft','pending_approval'])->count();
+              @endphp
+              <a href="{{ route('admin.invoices.index') }}" class="nav-item {{ request()->routeIs('admin.invoices.*') ? 'active' : '' }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="9" y1="12" x2="15" y2="12"/>
+                  <line x1="9" y1="16" x2="12" y2="16"/>
+                </svg>
+                Invoices
+                @if ($invCount > 0)
+                  <span style="margin-left:auto;background:var(--yellow);color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px">{{ $invCount }}</span>
+                @endif
+              </a>
+            @endif
+
+            @if ($u->role?->name === 'Company Admin')
+            @php
+            $waitingCount = \App\Models\ServiceRequestExpense::where('approval_status', 'pending')->count();
+            @endphp
+            <a href="{{ route('admin.expenses-review.index') }}" class="nav-item {{ request()->routeIs('admin.expenses-review.*') ? 'active' : '' }}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Expenses to review
+            @if ($waitingCount > 0)
+                <span style="margin-left:auto;background:var(--yellow);color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;min-width:20px;text-align:center">{{ $waitingCount }}</span>
+            @endif
+            </a>
+            @endif
+        @endif
+
+        {{-- MASTER DATA --}}
         @if ($hasOps)
-            <div class="nav-label">Operations</div>
+            <div class="nav-label">Master data</div>
             <details class="nav-group {{ $opsOpen ? 'has-active' : '' }}" {{ $opsOpen ? 'open' : '' }}>
                 <summary>
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                    Master data
+                    Records
                     <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                 </summary>
                 <div class="nav-children">
@@ -203,6 +312,9 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
                     @endif
                     @if ($u->canDo('asset.view'))
                         <a href="{{ route('admin.assets.index') }}" class="nav-item {{ request()->routeIs('admin.assets.*') ? 'active' : '' }}">{{ term_title('asset') }}</a>
+                    @endif
+                    @if ($showContracts)
+                        <a href="{{ route('admin.contracts.index') }}" class="nav-item {{ request()->routeIs('admin.contracts.*') ? 'active' : '' }}">{{ term_title('contract') }}</a>
                     @endif
                     @if ($u->canDo('category.manage'))
                         <a href="{{ route('admin.service-categories.index') }}" class="nav-item {{ request()->routeIs('admin.service-categories.*') ? 'active' : '' }}">Service Categories</a>
@@ -265,109 +377,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
             </details>
         @endif
 
-        {{-- REQUESTS --}}
-        @if ($u?->canDo('sr.view'))
-            <a href="{{ route('service-requests.index') }}" class="nav-item {{ request()->routeIs('service-requests.*') ? 'active' : '' }}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                    <polyline points="14 2 14 8 20 8"/>
-                    <line x1="16" y1="13" x2="8" y2="13"/>
-                    <line x1="16" y1="17" x2="8" y2="17"/>
-                    <polyline points="10 9 9 9 8 9"/>
-                </svg>
-                Service Requests
-
-                <!-- {{ term_title('service_request') }} -->
-            </a>
-        @endif
-
-
-
-        {{-- OPERATIONS QUEUE --}}
-    @if ($u->role?->name === 'Company Admin')
-    @php
-        $opsAlertCount = \App\Models\ServiceRequest::whereNotIn('status', ['completed','cancelled'])
-            ->whereNotNull('sla_resolution_due_at')
-            ->where('sla_resolution_due_at', '<', now())
-            ->count();
-    @endphp
-    <a href="{{ route('admin.operations-queue.index') }}" class="nav-item {{ request()->routeIs('admin.operations-queue.*') ? 'active' : '' }}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"/>
-        <polyline points="12 6 12 12 16 14"/>
-        </svg>
-        Operations queue
-        @if ($opsAlertCount > 0)
-        <!-- <span style="margin-left:auto;background:var(--red);color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;min-width:20px;text-align:center">{{ $opsAlertCount }}</span> -->
-        @endif
-    </a>
     @endif
-
-
-
-        @if ($u->role?->name === 'Company Admin')
-        @php
-        $waitingCount = \App\Models\ServiceRequestExpense::where('approval_status', 'pending')->count();
-        @endphp
-        <a href="{{ route('admin.expenses-review.index') }}" class="nav-item {{ request()->routeIs('admin.expenses-review.*') ? 'active' : '' }}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-        Expenses to review
-        @if ($waitingCount > 0)
-            <span style="margin-left:auto;background:var(--yellow);color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;min-width:20px;text-align:center">{{ $waitingCount }}</span>
-        @endif
-        </a>
-        @endif
-
-
-        @if ($u->role?->name === 'Company Admin')
-  @php
-    $billingCount = \App\Models\ServiceRequest::whereIn('billing_status', ['pending_quote','awaiting_invoice'])->count();
-  @endphp
-  <a href="{{ route('admin.requests-review.index') }}" class="nav-item {{ request()->routeIs('admin.requests-review.*')  ? 'active' : '' }}">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-    Billing Requests
-    @if ($billingCount > 0)
-      <!-- <span style="margin-left:auto;background:var(--yellow);color:var(--ink);font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px">{{ $billingCount }}</span> -->
-    @endif
-  </a>
-@endif
-
-
-
-@if ($u->role?->name === 'Company Admin')
-  @php
-    $draftQuotesCount = \App\Models\Quote::where('status','draft')->count();
-  @endphp
-  <a href="{{ route('admin.quotes.index') }}" class="nav-item {{ request()->routeIs('admin.quotes.*') ? 'active' : '' }}">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-    Quotes
-    @if ($draftQuotesCount > 0)
-      <!-- <span style="margin-left:auto;background:var(--yellow);color:var(--ink);font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px">{{ $draftQuotesCount }}</span> -->
-    @endif
-  </a>
-@endif
-
-@if ($u->role?->name === 'Company Admin' || $u->role?->name === 'Finance')
-  @php
-    $invCount = \App\Models\Invoice::whereIn('status', ['draft','pending_approval'])->count();
-  @endphp
-  <a href="{{ route('admin.invoices.index') }}" class="nav-item {{ request()->routeIs('admin.invoices.*') ? 'active' : '' }}">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-      <polyline points="14 2 14 8 20 8"/>
-      <line x1="9" y1="12" x2="15" y2="12"/>
-      <line x1="9" y1="16" x2="12" y2="16"/>
-    </svg>
-    Invoices
-    @if ($invCount > 0)
-      <span style="margin-left:auto;background:var(--yellow);color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px">{{ $invCount }}</span>
-    @endif
-  </a>
-@endif
-
-
-    @endif
-
     {{-- FOOT --}}
     <div class="foot">
         <div class="account">

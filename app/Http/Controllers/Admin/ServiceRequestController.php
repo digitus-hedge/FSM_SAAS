@@ -6,11 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ServiceRequestRequest;
 use App\Models\Asset;
 use App\Models\Client;
+use App\Models\Contract;
 use App\Models\ProjectSite;
 use App\Models\ServiceCategory;
 use App\Models\ServiceRequest;
 use App\Models\User;
 use App\Models\Tenant;
+use App\Services\Audit\AuditLogger;
+use App\Services\Contracts\ContractCoverage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -176,6 +179,11 @@ class ServiceRequestController extends Controller
             $activeStage = 'overdue';
         }
 
+        // Contracts: Pending requests that wait for a contract choice (?choice=1)
+        if ($request->boolean('choice')) {
+            $query->where('status', 'pending')->where('contract_choice_pending', true);
+        }
+
         // Keep existing filters
         $query->status($request->input('status'))
             ->priority($request->input('priority'))
@@ -202,6 +210,7 @@ class ServiceRequestController extends Controller
             'clients'        => Client::active()->orderBy('name')->get(['id', 'name']),
             'stageCounts'    => $stageCounts,
             'activeStage'    => $activeStage,
+            'choiceCount'    => (clone $countQuery)->where('status', 'pending')->where('contract_choice_pending', true)->count(),
         ]);
     }
 
@@ -302,6 +311,7 @@ class ServiceRequestController extends Controller
                 'sla_resolution_due_at' => $policy ? $started->copy()->addMinutes((int) $policy->resolution_minutes) : null,
             ]);
             \App\Models\SrStatusHistory::log($sr, null, 'pending', 'user', auth()->id());
+            app(ContractCoverage::class)->onCreated($sr);   // D3: flag when several contracts match
             return $sr;
         });
 
@@ -338,11 +348,32 @@ class ServiceRequestController extends Controller
         ->orderByDesc('id')
         ->first();
 
+    $cov       = app(ContractCoverage::class);
+    $contractsOn = $cov->enabled();
+    $coverage  = ($contractsOn && $service_request->status === 'pending') ? $cov->resolve($service_request) : null;
+    $user      = auth()->user();
+
+    // Keep the "several contracts" flag in step with what matches today (6.3).
+    if ($coverage && $service_request->contract_choice_reason !== 'cap_reached') {
+        $wantsSeveral = $coverage['needs_choice'] && $coverage['choice_reason'] === 'several';
+        if ($wantsSeveral && ! $service_request->contract_choice_pending) {
+            $cov->flagChoice($service_request, $coverage);
+        } elseif (! $wantsSeveral && $service_request->contract_choice_pending) {
+            $service_request->forceFill(['contract_choice_pending' => false, 'contract_choice_reason' => null])->save();
+        }
+    }
+
+    $service_request->loadMissing('contract');
+
     return view('admin.service-requests.show', [
-        'sr'            => $service_request,
-        'policy'        => $service_request->resolveSlaPolicy(),
-        'technicians'   => $technicians,
-        'acceptedQuote' => $acceptedQuote,
+        'sr'              => $service_request,
+        'policy'          => $service_request->resolveSlaPolicy(),
+        'technicians'     => $technicians,
+        'acceptedQuote'   => $acceptedQuote,
+        'contractsOn'     => $contractsOn,
+        'coverage'        => $coverage,
+        'canSeeContract'  => (bool) $user?->canDo('contract.view'),
+        'canChoose'       => (bool) $user?->canDo('contract.choose'),
     ]);
 }
 
@@ -516,26 +547,166 @@ class ServiceRequestController extends Controller
         return back()->with('success', "{$service_request->sr_number} sent for quoting.");
     }
 
-    // In-contract / In-warranty / Goodwill: no billing needed, work is covered.
-    $fromStatus = $service_request->status;
-    $policy     = $service_request->resolveSlaPolicy();
-    $started    = now();
+    $cov = app(ContractCoverage::class);
 
-    $service_request->update([
-        'status'                   => 'approved',
-        'approved_by_user_id'      => auth()->id(),
-        'coverage_type'            => $data['coverage'],
-        'billing_status'           => 'not_applicable',
-        'coverage_override_reason' => $data['note'] ?? null,
-        'sla_clock_started_at'     => $started,
-        'sla_response_due_at'      => $policy ? $started->copy()->addMinutes((int) $policy->response_minutes) : null,
-        'sla_resolution_due_at'    => $policy ? $started->copy()->addMinutes((int) $policy->resolution_minutes) : null,
-    ]);
+    // Without the contracts feature (or on a downgrade) the Release A manual choice stays.
+    if (! $cov->enabled()) {
+        $this->completeApproval($service_request, $data['coverage'], null, $data['note'] ?? null, false);
+        return back()->with('success', "{$service_request->sr_number} approved — " . str_replace('_', ' ', $data['coverage']) . '.');
+    }
 
-    \App\Models\SrStatusHistory::log($service_request, $fromStatus, 'approved', 'user', auth()->id(), $data['note'] ?? null, ['coverage' => $data['coverage']]);
+    // 6.2: work the coverage out again at approval (D3).
+    $result = $cov->resolve($service_request);
+
+    if ($result['needs_choice']) {
+        $cov->flagChoice($service_request, $result);
+        return back()->with('error', $result['choice_reason'] === 'several'
+            ? $result['reason']
+            : $result['reason'] . ' A manager must decide how to continue.');
+    }
+
+    $suggested = $result['type'];
+    $override  = $data['coverage'] !== $suggested;
+    $note      = trim((string) ($data['note'] ?? ''));
+
+    if ($data['coverage'] === 'in_contract' && ! $result['contract']) {
+        return back()->with('error', 'No contract covers this request.');
+    }
+    if ($override && mb_strlen($note) < 3) {
+        return back()->with('error', 'Give a reason for changing the coverage.');
+    }
+
+    $outcome = DB::transaction(function () use ($service_request, $data, $result, $note, $override, $cov) {
+        $contract = null;
+
+        if ($data['coverage'] === 'in_contract') {
+            // 6.6: lock the contract first so two approvals cannot both take the last call.
+            $contract = Contract::lockForUpdate()->find($result['contract']->id);
+            if (! $contract || $contract->capReached()) {
+                return $contract ? ['cap', $contract] : ['gone', null];
+            }
+            $cov->countCall($service_request, $contract, false);
+        }
+
+        $this->completeApproval($service_request, $data['coverage'], $contract, $note ?: null, $override);
+        return ['ok', $contract];
+    });
+
+    if ($outcome[0] === 'cap') {
+        $cov->flagChoice($service_request, ['choice_reason' => 'cap_reached', 'contract' => $outcome[1]]);
+        return back()->with('error', "Contract {$outcome[1]->contract_number} has used {$outcome[1]->calls_used_current_period} of {$outcome[1]->max_calls} calls. A manager must decide how to continue.");
+    }
+    if ($outcome[0] === 'gone') {
+        return back()->with('error', 'The contract is no longer available. Open the request again.');
+    }
 
     return back()->with('success', "{$service_request->sr_number} approved — " . str_replace('_', ' ', $data['coverage']) . '.');
 }
+
+    /**
+     * Writes the approval: status, coverage, SLA times and history.
+     * The contract (if any) stays on the request for reporting.
+     */
+    private function completeApproval(ServiceRequest $sr, string $coverage, ?Contract $contract, ?string $note, bool $override): void
+    {
+        $fromStatus = $sr->status;
+        $started    = now();
+
+        $sr->fill([
+            'status'                       => 'approved',
+            'approved_by_user_id'          => auth()->id(),
+            'coverage_type'                => $coverage,
+            'billing_status'               => 'not_applicable',
+            'coverage_override_reason'     => $note,
+            'coverage_override_by_user_id' => $override ? auth()->id() : null,
+            'contract_id'                  => $contract?->id,
+            'contract_choice_pending'      => false,
+            'contract_choice_reason'       => null,
+            'sla_clock_started_at'         => $started,
+        ]);
+
+        // D10: a contract's response and resolution times replace the policy's.
+        $sr->unsetRelation('contract');
+        [$resp, $reso] = $sr->slaMinutes();
+        $sr->fill([
+            'sla_response_due_at'   => $resp !== null ? $started->copy()->addMinutes($resp) : null,
+            'sla_resolution_due_at' => $reso !== null ? $started->copy()->addMinutes($reso) : null,
+        ])->save();
+
+        \App\Models\SrStatusHistory::log($sr, $fromStatus, 'approved', 'user', auth()->id(), $note, ['coverage' => $coverage]);
+
+        if ($override) {
+            app(AuditLogger::class)->log('request.coverage_overridden', [
+                'item_type' => ServiceRequest::class, 'item_id' => $sr->id,
+                'new' => ['sr_number' => $sr->sr_number, 'coverage' => $coverage, 'reason' => $note],
+            ]);
+        }
+    }
+
+    /** CNT-04: the manager picks one of several matching contracts. Counts nothing. */
+    public function chooseContract(Request $request, ServiceRequest $service_request)
+    {
+        abort_unless(auth()->user()?->canDo('contract.choose'), 403);
+        abort_unless($service_request->status === 'pending', 422, 'Only a pending request can have its contract chosen.');
+
+        $data = $request->validate(['contract_id' => ['required', 'integer']], ['contract_id.required' => 'Choose a contract.']);
+
+        app(ContractCoverage::class)->choose($service_request, (int) $data['contract_id']);
+
+        return back()->with('success', 'Contract chosen. You can approve the request now.');
+    }
+
+    /** CNT-06 / D9: the cap is reached. The choice also approves the request (decision B1). */
+    public function contractDecision(Request $request, ServiceRequest $service_request)
+    {
+        abort_unless(auth()->user()?->canDo('contract.choose'), 403);
+        abort_unless(
+            $service_request->status === 'pending' && $service_request->contract_choice_pending && $service_request->contract_choice_reason === 'cap_reached',
+            422, 'This request is not waiting for a cap decision.'
+        );
+
+        $data = $request->validate([
+            'decision' => ['required', 'in:count,goodwill,out'],
+            'reason'   => ['nullable', 'string', 'max:500'],
+        ]);
+        $reason = trim((string) ($data['reason'] ?? ''));
+
+        if ($data['decision'] === 'goodwill' && mb_strlen($reason) < 3) {
+            return back()->with('error', 'Goodwill needs a reason.');
+        }
+
+        $cov = app(ContractCoverage::class);
+
+        if ($data['decision'] === 'out') {
+            // Contract cleared; the Release A quote path starts.
+            $service_request->update([
+                'contract_id' => null, 'contract_choice_pending' => false, 'contract_choice_reason' => null,
+                'coverage_type' => 'out_of_coverage', 'quote_requested_at' => now(),
+                'coverage_override_reason' => $reason ?: 'Contract cap reached',
+                'coverage_override_by_user_id' => auth()->id(),
+            ]);
+            app(AuditLogger::class)->log('request.coverage_overridden', [
+                'item_type' => ServiceRequest::class, 'item_id' => $service_request->id,
+                'new' => ['sr_number' => $service_request->sr_number, 'coverage' => 'out_of_coverage', 'reason' => 'Contract cap reached'],
+            ]);
+            return back()->with('success', "{$service_request->sr_number} sent for quoting.");
+        }
+
+        DB::transaction(function () use ($service_request, $data, $reason, $cov) {
+            $contract = Contract::lockForUpdate()->findOrFail($service_request->contract_id);
+
+            if ($data['decision'] === 'count') {
+                $cov->countCall($service_request, $contract, true);       // counted, marked over cap
+                $service_request->forceFill(['contract_over_cap' => true])->save();
+                $this->completeApproval($service_request, 'in_contract', $contract, $reason ?: null, true);
+            } else {
+                // Goodwill: no billing, no call counted, the contract stays on the request for reporting.
+                $this->completeApproval($service_request, 'goodwill', $contract, $reason, true);
+            }
+        });
+
+        return back()->with('success', "{$service_request->sr_number} approved — " . ($data['decision'] === 'count' ? 'in contract (over the cap).' : 'goodwill.'));
+    }
 
     public function assign(Request $request, ServiceRequest $service_request)
 {
@@ -592,6 +763,7 @@ class ServiceRequestController extends Controller
             'status'              => 'cancelled',
             'cancellation_reason' => 'Rejected: ' . $data['reason'],
         ]);
+        app(ContractCoverage::class)->giveBack($service_request);
          \App\Models\SrStatusHistory::log($service_request, $fromStatus, 'cancelled', 'user', auth()->id(), 'Rejected: ' . $data['reason']);
         return redirect()->route('service-requests.show', $service_request)
             ->with('success', "{$service_request->sr_number} rejected.");
@@ -621,23 +793,23 @@ class ServiceRequestController extends Controller
 
         // Raising to Emergency starts the SLA clock if it hasn't started
         if (!$wasEmergency && $isNowEmergency && !$service_request->sla_clock_started_at) {
-            $policy  = $service_request->fresh()->resolveSlaPolicy();
+            [$resp, $reso] = $service_request->fresh()->slaMinutes();
             $started = now();
 
             $service_request->update([
                 'sla_clock_started_at'  => $started,
-                'sla_response_due_at'   => $policy ? $started->copy()->addMinutes((int) $policy->response_minutes) : null,
-                'sla_resolution_due_at' => $policy ? $started->copy()->addMinutes((int) $policy->resolution_minutes) : null,
+                'sla_response_due_at'   => $resp !== null ? $started->copy()->addMinutes($resp) : null,
+                'sla_resolution_due_at' => $reso !== null ? $started->copy()->addMinutes($reso) : null,
             ]);
         }
         // Changing to any non-emergency priority — recalculate due times with the new policy
         elseif ($data['priority'] !== 'emergency' && $service_request->sla_clock_started_at) {
-            $policy = $service_request->fresh()->resolveSlaPolicy();
-            if ($policy) {
+            [$resp, $reso] = $service_request->fresh()->slaMinutes();
+            if ($resp !== null && $reso !== null) {
                 $started = $service_request->sla_clock_started_at;
                 $service_request->update([
-                    'sla_response_due_at'   => $started->copy()->addMinutes((int) $policy->response_minutes),
-                    'sla_resolution_due_at' => $started->copy()->addMinutes((int) $policy->resolution_minutes),
+                    'sla_response_due_at'   => $started->copy()->addMinutes($resp),
+                    'sla_resolution_due_at' => $started->copy()->addMinutes($reso),
                 ]);
             }
         }
@@ -658,6 +830,7 @@ class ServiceRequestController extends Controller
             'status'              => 'cancelled',
             'cancellation_reason' => $data['reason'],
         ]);
+        app(ContractCoverage::class)->giveBack($service_request);   // before the first punch in the call goes back
          \App\Models\SrStatusHistory::log($service_request, $fromStatus, 'cancelled', 'user', auth()->id(), $data['reason']);
         return redirect()->route('service-requests.show', $service_request)
             ->with('success', "{$service_request->sr_number} cancelled.");

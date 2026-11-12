@@ -23,6 +23,7 @@ class PlanSeeder extends Seeder
                 'reports_pdf'  => false,
                 'assets_basic' => true,   // assets list, create, edit (all plans)
                 'assets_full'  => false,  // QR, Asset 360, scan, import (Pro+)
+                'contracts'    => false,  // Contracts and AMCs (Pro+)
             ],
         ]);
 
@@ -38,6 +39,7 @@ class PlanSeeder extends Seeder
                 'reports_pdf'  => true,
                 'assets_basic' => true,
                 'assets_full'  => true,
+                'contracts'    => true,
             ],
         ]);
 
@@ -53,6 +55,7 @@ class PlanSeeder extends Seeder
                 'reports_pdf'  => true,
                 'assets_basic' => true,
                 'assets_full'  => true,
+                'contracts'    => true,
             ],
         ]);
     }
