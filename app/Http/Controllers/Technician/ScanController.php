@@ -8,6 +8,8 @@ use App\Models\Attachment;
 use App\Models\ServiceCategory;
 use App\Models\ServiceRequest;
 use App\Models\SrStatusHistory;
+use App\Models\User;
+use App\Services\Notifications\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -165,6 +167,19 @@ class ScanController extends Controller
         ]);
 
         SrStatusHistory::log($sr, null, 'pending', 'user', $me->id);
+
+        // D3: tell the technician's Team Lead, or the Operations Manager when there is none.
+        // A Team Lead who raises it keeps it on their own queue, so no alert.
+        if ($me->role?->code !== 'team_lead') {
+            $svc        = app(NotificationService::class);
+            $recipients = $teamLeadId ? collect([User::find($teamLeadId)])->filter() : $svc->usersWithRole('ops_manager', $tenantId);
+            $svc->notify('qr.scan_request', $recipients, [
+                'technician'    => $me->name,
+                'sr_number'     => $sr->sr_number,
+                'asset_code'    => $asset->asset_code,
+                'request_title' => $sr->title,
+            ], route('service-requests.show', $sr), ['service_request_id' => $sr->id]);
+        }
 
         foreach ($request->file('attachments', []) as $file) {
             if (! $file || ! $file->isValid()) {

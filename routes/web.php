@@ -45,7 +45,7 @@ use App\Http\Controllers\Admin\AssetLabelsController;
 use App\Http\Controllers\Admin\Asset360Controller;
 use App\Http\Middleware\EnsurePlanFeature;
 use App\Http\Controllers\Admin\ContractsController;
-
+use App\Http\Controllers\NotificationController;
 
 $denyClientRole = function ($request, $next) {
     $clientCodes = ['client_user', 'client_admin', 'client_viewer'];
@@ -313,7 +313,7 @@ Route::middleware(['auth'])->group(function () {
        // Team Lead categories
     Route::get('/admin/team-lead-categories', [\App\Http\Controllers\Admin\TeamLeadCategoriesController::class, 'index'])->name('admin.team-lead-categories.index');
     Route::post('/admin/team-lead-categories/{teamLead}', [\App\Http\Controllers\Admin\TeamLeadCategoriesController::class, 'update'])->name('admin.team-lead-categories.update');
-    
+
     Route::prefix('admin/sla-policies')->name('admin.sla-policies.')->group(function () {
         Route::get('/',           [SlaPoliciesController::class, 'index'])->name('index');
         Route::post('/save-all',  [SlaPoliciesController::class, 'saveAll'])->name('save-all');
@@ -358,6 +358,14 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [\App\Http\Controllers\Tenant\AuditLogsController::class, 'index'])->name('index');
     });
 });
+
+    // Notifications (staff only)
+    Route::prefix('notifications')->middleware(DenyClientRole::class)->name('notifications.')->group(function () {
+        Route::get('/',                        [NotificationController::class, 'index'])->name('index');
+        Route::post('/read-all',               [NotificationController::class, 'readAll'])->name('read-all');
+        Route::get('/{notification}/open',     [NotificationController::class, 'open'])->name('open');
+        Route::post('/{notification}/read',    [NotificationController::class, 'read'])->name('read');
+    });
 
 // Profile — platform admins AND tenant users.
 Route::middleware('auth:platform,web')->prefix('profile')->name('profile.')->group(function () {
@@ -464,13 +472,10 @@ Route::prefix('admin/business-hours')->name('admin.tenant-business-hours.')->gro
     Route::put('/',  [TenantBusinessHourController::class, 'update'])->name('update');
 });
 
-
 // Operations queue
 Route::prefix('admin/operations-queue')->name('admin.operations-queue.')->group(function () {
     Route::get('/', [OperationsQueueController::class, 'index'])->name('index');
 });
-
-
 
 // Service Requests
     Route::prefix('service-requests')->middleware(['auth', DenyClientRole::class])->name('service-requests.')->group(function () {
@@ -485,7 +490,7 @@ Route::prefix('admin/operations-queue')->name('admin.operations-queue.')->group(
     Route::get('/assets/for-site',        [ServiceRequestController::class, 'assetsForSite'])->name('assets.for-site');
     Route::get('/assets/{asset}/summary', [ServiceRequestController::class, 'assetSummary'])->name('assets.summary');
 
-    // Serve attachment files via Laravel (no need for storage:link symlink to work)
+     // Serve attachment files via Laravel (no need for storage:link symlink to work)
     Route::get('/file/{service_request}/attachments/{filename}', function (
         \App\Models\ServiceRequest $service_request,
         string $filename
@@ -620,5 +625,3 @@ Route::prefix('admin/operations-queue')->name('admin.operations-queue.')->group(
           Route::get('/{contract}/documents/{document}',    [ContractsController::class, 'documentDownload'])->whereNumber('document')->name('documents.download');
           Route::delete('/{contract}/documents/{document}', [ContractsController::class, 'documentDestroy'])->whereNumber('document')->name('documents.destroy');
       });
-
-

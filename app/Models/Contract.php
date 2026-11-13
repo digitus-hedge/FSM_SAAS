@@ -18,6 +18,7 @@ class Contract extends Model
     public const CALL_PERIODS = ['contract_term' => 'Whole contract term', 'monthly' => 'Monthly', 'quarterly' => 'Quarterly', 'annual' => 'Annual'];
     /** Base roles that may see contract money and contract files (decision A1, option 2: not Front Desk). */
     public const MONEY_ROLES = ['company_admin', 'ops_manager', 'finance'];
+    public const EXPIRING_DAYS = 90;   // D2: Expiring soon when 90 days or fewer remain
     public const MAX_FILES   = 5;
     public const MAX_FILE_KB = 10240;
 
@@ -68,6 +69,12 @@ class Contract extends Model
      * where YYYY becomes the year and the trailing digits set the width of the counter.
      */
     protected const SEQUENCE_PREFIX = 'CT';
+
+    /** For the daily job, which runs without a signed-in company. */
+    public static function numberFor(int $tenantId): string
+    {
+        return static::nextNumber($tenantId);
+    }
 
     protected static function nextNumber(int $tenantId): string
     {
@@ -156,7 +163,7 @@ class Contract extends Model
     /** Status after activation: Expiring soon when the end is within 90 days. */
     protected function statusForToday(): string
     {
-        return $this->end_date && $this->end_date->lte(today()->addDays(90)) ? 'expiring_soon' : 'active';
+        return $this->end_date && $this->end_date->lte(today()->addDays(self::EXPIRING_DAYS)) ? 'expiring_soon' : 'active';
     }
 
     public function activate(): void

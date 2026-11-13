@@ -6,7 +6,9 @@ use App\Models\Contract;
 use App\Models\ServiceRequest;
 use App\Models\Tenant;
 use App\Services\Audit\AuditLogger;
+use App\Services\Notifications\NotificationService;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -65,6 +67,13 @@ class ContractCoverage
         $contract = $sr->contract_id ? $cands->firstWhere('id', $sr->contract_id) : null;
         if (! $contract && $cands->count() === 1) $contract = $cands->first();
 
+        // CNT-05: the asset's default contract wins when several match and the pin is still a candidate.
+        // The manager can still change it (change coverage or choose another contract).
+        if (! $contract && $cands->count() > 1 && ! $sr->is_master_sr) {
+            $pinId = $sr->primaryAsset?->default_contract_id;
+            if ($pinId) $contract = $cands->firstWhere('id', $pinId);
+        }
+
         if (! $contract && $cands->count() > 1) {
             $out['type']          = 'in_contract';
             $out['needs_choice']  = true;
@@ -109,23 +118,59 @@ class ContractCoverage
     {
         if (! $this->enabled()) return;
 
-        $several = $this->candidates($sr)->count() > 1;
+        $cands   = $this->candidates($sr);
+        $pinId   = $sr->is_master_sr ? null : $sr->primaryAsset?->default_contract_id;
+        $pinned  = $pinId && $cands->contains('id', $pinId);
+        $several = $cands->count() > 1 && ! $pinned;
+        if ($pinned && ! $sr->contract_id) $sr->contract_id = $pinId;
         $sr->forceFill([
             'contract_choice_pending' => $several,
             'contract_choice_reason'  => $several ? 'several' : null,
         ])->save();
-        // sr.contract_choice_needed goes to the notification engine once it exists (C1). Until then it is only visible on the request.
+        if ($several) {
+            $this->notifyChoice($sr, 'sr.contract_choice_needed', ['count' => $cands->count()]);
+        }
     }
 
     /** Set the choice flag found at approval. */
     public function flagChoice(ServiceRequest $sr, array $result): void
     {
+        // Notify only when the request enters this waiting state (not on every page view).
+        $already = $sr->contract_choice_pending && $sr->contract_choice_reason === $result['choice_reason'];
+
         $sr->forceFill([
             'contract_choice_pending' => true,
             'contract_choice_reason'  => $result['choice_reason'],
             'contract_id'             => $result['choice_reason'] === 'cap_reached' ? $result['contract']?->id : $sr->contract_id,
         ])->save();
-        // contract.cap_reached goes to the notification engine once it exists (C1).
+
+        if ($already) {
+            return;
+        }
+
+        if ($result['choice_reason'] === 'cap_reached' && $result['contract']) {
+            $c = $result['contract'];
+            $this->notifyChoice($sr, 'contract.cap_reached', [
+                'contract_number' => $c->contract_number,
+                'used'            => $c->calls_used_current_period,
+                'max'             => $c->max_calls,
+            ]);
+        } elseif ($result['choice_reason'] === 'several') {
+            $this->notifyChoice($sr, 'sr.contract_choice_needed', ['count' => $result['candidates']->count()]);
+        }
+    }
+
+    /** Tell the users who can choose a contract (contract.choose). */
+    private function notifyChoice(ServiceRequest $sr, string $event, array $vars): void
+    {
+        $svc = app(NotificationService::class);
+        $svc->notify(
+            $event,
+            $svc->usersWhoCan('contract.choose', $sr->tenant_id),
+            $vars + ['sr_number' => $sr->sr_number],
+            route('service-requests.show', $sr),
+            ['service_request_id' => $sr->id]
+        );
     }
 
     /** 6.4: the manager chooses one of the current candidates. Counts nothing. */
@@ -162,7 +207,7 @@ class ContractCoverage
             'tenant_id' => $sr->tenant_id, 'contract_id' => $locked->id, 'service_request_id' => $sr->id,
             'action' => 'counted', 'over_cap' => $overCap,
             'period_started_on' => ($locked->period_started_on ?? $locked->start_date)->toDateString(),
-            'user_id' => auth()->id(), 'created_at' => now(),
+            'user_id' => Auth::id(), 'created_at' => now(),
         ]);
 
         $audit = app(AuditLogger::class);
@@ -193,7 +238,7 @@ class ContractCoverage
                 'tenant_id' => $sr->tenant_id, 'contract_id' => $contract->id, 'service_request_id' => $sr->id,
                 'action' => 'given_back', 'over_cap' => false,
                 'period_started_on' => ($contract->period_started_on ?? $contract->start_date)->toDateString(),
-                'user_id' => auth()->id(), 'created_at' => now(),
+                'user_id' => Auth::id(), 'created_at' => now(),
             ]);
 
             app(AuditLogger::class)->log('contract.call_given_back', ['item_type' => Contract::class, 'item_id' => $contract->id,

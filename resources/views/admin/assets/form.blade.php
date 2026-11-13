@@ -62,7 +62,7 @@
       <span class="status {{ $asset->status === 'active' ? 'status-ok' : ($asset->status === 'under_repair' ? 'status-warn' : 'status-off') }}">
         {{ ucfirst(str_replace('_', ' ', $asset->status)) }}
       </span>
-      @if (! $locked && \App\Models\Tenant::current()?->hasFeature('assets_full'))
+      @if (! $locked)
         <a href="{{ route('admin.assets.label', $asset) }}" target="_blank" class="btn btn-ghost" style="padding:6px 14px;font-size:12.5px">Print label</a>
       @endif
     </div>
@@ -190,6 +190,31 @@
         @enderror
       </div>
 
+      @php
+        $contractsOn = (bool) \App\Models\Tenant::current()?->hasFeature('contracts');
+        $pinOptions  = $contractsOn
+          ? \App\Models\Contract::query()->whereIn('status', ['draft', 'active', 'expiring_soon'])
+              ->orderBy('contract_number')->get(['id', 'client_id', 'contract_number', 'contract_type', 'end_date'])
+          : collect();
+      @endphp
+      @if ($contractsOn)
+        <div class="fld">
+          <label for="default_contract_id">Default contract</label>
+          <select id="default_contract_id" name="default_contract_id" class="sel @error('default_contract_id') err @enderror">
+            <option value="">None</option>
+            @foreach ($pinOptions as $ct)
+              <option value="{{ $ct->id }}" data-client="{{ $ct->client_id }}"
+                      @selected((string) old('default_contract_id', $asset->default_contract_id) === (string) $ct->id)>
+                {{ $ct->contract_number }} · {{ $ct->type_label }} · ends {{ $ct->end_date->format('d M Y') }}
+              </option>
+            @endforeach
+          </select>
+          @error('default_contract_id')<div class="errtxt">{{ $message }}</div>@else
+            <div class="hint">Used first when several contracts match a request for this {{ strtolower($label) }}. The manager can still change it.</div>
+          @enderror
+        </div>
+      @endif
+
       <div class="fld">
         <label for="notes">Notes</label>
         <textarea id="notes" name="notes" rows="4" maxlength="5000" class="txt @error('notes') err @enderror">{{ old('notes', $asset->notes) }}</textarea>
@@ -251,10 +276,22 @@
     keep = '';
   }
 
-  client.addEventListener('change', () => { filterSites(); keep = ''; rebuildParents(); });
+  const pin = document.getElementById('default_contract_id');
+  function filterPin() {
+    if (!pin) return;
+    Array.from(pin.options).forEach(o => {
+      if (!o.value) return;
+      const ok = !client.value || o.dataset.client === client.value;
+      o.hidden = !ok; o.disabled = !ok;
+    });
+    if (pin.selectedOptions[0] && pin.selectedOptions[0].disabled) pin.value = '';
+  }
+
+  client.addEventListener('change', () => { filterSites(); filterPin(); keep = ''; rebuildParents(); });
   site.addEventListener('change', () => { keep = ''; rebuildParents(); });
 
   filterSites();
+  filterPin();
   rebuildParents();
 
   // Clear a field's error as soon as it is changed

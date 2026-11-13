@@ -66,6 +66,10 @@
   .pagination-nav a:hover{background:var(--soft)}
   .pagination-nav .is-active{background:var(--yellow);border-color:var(--yellow);cursor:default}
   .pagination-nav .is-disabled{color:var(--subtle);background:#FCFBF8;pointer-events:none}
+  .choice-chip{display:inline-flex;align-items:center;gap:8px;margin:0 0 12px;padding:9px 16px;border-radius:999px;border:1px solid #FCD34D;background:#FEF3C7;color:#92400E;font-size:13px;font-weight:600;text-decoration:none}
+  .choice-chip .n{display:inline-flex;align-items:center;justify-content:center;min-width:21px;height:21px;padding:0 6px;border-radius:999px;background:#fff;font-size:11px}
+  .choice-chip.active{background:#92400E;border-color:#92400E;color:#fff}
+  .choice-chip.active .n{background:rgba(255,255,255,.22);color:#fff}
 </style>
 
 @php
@@ -196,8 +200,20 @@
   $hasFilter = request()->filled('q')
             || request()->filled('status')
             || request()->filled('priority')
-            || request()->filled('client_id');
+            || request()->filled('client_id')
+            || request()->boolean('choice');
+  $choiceOn     = request()->boolean('choice');
+  $contractsOn  = (bool) \App\Models\Tenant::current()?->hasFeature('contracts');
 @endphp
+
+@if ($contractsOn)
+  <a href="{{ $choiceOn
+              ? route('service-requests.index', request()->except('page', 'choice'))
+              : route('service-requests.index', array_merge(request()->except('page', 'stage', 'status', 'overdue'), ['choice' => 1])) }}"
+     class="choice-chip {{ $choiceOn ? 'active' : '' }}" aria-pressed="{{ $choiceOn ? 'true' : 'false' }}">
+    Needs a contract choice <span class="n">{{ $choiceCount ?? 0 }}</span>
+  </a>
+@endif
 
 <form method="GET" class="toolbar" id="sr-filter">
   <div class="input-grow" style="position:relative;flex:1;min-width:220px">
@@ -239,6 +255,7 @@
   </select>
 
   <input type="hidden" name="per_page" value="{{ $perPage }}" />
+  @if (request()->boolean('choice'))<input type="hidden" name="choice" value="1" />@endif
 
   @if ($hasFilter)
     <a href="{{ route('service-requests.index') }}"

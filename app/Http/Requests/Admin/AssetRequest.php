@@ -33,6 +33,7 @@ class AssetRequest extends FormRequest
             'location_within_site' => ['nullable', 'string', 'max:255'],
             'installation_date'    => ['nullable', 'date'],
             'warranty_expiry_date' => ['nullable', 'date', 'after_or_equal:installation_date'],
+            'default_contract_id'  => ['nullable', $own('contracts')],
             'status'               => ['required', Rule::in(['active', 'under_repair', 'inactive'])],
             'notes'                => ['nullable', 'string', 'max:5000'],
         ];
@@ -49,6 +50,7 @@ class AssetRequest extends FormRequest
             'installation_date'    => 'installation date',
             'warranty_expiry_date' => 'warranty expiry',
             'serial_number'        => 'serial number',
+            'default_contract_id'  => 'default contract',
         ];
     }
 
@@ -74,6 +76,15 @@ class AssetRequest extends FormRequest
             if ($self && (int) $self->project_site_id !== (int) $site->id && $self->children()->exists()) {
                 $v->errors()->add('project_site_id', 'This asset has child assets. Move or detach them first.');
                 return;
+            }
+
+            // CNT-05: a pinned contract must belong to the asset's client.
+            if ($this->filled('default_contract_id')) {
+                $ct = \App\Models\Contract::find($this->input('default_contract_id'));
+                if (! $ct || (int) $ct->client_id !== (int) $this->input('client_id')) {
+                    $v->errors()->add('default_contract_id', 'Choose a contract that belongs to the selected client.');
+                    return;
+                }
             }
 
             $parentId = $this->input('parent_asset_id');

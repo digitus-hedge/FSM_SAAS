@@ -195,6 +195,15 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
             Dashboard
         </a>
 
+        @php $unreadNotifs = \App\Models\UserNotification::where('user_id', $u->id)->whereNull('read_at')->count(); @endphp
+        <a href="{{ route('notifications.index') }}" class="nav-item {{ request()->routeIs('notifications.*') ? 'active' : '' }}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            Notifications
+            @if ($unreadNotifs > 0)
+                <span style="margin-left:auto;background:var(--red);color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;min-width:20px;text-align:center">{{ $unreadNotifs > 99 ? '99+' : $unreadNotifs }}</span>
+            @endif
+        </a>
+
         {{-- ─────────── WORK ─────────── --}}
         @if ($showWork)
             <div class="nav-label">Work</div>
