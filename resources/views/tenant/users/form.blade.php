@@ -117,6 +117,9 @@ h1{font-family:var(--font-display);font-size:28px;font-weight:700;letter-spacing
             @endif
         </div>
     </div>
+    <div class="client-box" id="dispatch-field" style="display:none">
+        @include('tenant.users._dispatch-fields', ['user' => $user])
+    </div>
 @php
     $activeOverrides = $activeOverrides ?? collect();
     $effectivePerms  = $effectivePerms ?? collect();
@@ -183,7 +186,7 @@ function toggleFields(applyRoleDefaults) {
 
     teamLeadField.style.display = technician ? '' : 'none';
     if (!technician) teamLeadSelect.value = '';
-
+        document.getElementById('dispatch-field').style.display = (technician || code === 'team_lead') ? '' : 'none';
     var anyPermRowVisible = false;
     document.querySelectorAll('.perm-row').forEach(function (row) {
         var roles = row.getAttribute('data-roles').split(',');

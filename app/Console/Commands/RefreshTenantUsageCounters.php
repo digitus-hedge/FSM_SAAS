@@ -2,11 +2,12 @@
 
 namespace App\Console\Commands;
 
-use App\Models\MessageLog;
 use App\Models\Tenant;
 use App\Models\TenantUsageCounter;
 use App\Models\User;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class RefreshTenantUsageCounters extends Command
 {
@@ -33,32 +34,29 @@ class RefreshTenantUsageCounters extends Command
         $monthStart = $now->copy()->startOfMonth();
         $monthEnd = $now->copy()->endOfMonth();
 
-        // Blueprint 7.9a: "Staff, technicians and vendor technicians count as users.
-        // Client users do not." Vendor technicians are user_type='technician' with
-        // vendor_id set, so this is covered by user_type alone.
+        // Blueprint 7.9a: staff, technicians and vendor technicians count as users; client users do not.
+        // Client users always carry a client_id, so active users without one are the ones that count.
         $userCount = User::where('tenant_id', $tenant->id)
-            ->where('is_active', true)
-            ->whereIn('user_type', ['staff', 'technician'])
+            ->whereNull('deactivated_at')
+            ->whereNull('client_id')
             ->count();
 
-        $whatsappCount = MessageLog::where('tenant_id', $tenant->id)
-            ->where('channel', 'whatsapp')
-            ->where('direction', 'outbound')
-            ->whereBetween('created_at', [$monthStart, $monthEnd])
-            ->count();
-
-        $emailCount = MessageLog::where('tenant_id', $tenant->id)
-            ->where('channel', 'email')
-            ->where('direction', 'outbound')
-            ->whereBetween('created_at', [$monthStart, $monthEnd])
-            ->count();
+        // Message logs are not built yet. Until the table exists, both counts are 0.
+        $messages = fn (string $channel) => Schema::hasTable('message_logs')
+            ? DB::table('message_logs')
+                ->where('tenant_id', $tenant->id)
+                ->where('channel', $channel)
+                ->where('direction', 'outbound')
+                ->whereBetween('created_at', [$monthStart, $monthEnd])
+                ->count()
+            : 0;
 
         TenantUsageCounter::updateOrCreate(
             ['tenant_id' => $tenant->id, 'year' => $year, 'month' => $month],
             [
                 'user_count' => $userCount,
-                'whatsapp_message_count' => $whatsappCount,
-                'email_message_count' => $emailCount,
+                'whatsapp_message_count' => $messages('whatsapp'),
+                'email_message_count' => $messages('email'),
             ]
         );
     }

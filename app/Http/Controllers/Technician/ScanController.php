@@ -61,7 +61,9 @@ class ScanController extends Controller
     public function resolve(Request $request)
     {
         $hash = trim((string) $request->input('hash'));
-        $asset = $hash === '' ? null : Asset::where('tenant_id', auth()->user()->tenant_id)->where('qr_hash', $hash)->first();
+        $asset = $hash === '' ? null : Asset::where('tenant_id', auth()->user()->tenant_id)
+            ->where(fn ($q) => $q->where('qr_hash', $hash)->orWhere('asset_code', $hash))
+            ->first();
 
         [$asset, , $error] = $this->check($asset);
         if ($error) {
@@ -168,11 +170,17 @@ class ScanController extends Controller
 
         SrStatusHistory::log($sr, null, 'pending', 'user', $me->id);
 
-        // D3: tell the technician's Team Lead, or the Operations Manager when there is none.
-        // A Team Lead who raises it keeps it on their own queue, so no alert.
-        if ($me->role?->code !== 'team_lead') {
-            $svc        = app(NotificationService::class);
-            $recipients = $teamLeadId ? collect([User::find($teamLeadId)])->filter() : $svc->usersWithRole('ops_manager', $tenantId);
+                // Tell the technician's Team Lead (unless they raised it) and the Operations Manager.
+        $svc        = app(NotificationService::class);
+        $recipients = collect();
+        if ($teamLeadId && (int) $teamLeadId !== (int) $me->id) {
+            $lead = User::find($teamLeadId);
+            if ($lead) {
+                $recipients->push($lead);
+            }
+        }
+        $recipients = $recipients->merge(collect($svc->usersWithRole('ops_manager', $tenantId)))->unique('id')->values();
+        if ($recipients->isNotEmpty()) {
             $svc->notify('qr.scan_request', $recipients, [
                 'technician'    => $me->name,
                 'sr_number'     => $sr->sr_number,

@@ -194,7 +194,6 @@ public function verifyChallenge(Request $request)
 
     // Remove temporary 2FA state and any stale intended URL.
     $request->session()->forget('two_factor_pending');
-    $request->session()->forget('url.intended');
 
     $user->update([
         'last_sign_in_at' => now(),
@@ -210,8 +209,13 @@ public function verifyChallenge(Request $request)
         'new' => ['two_factor' => true],
     ]);
 
-    return redirect()->route(
-        $guard === 'platform' ? 'admin.dashboard' : 'tenant.dashboard'
+        // Same rules as a normal sign-in: a forced password change comes first.
+    if ($guard === 'web' && ! empty($user->must_change_password)) {
+        return redirect()->route('password.change');
+    }
+
+    return redirect()->intended(
+        route($guard === 'platform' ? 'admin.dashboard' : 'tenant.dashboard')
     );
 }
 

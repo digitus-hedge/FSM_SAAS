@@ -112,6 +112,7 @@ class MembersController extends Controller
             'item_id'   => $user->id,
             'new'       => $user->only(['name', 'email', 'phone', 'role_id', 'employee_code', 'client_id', 'team_lead_id']),
         ]);
+        $this->saveDispatchFields($user->load('role'), $data);
         $this->syncExtraPermissionOverrides($user, $data);
         if ($isClientRole) {
             $signInUrl = $this->buildClientSignInUrl($tenant);
@@ -199,6 +200,7 @@ class MembersController extends Controller
                 'new'       => array_intersect_key($after,  array_flip($changed)),
             ]);
         }
+        $this->saveDispatchFields($user->load('role'), $data);
          $this->syncExtraPermissionOverrides($user, $data);
         return redirect()
             ->route('tenant.users.index')
@@ -226,7 +228,8 @@ class MembersController extends Controller
             'item_id'   => $user->id,
         ]);
 
-        return back()->with('success', "{$user->name} was turned off.");
+        // return back()->with('success', "{$user->name} was turned off.");
+        return redirect()->route('tenant.users.index')->with('success', "{$user->name} was turned off.");
     }
 
     public function reactivate(User $user)
@@ -240,7 +243,8 @@ class MembersController extends Controller
             'item_id'   => $user->id,
         ]);
 
-        return back()->with('success', "{$user->name} was turned on.");
+        // return back()->with('success', "{$user->name} was turned on.");
+        return redirect()->route('tenant.users.index')->with('success', "{$user->name} was turned on.");
     }
 
     public function temporaryPassword(User $user)
@@ -261,7 +265,9 @@ class MembersController extends Controller
             'new'       => ['reason' => 'temporary_password_set'],
         ]);
 
-        return back()->with('temp_password', ['user' => $user->name, 'password' => $temp]);
+        // return back()->with('temp_password', ['user' => $user->name, 'password' => $temp]);
+        return redirect()->route('tenant.users.index')
+            ->with('temp_password', ['user' => $user->name, 'password' => $temp]);
     }
 
     public function unlock(User $user)
@@ -275,7 +281,8 @@ class MembersController extends Controller
             'item_id'   => $user->id,
         ]);
 
-        return back()->with('success', "{$user->name} was unlocked.");
+        // return back()->with('success', "{$user->name} was unlocked.");
+        return redirect()->route('tenant.users.index')->with('success', "{$user->name} was unlocked.");
     }
 
     // ───────────────────────── helpers ─────────────────────────
@@ -352,6 +359,9 @@ class MembersController extends Controller
                                 Rule::exists('clients', 'id')->where('tenant_id', $tenant->id)],
             'team_lead_id'  => ['nullable',
                                 Rule::exists('users', 'id')->where('tenant_id', $tenant->id)],
+            'home_base_lat'          => ['nullable', 'numeric', 'between:-90,90'],
+            'home_base_lng'          => ['nullable', 'numeric', 'between:-180,180'],
+            'daily_capacity_minutes' => ['nullable', 'integer', 'between:60,1440'],
         ], [
             'name.required'      => 'Enter a name of 2 to 150 characters.',
             'email.required'     => 'Email is required.',
@@ -362,6 +372,9 @@ class MembersController extends Controller
             'role_id.required'   => 'Choose a role.',
             'client_id.exists'   => 'Choose a valid client company.',
             'team_lead_id.exists' => 'Choose a valid team lead.',
+            'home_base_lat.between'          => 'Latitude must be between -90 and 90.',
+            'home_base_lng.between'          => 'Longitude must be between -180 and 180.',
+            'daily_capacity_minutes.between' => 'Enter between 60 and 1440 minutes.',
          ], [
             'extra_perms'           => ['sometimes', 'array'],
             'extra_perms.*'         => [Rule::in(['sr.approve', 'sr.qc', 'expense.approve', 'sr.assign'])],
@@ -393,6 +406,18 @@ class MembersController extends Controller
         }
 
         return $data;
+    }
+
+        private function saveDispatchFields(User $user, array $data): void
+    {
+        if (! in_array($user->role?->code, ['field_technician', 'team_lead'], true)) {
+            return;
+        }
+        $user->forceFill([
+            'home_base_lat'          => ($data['home_base_lat'] ?? null) !== null && $data['home_base_lat'] !== '' ? $data['home_base_lat'] : null,
+            'home_base_lng'          => ($data['home_base_lng'] ?? null) !== null && $data['home_base_lng'] !== '' ? $data['home_base_lng'] : null,
+            'daily_capacity_minutes' => $data['daily_capacity_minutes'] ?? $user->daily_capacity_minutes ?? 480,
+        ])->save();
     }
 
     private function ensureSameTenant(User $user): void

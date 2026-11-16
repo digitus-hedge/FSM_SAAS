@@ -915,6 +915,7 @@
       <p>{{ $sr->site->name ?? '—' }}@if ($sr->site?->city), {{ $sr->site->city }}@endif</p>
     </div>
     <div class="modal-body">
+      @include('admin.service-requests._assign-suggestions', ['sr' => $sr, 'suggestions' => $suggestions ?? []])
       <div class="field-group">
         <label for="technician_id" class="field-lbl">Technician <span class="req">*</span></label>
         <select name="technician_id" id="technician_id" class="modal-select" required>

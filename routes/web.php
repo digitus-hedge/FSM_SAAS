@@ -46,6 +46,8 @@ use App\Http\Controllers\Admin\Asset360Controller;
 use App\Http\Middleware\EnsurePlanFeature;
 use App\Http\Controllers\Admin\ContractsController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\Admin\DispatchController;
+use App\Http\Controllers\Admin\TimeOffController;
 
 $denyClientRole = function ($request, $next) {
     $clientCodes = ['client_user', 'client_admin', 'client_viewer'];
@@ -223,6 +225,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{user}/deactivate',      [MembersController::class, 'deactivate'])->name('deactivate');
         Route::post('/{user}/reactivate',      [MembersController::class, 'reactivate'])->name('reactivate');
         Route::post('/{user}/temporary-password', [MembersController::class, 'temporaryPassword'])->name('temp-password');
+        Route::get('/{user}/temporary-password', fn () => redirect()->route('tenant.users.index'));
         Route::post('/{user}/unlock',          [MembersController::class, 'unlock'])->name('unlock');
         Route::get('/{user}/devices', [MembersController::class, 'devices'])->name('devices');
     });
@@ -521,8 +524,28 @@ Route::prefix('admin/operations-queue')->name('admin.operations-queue.')->group(
     Route::post('/{service_request}/change-priority', [ServiceRequestController::class, 'changePriority'])->name('change-priority');
     // Route::delete('/{service_request}/attachments/{filename}', [ServiceRequestController::class, 'deleteAttachment'])
     //     ->name('attachments.delete');
+
 });
 
+    // Dispatch (step 1) — outside the service-requests group so the route names stay as written
+   Route::middleware(['auth', DenyClientRole::class])->group(function () {
+        Route::get('dispatch/workload', [DispatchController::class, 'workload'])->name('dispatch.workload');
+        Route::get('dispatch/settings', [DispatchController::class, 'settings'])->name('dispatch.settings');
+        Route::put('dispatch/settings', [DispatchController::class, 'updateSettings'])->name('dispatch.settings.update');
+        Route::get('service-requests/{service_request}/suggestions', [DispatchController::class, 'suggestions'])
+            ->name('service-requests.suggestions');
+
+        Route::get('dispatch/calendar', [DispatchController::class, 'calendar'])->name('dispatch.calendar');
+        Route::post('dispatch/calendar/{service_request}/reschedule', [DispatchController::class, 'reschedule'])
+            ->whereNumber('service_request')->name('dispatch.calendar.reschedule');
+
+        Route::get('dispatch/time-off', [TimeOffController::class, 'index'])->name('dispatch.time-off');
+        Route::post('dispatch/time-off', [TimeOffController::class, 'store'])->name('dispatch.time-off.store');
+        Route::delete('dispatch/time-off/{id}', [TimeOffController::class, 'destroy'])
+            ->whereNumber('id')->name('dispatch.time-off.destroy');
+    });
+
+    
     Route::prefix('technician')->middleware(['auth', DenyClientRole::class])->name('technician.')->group(function () {
         Route::get('/jobs', [JobsController::class, 'index'])->name('jobs.index');        // desktop dashboard
         Route::get('/jobs/mobile', [JobsController::class, 'index'])->name('jobs.mobile'); // mobile Today view
@@ -625,3 +648,5 @@ Route::prefix('admin/operations-queue')->name('admin.operations-queue.')->group(
           Route::get('/{contract}/documents/{document}',    [ContractsController::class, 'documentDownload'])->whereNumber('document')->name('documents.download');
           Route::delete('/{contract}/documents/{document}', [ContractsController::class, 'documentDestroy'])->whereNumber('document')->name('documents.destroy');
       });
+
+      

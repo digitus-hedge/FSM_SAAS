@@ -7,6 +7,8 @@
     $statusClass  = ['active' => 'status-ok', 'under_repair' => 'status-warn', 'inactive' => 'status-off', 'decommissioned' => 'status-off'];
     $money = fn ($v) => number_format((float) $v, 2) . ' ' . $currency;
     $srStatus = \App\Models\ServiceRequest::STATUSES;
+    $covLabels = ['in_contract' => 'In contract', 'in_warranty' => 'In warranty', 'out_of_coverage' => 'Out of coverage'];
+    $ctStatusClass = ['active' => 'status-ok', 'expiring_soon' => 'status-warn', 'draft' => 'status-off', 'expired' => 'status-bad', 'renewed' => 'status-off', 'cancelled' => 'status-off'];
 @endphp
 <style>
   .crumb{font-size:13px;color:#5F5D6E;margin-bottom:12px}
@@ -73,6 +75,7 @@
   <button class="tab on" data-p="overview">Overview</button>
   <button class="tab" data-p="requests">Requests<span class="n">{{ $requests->count() }}</span></button>
   <button class="tab" data-p="cost">Cost</button>
+  @if ($contractsOn)<button class="tab" data-p="contracts">Contracts<span class="n">{{ $assetContracts->count() }}</span></button>@endif
   <button class="tab" data-p="photos">Photos<span class="n">{{ $photos->count() }}</span></button>
   <button class="tab" data-p="checklists">Checklists</button>
   <button class="tab" data-p="maintenance">Maintenance</button>
@@ -113,7 +116,32 @@
         @elseif ($asset->warranty_status === 'expired')<span class="status status-bad">Expired · {{ $asset->warranty_expiry_date->format('d M Y') }}</span>
         @else No warranty date @endif
       </dd>
-      <dt>Contract cover</dt><dd class="muted" style="font-weight:400">Shown here once contracts are available.</dd>
+      @if ($contractsOn)
+      <dt>Contract cover</dt>
+      <dd>
+        @if ($asset->is_decommissioned) —
+        @elseif ($covering->isEmpty())<span class="muted" style="font-weight:400">No contract covers this asset today.</span>
+        @else
+          @foreach ($covering as $ct)
+            <div>
+              <a class="lnk" href="{{ route('admin.contracts.show', $ct) }}">{{ $ct->contract_number }}</a>
+              <span class="muted" style="font-weight:400">· {{ $ct->type_label }} · ends {{ $ct->end_date->format('d M Y') }}</span>
+              @if ($pinned && $pinned->id === $ct->id)<span class="status status-ok" style="margin-left:4px;padding:2px 9px;font-size:11.5px">Default</span>@endif
+            </div>
+          @endforeach
+          @if ($covering->count() > 1)
+            <div class="muted" style="font-weight:400;font-size:12.5px;margin-top:4px">{{ $covering->count() }} contracts match. {{ $pinned && $covering->contains('id', $pinned->id) ? 'The default one is used first.' : 'The manager chooses on each request.' }}</div>
+          @endif
+        @endif
+      </dd>
+      <dt>Default contract</dt>
+      <dd>
+        @if ($pinned)
+          <a class="lnk" href="{{ route('admin.contracts.show', $pinned) }}">{{ $pinned->contract_number }}</a>
+          @if (! $covering->contains('id', $pinned->id))<span class="muted" style="font-weight:400">· not covering today ({{ $pinned->status_label }})</span>@endif
+        @else <span class="muted" style="font-weight:400">None set.</span>@endif
+      </dd>
+      @endif
     </dl>
   </div>
 </div>
@@ -176,6 +204,62 @@
   </div>
   <p class="muted" style="font-size:12.5px">Expenses are approved expenses on this asset's requests. Invoiced counts approved, sent and paid invoices, in {{ $currency }}.</p>
 </div>
+
+{{-- CONTRACTS --}}
+@if ($contractsOn)
+<div class="pane" id="p-contracts">
+  <div class="card" style="padding:0">
+    <div class="tw">
+      <table>
+        <thead><tr><th>Contract</th><th>Type</th><th>Status</th><th>Dates</th><th>Covers today</th><th>Calls used</th></tr></thead>
+        <tbody>
+        @forelse ($assetContracts as $ct)
+          <tr>
+            <td>
+              <a class="lnk" href="{{ route('admin.contracts.show', $ct) }}">{{ $ct->contract_number }}</a>
+              @if ($pinned && $pinned->id === $ct->id)<span class="status status-ok" style="margin-left:4px;padding:2px 9px;font-size:11.5px">Default</span>@endif
+            </td>
+            <td>{{ $ct->type_label }}</td>
+            <td><span class="status {{ $ctStatusClass[$ct->status] ?? 'status-off' }}">{{ $ct->status_label }}</span></td>
+            <td>{{ $ct->start_date->format('d M Y') }} – {{ $ct->end_date->format('d M Y') }}</td>
+            <td>{{ $covering->contains('id', $ct->id) ? 'Yes' : 'No' }}</td>
+            <td>{{ $ct->max_calls ? $ct->calls_used_current_period . ' of ' . $ct->max_calls : $ct->calls_used_current_period . ' (no cap)' }}</td>
+          </tr>
+        @empty
+          <tr><td colspan="6" class="soon">No contract applies to this asset's client, site and category.</td></tr>
+        @endforelse
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card" style="padding:0">
+    <div class="tw">
+      <table>
+        <thead><tr><th>Request</th><th>Title</th><th>Coverage</th><th>Contract</th><th>Raised</th></tr></thead>
+        <tbody>
+        @php $covered = $requests->filter(fn ($r) => $r->coverage_type); @endphp
+        @forelse ($covered as $r)
+          <tr>
+            <td><a class="lnk" href="{{ route('service-requests.show', $r) }}">{{ $r->sr_number }}</a></td>
+            <td>{{ $r->title }}</td>
+            <td>{{ $covLabels[$r->coverage_type] ?? $r->coverage_type }}</td>
+            <td>
+              @if ($r->contract_id && isset($contractNumbers[$r->contract_id]))
+                <a class="lnk" href="{{ route('admin.contracts.show', $r->contract_id) }}">{{ $contractNumbers[$r->contract_id] }}</a>
+              @else — @endif
+            </td>
+            <td>{{ $r->created_at?->format('d M Y') }}</td>
+          </tr>
+        @empty
+          <tr><td colspan="5" class="soon">No request for this asset has a coverage decision yet.</td></tr>
+        @endforelse
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+@endif
 
 {{-- PHOTOS --}}
 <div class="pane" id="p-photos">

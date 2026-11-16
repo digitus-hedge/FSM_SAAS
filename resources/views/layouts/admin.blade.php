@@ -221,7 +221,21 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
                     <!-- {{ term_title('service_request') }} -->
                 </a>
             @endif
+             @if ($u?->canDo('sr.assign'))
+                <a href="{{ route('dispatch.workload') }}" class="nav-item {{ request()->routeIs('dispatch.workload') ? 'active' : '' }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    Technician workload
+                </a>
+                 <a href="{{ route('dispatch.calendar') }}" class="nav-item {{ request()->routeIs('dispatch.calendar*') ? 'active' : '' }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    Dispatch calendar
+                </a>
+                <a href="{{ route('dispatch.time-off') }}" class="nav-item {{ request()->routeIs('dispatch.time-off*') ? 'active' : '' }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    Time off
+                </a>
 
+            @endif
             @if ($u->role?->name === 'Company Admin')
             @php
                 $opsAlertCount = \App\Models\ServiceRequest::whereNotIn('status', ['completed','cancelled'])
@@ -379,6 +393,9 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
                     <a href="{{ route('admin.terminology.index') }}" class="nav-item {{ request()->routeIs('admin.terminology.*') ? 'active' : '' }}">Terminology</a>
                     <a href="{{ route('admin.branding.index') }}" class="nav-item {{ request()->routeIs('admin.branding.*') ? 'active' : '' }}">Branding</a>
                     <a href="{{ route('admin.company-settings.index') }}" class="nav-item {{ request()->routeIs('admin.company-settings.*') ? 'active' : '' }}">Company settings</a>
+                     @if ($u->role?->name === 'Company Admin')
+                        <a href="{{ route('dispatch.settings') }}" class="nav-item {{ request()->routeIs('dispatch.settings*') ? 'active' : '' }}">Dispatch settings</a>
+                    @endif
                     <a href="{{ route('admin.usage.index') }}" class="nav-item {{ request()->routeIs('admin.usage.*') ? 'active' : '' }}">
                         Usage
                     </a>

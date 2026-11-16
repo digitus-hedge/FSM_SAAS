@@ -167,7 +167,11 @@ class ContractCoverage
         $svc->notify(
             $event,
             $svc->usersWhoCan('contract.choose', $sr->tenant_id),
-            $vars + ['sr_number' => $sr->sr_number],
+            $vars + [
+                'sr_number' => $sr->sr_number,
+                'client'    => $sr->client?->name ?? '',
+                'site'      => $sr->site?->name ?? '',
+            ],
             route('service-requests.show', $sr),
             ['service_request_id' => $sr->id]
         );

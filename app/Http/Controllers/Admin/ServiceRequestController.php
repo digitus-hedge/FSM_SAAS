@@ -365,6 +365,11 @@ class ServiceRequestController extends Controller
 
     $service_request->loadMissing('contract');
 
+        // Dispatch step 1: ranked technician suggestions for the assign modal.
+    $suggestions = in_array($service_request->status, ['approved', 'assigned'], true)
+        ? app(\App\Services\Dispatch\TechnicianSuggester::class)
+            ->suggest($service_request, $service_request->scheduled_eta_at ?? now()->addDay()->setTime(9, 0))
+        : [];
     return view('admin.service-requests.show', [
         'sr'              => $service_request,
         'policy'          => $service_request->resolveSlaPolicy(),
@@ -374,6 +379,7 @@ class ServiceRequestController extends Controller
         'coverage'        => $coverage,
         'canSeeContract'  => (bool) $user?->canDo('contract.view'),
         'canChoose'       => (bool) $user?->canDo('contract.choose'),
+        'suggestions'     => $suggestions,
     ]);
 }
 

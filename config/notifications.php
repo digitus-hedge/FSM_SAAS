@@ -8,13 +8,13 @@
 return [
     'events' => [
         'sr.contract_choice_needed' => [
-            'title' => 'Contract choice needed for {sr_number}',
-            'body'  => '{count} contracts match this request. Choose the one that applies before you approve.',
+            'title' => 'Choose a contract for {sr_number}',
+            'body'  => '{client}, {site}. {count} contracts match. Choose the one that applies.',
             'email' => true,
         ],
         'contract.cap_reached' => [
-            'title' => 'Call cap reached on {contract_number}',
-            'body'  => '{contract_number} has used {used} of {max} calls. Decide how to handle {sr_number}.',
+            'title' => 'Contract {contract_number} has reached its call cap',
+            'body'  => '{client}. {used} of {max} calls used. {sr_number} needs your decision.',
             'email' => true,
         ],
         'contract.expiring' => [
