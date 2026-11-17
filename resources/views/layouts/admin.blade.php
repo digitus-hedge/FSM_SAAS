@@ -129,6 +129,10 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
 .swal-btn-green.swal2-confirm.swal2-styled{background:var(--green)!important;color:#fff!important}
 .swal-btn-green.swal2-confirm.swal2-styled:hover{background:#006756!important}
 </style>
+@if (\App\Models\Tenant::current())
+@include('layouts._theme', ['ctx' => 'admin', 'dock' => true])
+@include('layouts._brand_font', ['withLink' => false])
+@endif
 </head>
 <body>
 

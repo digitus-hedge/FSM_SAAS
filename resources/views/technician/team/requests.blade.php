@@ -65,6 +65,7 @@
                                             <option value="">Assign to…</option>
                                             @foreach ($teamMembers as $tm)<option value="{{ $tm->id }}">{{ $tm->name }}</option>@endforeach
                                         </select>
+                                        <input type="datetime-local" name="scheduled_eta_at" required min="{{ now()->format('Y-m-d\TH:i') }}" style="height:34px;padding:0 8px;font-size:12.5px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)">
                                         <button type="submit" class="btn dark sm">Assign</button>
                                     </form>
                                 @endif

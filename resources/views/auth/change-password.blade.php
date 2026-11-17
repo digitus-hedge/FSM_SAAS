@@ -19,6 +19,10 @@ input:focus{outline:none;border-color:#FFC61A;box-shadow:0 0 0 3px rgba(255,198,
 button{width:100%;background:#FFC61A;color:#1B1A24;border:0;padding:13px;border-radius:999px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit}
 button:hover{filter:brightness(.97)}
 </style>
+@if (\App\Models\Tenant::current())
+@include('layouts._theme', ['ctx' => 'auth'])
+@include('layouts._brand_font', ['applyBody' => true])
+@endif
 </head>
 <body>
     <div class="card">

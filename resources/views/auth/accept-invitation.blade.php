@@ -17,6 +17,10 @@
     .err{color:#C2381B;font-size:12px;display:block;margin-top:4px;font-weight:400}
     .hint{color:#5F5D6E;font-size:12px;margin:10px 0 16px}
 </style>
+@if (\App\Models\Tenant::current())
+@include('layouts._theme', ['ctx' => 'auth'])
+@include('layouts._brand_font', ['applyBody' => true])
+@endif
 </head>
 <body>
 <form method="POST" action="{{ route('invitation.accept.submit', $token) }}" class="card">

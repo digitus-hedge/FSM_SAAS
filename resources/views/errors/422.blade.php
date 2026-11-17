@@ -15,6 +15,10 @@ h1{font-family:'Figtree',sans-serif;font-size:24px;font-weight:700;margin-bottom
 p{color:#5F5D6E;font-size:14px;line-height:1.55;margin-bottom:24px}
 .btn{display:inline-flex;align-items:center;gap:8px;background:#FFC61A;color:#1B1A24;font-weight:700;font-size:14px;padding:11px 22px;border-radius:999px;text-decoration:none}
 </style>
+@if (\App\Models\Tenant::current())
+@include('layouts._theme', ['ctx' => 'auth'])
+@include('layouts._brand_font', ['applyBody' => true])
+@endif
 </head>
 <body>
 <div class="card">

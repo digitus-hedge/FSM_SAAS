@@ -73,6 +73,9 @@ class AuthController extends Controller
             }
             $this->audit->log('auth.sign_in_failed', [
                 'tenant_id' => $tenant->id,
+                'actor' => $user
+                    ? ['type' => 'user', 'id' => $user->id, 'name' => $user->name]
+                    : ['type' => 'system', 'id' => null, 'name' => 'system'],
                 'new'       => ['identifier_tried' => '[redacted]'],
             ]);
             return back()->withErrors(['identifier' => 'Email, phone or password is incorrect.'])
@@ -284,6 +287,9 @@ class AuthController extends Controller
             }
             $this->audit->log('auth.sign_in_failed', [
                 'tenant_id' => $tenant->id,
+                'actor' => $user
+                    ? ['type' => 'user', 'id' => $user->id, 'name' => $user->name]
+                    : ['type' => 'system', 'id' => null, 'name' => 'system'],
                 'new'       => ['identifier_tried' => '[redacted]'],
             ]);
             return back()->withErrors(['identifier' => 'Email, phone or password is incorrect.'])->onlyInput('identifier');

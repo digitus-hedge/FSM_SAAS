@@ -6,7 +6,6 @@
 <title>@yield('title', 'Team') — {{ \App\Models\Tenant::current()?->name ?? config('app.name') }}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 @include('technician._design_system')
 <style>
 /* ---- web-only tokens (not in _design_system) ---- */
@@ -112,6 +111,8 @@ h1,h2,h3,.fig{font-family:var(--font-display),var(--font-body),system-ui,sans-se
   .me small{display:none}
 }
 </style>
+@include('layouts._theme', ['ctx' => 'field', 'dock' => true, 'brandOverride' => \App\Models\Tenant::current()?->primary_color])
+@include('layouts._brand_font')
 </head>
 <body>
 @php

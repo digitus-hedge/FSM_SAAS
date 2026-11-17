@@ -16,7 +16,7 @@ class BrandingController extends Controller
 
         return view('admin.branding.index', [
             'tenant' => $tenant,
-            'fonts'  => BrandFont::where('is_active', true)->orderBy('name')->get(),
+            'fonts' => BrandFont::where('is_active', true)->orWhere('key', $tenant->font_key)->orderBy('name')->get(),
         ]);
     }
 

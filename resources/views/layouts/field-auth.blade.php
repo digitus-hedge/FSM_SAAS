@@ -19,6 +19,8 @@
     'fontDisplay' => $fontDisplay,
 ])
 <style>body{display:flex;justify-content:center;padding:0}.authwrap{max-width:420px;margin:0 auto;min-height:100dvh;background:var(--bg);display:flex;flex-direction:column;padding:0 18px}</style>
+@include('layouts._theme', ['ctx' => 'field', 'brandOverride' => $tenant->primary_color ?? null])
+@include('layouts._brand_font', ['withLink' => false])
 </head>
 <body>
 <div class="authwrap">

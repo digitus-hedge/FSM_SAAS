@@ -22,7 +22,7 @@ class AuditLogger
     public function log(string $action, array $context = []): ActivityLog
     {
         $request = request();
-        $actor   = $this->resolveActor();
+        $actor   = $context['actor'] ?? $this->resolveActor();
 
         return DB::transaction(function () use ($action, $context, $actor, $request) {
             // Fetch the chain's current tail row-locked, so concurrent writes serialise.

@@ -111,7 +111,7 @@ class TwoFactorController extends Controller
 
     // ─────────── Challenge after password ───────────
 
-    
+
 public function challenge(Request $request)
 {
     \Log::debug('2FA challenge diagnostic', [
@@ -131,7 +131,7 @@ public function challenge(Request $request)
     return view('auth.two-factor-challenge');
 }
 
-    
+
 public function verifyChallenge(Request $request)
 {
     $data = $request->validate([
@@ -163,6 +163,7 @@ public function verifyChallenge(Request $request)
             $request->session()->forget('two_factor_pending');
 
             $this->audit->log('auth.sign_in_failed', [
+                'actor' => $user ? ['type' => $guard === 'platform' ? 'platform_user' : 'user', 'id' => $user->id, 'name' => $user->name] : null,
                 'item_type' => $user ? $user::class : null,
                 'item_id' => $user?->id,
                 'new' => ['reason' => 'too_many_wrong_two_factor_codes'],

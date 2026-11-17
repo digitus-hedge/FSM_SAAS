@@ -32,6 +32,8 @@
     .demo { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); line-height: 1.6; }
     .demo code { background: var(--soft); padding: 2px 6px; border-radius: 4px; font-family: "JetBrains Mono", Consolas, monospace; color: var(--ink); }
 </style>
+@include('layouts._theme', ['ctx' => 'auth'])
+@include('layouts._brand_font', ['applyBody' => true])
 </head>
 <body>
 <form method="POST" action="{{ route('platform.login.attempt') }}" class="card" autocomplete="on">

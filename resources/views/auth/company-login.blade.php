@@ -48,6 +48,8 @@
     .demo code { background: var(--soft); padding: 2px 6px; border-radius: 4px;
                  font-family: "JetBrains Mono", Consolas, monospace; color: var(--ink); }
 </style>
+@include('layouts._theme', ['ctx' => 'auth', 'brandOverride' => $tenant->primary_color ?? null])
+@include('layouts._brand_font', ['applyBody' => true])
 </head>
 <body>
 <form method="POST" action="{{ route('login.attempt') }}" class="card" autocomplete="on">

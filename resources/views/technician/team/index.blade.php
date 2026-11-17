@@ -88,9 +88,15 @@
                 </form>
                 <form method="POST" action="{{ route('technician.team.approve', $job) }}">
                     @csrf
-                    <button type="submit" class="btn dark sm block">Approve</button>
+                    <input type="hidden" name="coverage_type" value="in_warranty">
+                    <button type="submit" class="btn dark sm block">Approve — in warranty</button>
                 </form>
             </div>
+            <form method="POST" action="{{ route('technician.team.approve', $job) }}" style="margin-top:8px">
+                @csrf
+                <input type="hidden" name="coverage_type" value="out_of_coverage">
+                <button type="submit" class="btn sm block">Out of coverage — send for quote</button>
+            </form>
         @else
             <form method="POST" action="{{ route('technician.team.assign', $job) }}" style="margin-top:10px">
                 @csrf
@@ -98,6 +104,7 @@
                     <option value="">Assign to…</option>
                     @foreach ($teamMembers as $tm)<option value="{{ $tm->id }}">{{ $tm->name }}</option>@endforeach
                 </select>
+                <input type="datetime-local" name="scheduled_eta_at" class="sel" required min="{{ now()->format('Y-m-d\TH:i') }}" style="margin-bottom:8px">
                 <button type="submit" class="btn dark block">Assign</button>
             </form>
         @endif

@@ -25,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant.role'    => \App\Http\Middleware\EnsureTenantRole::class,
             'platform.2fa'   => \App\Http\Middleware\EnsurePlatformTwoFactor::class,
             'role'           => \App\Http\Middleware\EnsureRole::class,
+            'platform.host'  => \App\Http\Middleware\PlatformHostOnly::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

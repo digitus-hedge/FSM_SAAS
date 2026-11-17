@@ -29,6 +29,9 @@
     .app{height:min(860px,88vh);max-width:430px;border-radius:28px;border:1px solid var(--line);box-shadow:0 30px 70px -25px rgba(15,13,25,.35)}
 }
 </style>
+@include('layouts._theme', ['ctx' => 'field', 'dock' => 'slot'])
+@include('layouts._brand_font', ['withLink' => false])
+@include('layouts._tablet')
 </head>
 <body>
 @php
@@ -89,7 +92,8 @@
           <a href="{{ route('technician.profile') }}" class="dit">@include('technician._icon', ['name'=>'user','size'=>22])<span class="grow">Profile</span></a>
       </div>
       <div class="df">
-          <form method="POST" action="{{ route('logout') }}">
+            <div id="aw-theme-slot"></div>
+            <form method="POST" action="{{ route('logout') }}">
               @csrf
               <button type="submit" class="dit" style="width:100%">@include('technician._icon', ['name'=>'out','size'=>22])<span class="grow">Sign out</span></button>
           </form>

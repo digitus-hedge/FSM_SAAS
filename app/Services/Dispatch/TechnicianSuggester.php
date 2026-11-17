@@ -63,7 +63,7 @@ class TechnicianSuggester
             ->whereIn('assigned_tech_user_id', $userIds)
             ->whereIn('status', self::OPEN_STATUSES)
             ->whereNotNull('scheduled_eta_at')
-            ->whereBetween('scheduled_eta_at', [now(), now()->addDays(7)])
+            ->whereBetween('scheduled_eta_at', [now()->startOfDay(), now()->addDays(6)->endOfDay()])
             ->when($excludeSrId, fn ($q) => $q->where('id', '!=', $excludeSrId))
             ->get(['assigned_tech_user_id', 'scheduled_eta_at']);
 

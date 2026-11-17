@@ -105,7 +105,7 @@ Route::get('/', function () {
 | Platform admin area  (/admin/*, platform admins only)
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth:platform', 'platform.2fa'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['platform.host', 'auth:platform', 'platform.2fa'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/',                              [TenantController::class, 'index'])->name('dashboard');
     Route::get('/tenants/create',                [TenantController::class, 'create'])->name('tenants.create');
     Route::post('/tenants',                      [TenantController::class, 'store'])->name('tenants.store');
@@ -524,6 +524,8 @@ Route::prefix('admin/operations-queue')->name('admin.operations-queue.')->group(
     Route::post('/{service_request}/change-priority', [ServiceRequestController::class, 'changePriority'])->name('change-priority');
     // Route::delete('/{service_request}/attachments/{filename}', [ServiceRequestController::class, 'deleteAttachment'])
     //     ->name('attachments.delete');
+    Route::post('/{service_request}/choose-contract',   [ServiceRequestController::class, 'chooseContract'])->name('choose-contract');
+    Route::post('/{service_request}/contract-decision', [ServiceRequestController::class, 'contractDecision'])->name('contract-decision');
 
 });
 
@@ -545,7 +547,7 @@ Route::prefix('admin/operations-queue')->name('admin.operations-queue.')->group(
             ->whereNumber('id')->name('dispatch.time-off.destroy');
     });
 
-    
+
     Route::prefix('technician')->middleware(['auth', DenyClientRole::class])->name('technician.')->group(function () {
         Route::get('/jobs', [JobsController::class, 'index'])->name('jobs.index');        // desktop dashboard
         Route::get('/jobs/mobile', [JobsController::class, 'index'])->name('jobs.mobile'); // mobile Today view
@@ -648,5 +650,3 @@ Route::prefix('admin/operations-queue')->name('admin.operations-queue.')->group(
           Route::get('/{contract}/documents/{document}',    [ContractsController::class, 'documentDownload'])->whereNumber('document')->name('documents.download');
           Route::delete('/{contract}/documents/{document}', [ContractsController::class, 'documentDestroy'])->whereNumber('document')->name('documents.destroy');
       });
-
-      

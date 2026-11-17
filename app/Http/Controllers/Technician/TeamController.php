@@ -367,18 +367,29 @@ class TeamController extends Controller
         return back()->with('success', 'Rejected.');
     }
 
-    public function assign(Request $request, ServiceRequest $serviceRequest)
+        public function assign(Request $request, ServiceRequest $serviceRequest)
     {
         $this->authorizeTeamSr($serviceRequest);
-        $data = $request->validate(['assigned_tech_user_id' => ['required', 'in:' . implode(',', $this->teamMemberIds())]]);
+        $data = $request->validate([
+            'assigned_tech_user_id' => ['required', 'in:' . implode(',', $this->teamMemberIds())],
+            'scheduled_eta_at'      => ['required', 'date', 'after:now'],
+        ], [
+            'scheduled_eta_at.required' => 'Choose the date and time for this job.',
+            'scheduled_eta_at.after'    => 'Choose a time in the future.',
+        ]);
+        $eta = \Carbon\Carbon::parse($data['scheduled_eta_at']);
         $fromStatus = $serviceRequest->status;
-        $serviceRequest->update(['assigned_tech_user_id' => $data['assigned_tech_user_id'], 'status' => 'assigned']);
+        $serviceRequest->update([
+            'assigned_tech_user_id' => $data['assigned_tech_user_id'],
+            'scheduled_eta_at'      => $eta,
+            'status'                => 'assigned',
+        ]);
         $tech = User::find($data['assigned_tech_user_id']);
         \App\Models\SrStatusHistory::log(
             $serviceRequest, $fromStatus, 'assigned', 'user', auth()->id(), null,
-            ['technician_id' => $tech?->id, 'technician_name' => $tech?->name]
+            ['technician_id' => $tech?->id, 'technician_name' => $tech?->name, 'scheduled_eta_at' => $eta->toDateTimeString()]
         );
-        return back()->with('success', 'Assigned.');
+        return back()->with('success', 'Assigned for ' . $eta->format('d M, H:i') . '.');
     }
 
     public function approveOverride(GeofenceOverrideRequest $override)
