@@ -19,11 +19,26 @@ class AuthController extends Controller
         if ($tenant) {
             return view('auth.company-login', compact('tenant'));
         }
-        return view('auth.platform-login');
+        // Platform address keeps its own sign-in page; every other non-tenant address
+        // (the root address) is the single sign-in for all companies.
+        if ($this->isPlatformHost($request)) {
+            return view('auth.platform-login');
+        }
+        return app(CentralLoginController::class)->show();
+    }
+
+    private function isPlatformHost(Request $request): bool
+    {
+        return $request->getHost() === 'admin.' . parse_url(config('app.url'), PHP_URL_HOST);
     }
 
     public function login(Request $request)
     {
+        // No company address and not the platform address → the central sign-in.
+        if (! Tenant::current() && ! $this->isPlatformHost($request)) {
+            return app(CentralLoginController::class)->attempt($request);
+        }
+
         $ipKey = 'login-ip:' . $request->ip();
         if (RateLimiter::tooManyAttempts($ipKey, 20)) {
             $mins = max(1, (int) ceil(RateLimiter::availableIn($ipKey) / 60));

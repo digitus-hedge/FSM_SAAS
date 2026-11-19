@@ -13,12 +13,17 @@ class CompanySettingsController extends Controller
 {
     private function guard(): void
     {
-        abort_unless(auth()->user()?->canDo('settings.manage'), 403);
+        abort_unless(\App\Services\Permissions\PermissionLevel::canChange(auth()->user(), 'settings.manage'), 403);
+    }
+
+    private function viewGuard(): void
+    {
+        abort_unless(\App\Services\Permissions\PermissionLevel::canView(auth()->user(), 'settings.manage'), 403);
     }
 
     public function index()
     {
-        $this->guard();
+        $this->viewGuard();
 
         $tenant = Tenant::current();
         abort_unless($tenant, 404);

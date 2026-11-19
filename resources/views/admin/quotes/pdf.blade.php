@@ -12,7 +12,7 @@
                  ?? null;
   $senderTrn     = $tenant?->trn ?? $tenant?->tax_number ?? null;
   $senderLogo    = ($tenant?->logo_path ?? null) ? asset('storage/'.$tenant->logo_path) : null;
-  $currencyCode  = $tenant?->currency_code ?? 'AED';
+  $currencyCode  = $quote->currency_code;
   $primaryColor  = $tenant?->primary_color ?? '#FFC61A';
 
   $words  = preg_split('/\s+/', trim((string) $senderName));
@@ -202,9 +202,9 @@
         <td class="d">{{ $it->description }}</td>
         <td class="r">{{ rtrim(rtrim(number_format($it->quantity,2),'0'),'.') }}</td>
         <td>{{ $it->unit }}</td>
-        <td class="r">{{ number_format($it->unit_rate,2) }}</td>
+        <td class="r">{{ \App\Services\Currency\Money::format($it->unit_rate, $quote->currency_code) }}</td>
         <td>{{ $it->taxRate?->name }}@if($it->taxRate) {{ rtrim(rtrim(number_format($it->taxRate->rate_percent,2),'0'),'.') }}%@endif</td>
-        <td class="r">{{ number_format($it->line_total,2) }}</td>
+        <td class="r">{{ \App\Services\Currency\Money::format($it->line_total, $quote->currency_code) }}</td>
       </tr>
     @endforeach
   </tbody>
@@ -213,12 +213,12 @@
 {{-- ===== TOTALS ===== --}}
 <div class="totals-wrap">
   <table class="totals">
-    <tr><td>Subtotal</td><td class="v">{{ $currencyCode }} {{ number_format($quote->subtotal,2) }}</td></tr>
+    <tr><td>Subtotal</td><td class="v">{{ $currencyCode }} {{ \App\Services\Currency\Money::format($quote->subtotal, $quote->currency_code) }}</td></tr>
     @if ($quote->discount_total > 0)
-      <tr><td>Discount</td><td class="v">-{{ $currencyCode }} {{ number_format($quote->discount_total,2) }}</td></tr>
+      <tr><td>Discount</td><td class="v">-{{ $currencyCode }} {{ \App\Services\Currency\Money::format($quote->discount_total, $quote->currency_code) }}</td></tr>
     @endif
-    <tr><td>Tax</td><td class="v">{{ $currencyCode }} {{ number_format($quote->tax_total,2) }}</td></tr>
-    <tr class="big"><td>Total</td><td class="v">{{ $currencyCode }} {{ number_format($quote->total,2) }}</td></tr>
+    <tr><td>Tax</td><td class="v">{{ $currencyCode }} {{ \App\Services\Currency\Money::format($quote->tax_total, $quote->currency_code) }}</td></tr>
+    <tr class="big"><td>Total</td><td class="v">{{ $currencyCode }} {{ \App\Services\Currency\Money::format($quote->total, $quote->currency_code) }}</td></tr>
   </table>
 </div>
 

@@ -10,7 +10,12 @@ class RequestsReviewController extends Controller
 {
     private function guard(): void
     {
-        abort_unless(auth()->user()?->canDo('sr.qc'), 403);
+        abort_unless(\App\Services\Permissions\PermissionLevel::canView(auth()->user(), 'sr.qc'), 403);
+    }
+
+    private function changeGuard(): void
+    {
+        abort_unless(\App\Services\Permissions\PermissionLevel::canChange(auth()->user(), 'sr.qc'), 403);
     }
 
     public function index(Request $request)
@@ -72,7 +77,7 @@ class RequestsReviewController extends Controller
 
    public function qcPass(ServiceRequest $sr)
 {
-    $this->guard();
+    $this->changeGuard();
     abort_unless($sr->status === 'pending_review', 422, 'QC can only pass a job that is in Pending Review.');
 
     // Blueprint 7.1: Awaiting Invoice only when BOTH out-of-coverage AND the
@@ -108,7 +113,7 @@ class RequestsReviewController extends Controller
 
 public function qcFail(Request $request, ServiceRequest $sr)
 {
-    $this->guard();
+    $this->changeGuard();
     abort_unless($sr->status === 'pending_review', 422, 'QC can only fail a job that is in Pending Review.');
 
     $data = $request->validate([
@@ -131,7 +136,7 @@ public function qcFail(Request $request, ServiceRequest $sr)
 }
     public function cancel(Request $request, ServiceRequest $sr)
 {
-    $this->guard();
+    $this->changeGuard();
 
     $data = $request->validate([
         'reason' => 'required|string|min:3|max:500',

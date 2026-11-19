@@ -404,7 +404,7 @@
       </div>
       <div class="card-body" style="padding:16px 20px;display:flex;flex-direction:column;gap:10px">
 
-        @if ($sr->status === 'pending')
+        @if ($sr->status === 'pending' && \App\Services\Permissions\ServiceRequestAccess::mayApprove(auth()->user()))
           @if ($choicePending)
             <button type="button" class="act-btn act-primary" disabled title="Choose a contract before you approve.">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -437,7 +437,7 @@
           </button> -->
         @endif
 
-        @if (in_array($sr->status, ['approved', 'assigned']))
+        @if (in_array($sr->status, ['approved', 'assigned']) && \App\Services\Permissions\ServiceRequestAccess::mayAssign(auth()->user(), $sr))
           <button type="button" class="act-btn {{ $sr->status === 'assigned' ? 'act-neutral' : 'act-primary' }}"
                   onclick="document.getElementById('assign-modal').classList.add('show')">
             @if ($sr->status === 'assigned')
@@ -450,7 +450,7 @@
           </button>
         @endif
 
-        @if ($sr->status === 'in_progress')
+        @if ($sr->status === 'in_progress' && \App\Services\Permissions\ServiceRequestAccess::mayMarkReview(auth()->user()))
           <form method="POST" action="{{ route('service-requests.mark-review', $sr) }}" class="needs-confirm"
                 data-confirm-title="Mark for review?" data-confirm-ok="Yes" data-confirm-ok-color="amber">
             @csrf
@@ -467,13 +467,13 @@
           </button>
         @endif
 
-        @if ($sr->status === 'pending_review' && auth()->user()?->canDo('sr.qc'))
+        @if ($sr->status === 'pending_review' && \App\Services\Permissions\PermissionLevel::canChange(auth()->user(), 'sr.qc'))
           <a href="{{ route('admin.requests-review.show', $sr) }}" class="act-btn act-primary">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
             Review quality check
           </a>
         @endif
-        @if ($sr->status === 'quoted')
+        @if ($sr->status === 'quoted' && \App\Services\Permissions\PermissionLevel::canChange(auth()->user(), 'quote.manage'))
     <a href="{{ route('admin.quotes.build', $sr) }}" class="act-btn act-primary">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
         Build quote
@@ -484,7 +484,7 @@
     </a>
 @endif
 
-        @if (!in_array($sr->status, ['completed', 'cancelled']))
+        @if (!in_array($sr->status, ['completed', 'cancelled']) && \App\Services\Permissions\ServiceRequestAccess::mayCancel(auth()->user(), $sr))
           <button type="button" class="act-btn act-danger-outline"
                   onclick="document.getElementById('cancel-modal').classList.add('show')">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -492,7 +492,7 @@
           </button>
         @endif
 
-        @if (!in_array($sr->status, ['completed', 'cancelled']))
+        @if (!in_array($sr->status, ['completed', 'cancelled']) && \App\Services\Permissions\ServiceRequestAccess::mayChangePriority(auth()->user(), $sr))
           <button type="button" class="act-btn act-neutral"
                   onclick="document.getElementById('priority-modal').classList.add('show')">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>

@@ -2,7 +2,7 @@
 @section('title', $invoice->invoice_number)
 @section('content')
 @php
-  $currencyCode = auth()->user()->tenant?->currency_code ?? 'AED';
+  $currencyCode = strtoupper($invoice->currency_code ?: $base);
 @endphp
 <style>
 .crumb{color:var(--muted);font-size:13px;margin-bottom:10px}
@@ -73,9 +73,13 @@
   </div>
   <div class="hero-totals">
     <div class="big-lbl">Total</div>
-    <div class="big">{{ $currencyCode }} {{ number_format($invoice->total, 2) }}</div>
+    <div class="big">{{ $currencyCode }} {{ \App\Services\Currency\Money::format($invoice->total, $invoice->currency_code) }}</div>
+    @if ($currencyCode !== $base)
+      <div style="color:var(--muted);font-size:13px">≈ {{ \App\Services\Currency\Money::format($invoice->base_total, $base) }} {{ $base }}</div>
+      <div style="color:var(--muted);font-size:12px">1 {{ $currencyCode }} = {{ rtrim(rtrim(number_format((float) $invoice->exchange_rate, 8, '.', ''), '0'), '.') }} {{ $base }} · {{ $invoice->rate_source === 'manual' ? 'entered by hand' : 'from provider' }}</div>
+    @endif
     @if ($invoice->balance > 0)
-      <div class="bal">Balance {{ $currencyCode }} {{ number_format($invoice->balance, 2) }}</div>
+      <div class="bal">Balance {{ $currencyCode }} {{ \App\Services\Currency\Money::format($invoice->balance, $invoice->currency_code) }}</div>
     @else
       <div class="bal paid">{{ $invoice->status === 'paid' ? 'Paid in full' : ($invoice->status === 'written_off' ? 'Written off' : '—') }}</div>
     @endif
@@ -157,23 +161,23 @@
               <td>{{ $it->line_no }}</td>
               <td>{{ $it->description }}</td>
               <td class="r">{{ number_format($it->quantity, 2) }}</td>
-              <td class="r">{{ number_format($it->unit_rate, 3) }}</td>
+              <td class="r">{{ \App\Services\Currency\Money::format($it->unit_rate, $invoice->currency_code) }}</td>
               <td class="r">{{ $it->taxRate?->rate_percent ? rtrim(rtrim(number_format($it->taxRate->rate_percent, 2), '0'), '.') . '%' : '—' }}</td>
-              <td class="r">{{ number_format($it->line_total, 3) }}</td>
+              <td class="r">{{ \App\Services\Currency\Money::format($it->line_total, $invoice->currency_code) }}</td>
             </tr>
           @endforeach
         </tbody>
       </table>
-      <div class="tot-row sub"><span>Subtotal</span><span>{{ $currencyCode }} {{ number_format($invoice->subtotal, 3) }}</span></div>
+      <div class="tot-row sub"><span>Subtotal</span><span>{{ $currencyCode }} {{ \App\Services\Currency\Money::format($invoice->subtotal, $invoice->currency_code) }}</span></div>
       @if ($invoice->discount_total > 0)
-        <div class="tot-row"><span>Discount</span><span>— {{ $currencyCode }} {{ number_format($invoice->discount_total, 3) }}</span></div>
+        <div class="tot-row"><span>Discount</span><span>— {{ $currencyCode }} {{ \App\Services\Currency\Money::format($invoice->discount_total, $invoice->currency_code) }}</span></div>
       @endif
-      <div class="tot-row"><span>Tax</span><span>{{ $currencyCode }} {{ number_format($invoice->tax_total, 3) }}</span></div>
-      <div class="tot-row tot"><span>Total</span><span>{{ $currencyCode }} {{ number_format($invoice->total, 3) }}</span></div>
+      <div class="tot-row"><span>Tax</span><span>{{ $currencyCode }} {{ \App\Services\Currency\Money::format($invoice->tax_total, $invoice->currency_code) }}</span></div>
+      <div class="tot-row tot"><span>Total</span><span>{{ $currencyCode }} {{ \App\Services\Currency\Money::format($invoice->total, $invoice->currency_code) }}</span></div>
       @php $paid = $invoice->payments->whereNull('reversed_at')->sum('amount'); @endphp
-      <div class="tot-row pay"><span>Paid</span><span>{{ $currencyCode }} {{ number_format($paid, 3) }}</span></div>
+      <div class="tot-row pay"><span>Paid</span><span>{{ $currencyCode }} {{ \App\Services\Currency\Money::format($paid, $invoice->currency_code) }}</span></div>
       <div class="tot-row bal {{ $invoice->balance <= 0 ? 'paid' : '' }}">
-        <span>Balance due</span><span>{{ $currencyCode }} {{ number_format($invoice->balance, 3) }}</span>
+        <span>Balance due</span><span>{{ $currencyCode }} {{ \App\Services\Currency\Money::format($invoice->balance, $invoice->currency_code) }}</span>
       </div>
     </div>
 
@@ -191,7 +195,9 @@
                 <td>{{ $p->received_at->format('d M Y') }}</td>
                 <td>{{ ucfirst(str_replace('_',' ',$p->method)) }}</td>
                 <td style="color:var(--muted)">{{ $p->reference ?? '—' }}</td>
-                <td class="r">{{ $currencyCode }} {{ number_format($p->amount, 3) }}</td>
+                <td class="r">{{ $currencyCode }} {{ \App\Services\Currency\Money::format($p->amount, $invoice->currency_code) }}
+                  @if ($currencyCode !== $base && $p->base_amount !== null)<div style="color:var(--muted);font-size:11.5px">≈ {{ \App\Services\Currency\Money::format($p->base_amount, $base) }} {{ $base }}</div>@endif
+                </td>
                 <td style="text-align:right">
                   @if (! $p->reversed_at)
                     <button type="button" class="btn ghost" style="padding:4px 10px;font-size:11px" onclick="openReverse({{ $p->id }}, '{{ $p->payment_number }}')">Reverse</button>
@@ -207,6 +213,8 @@
         </table>
       @endif
     </div>
+
+    @include('admin.invoices._reminders', ['invoice' => $invoice, 'reminders' => $reminders])
 
     @if ($invoice->notes)
       <div class="panel">
@@ -244,10 +252,13 @@
       @csrf
       <div style="padding:20px 24px">
         <div style="padding:12px 14px;background:#F5F4FA;border-radius:10px;margin-bottom:16px;display:flex;justify-content:space-between">
-          <div><div style="color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase">Balance due</div><div style="font-family:var(--font-display);font-weight:800;font-size:20px;color:var(--amber)">{{ $currencyCode }} {{ number_format($invoice->balance, 2) }}</div></div>
+          <div><div style="color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase">Balance due</div><div style="font-family:var(--font-display);font-weight:800;font-size:20px;color:var(--amber)">{{ $currencyCode }} {{ \App\Services\Currency\Money::format($invoice->balance, $invoice->currency_code) }}</div></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-          <div><label style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase">Amount *</label><input type="number" step="0.01" min="0" name="amount" value="{{ number_format($invoice->balance, 2, '.', '') }}" required style="width:100%;height:42px;padding:0 14px;border:1px solid var(--line);border-radius:10px;font-weight:700;text-align:right;margin-top:4px"></div>
+          <div><label style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase">Amount in {{ $currencyCode }} *</label><input type="number" step="{{ 1 / (10 ** \App\Services\Currency\Money::decimals($invoice->currency_code)) }}" min="0" name="amount" id="pay-amount" value="{{ \App\Services\Currency\Money::round($invoice->balance, $invoice->currency_code) }}" required style="width:100%;height:42px;padding:0 14px;border:1px solid var(--line);border-radius:10px;font-weight:700;text-align:right;margin-top:4px">
+            @if ($currencyCode !== $base)
+              <div id="pay-base-line" style="color:var(--muted);font-size:12.5px;margin-top:6px" data-rate="{{ rtrim(rtrim(number_format((float) $invoice->exchange_rate, 8, '.', ''), '0'), '.') }}" data-dec="{{ \App\Services\Currency\Money::decimals($base) }}"></div>
+            @endif</div>
           <div><label style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase">Received *</label><input type="date" name="received_at" value="{{ now()->format('Y-m-d') }}" required style="width:100%;height:42px;padding:0 14px;border:1px solid var(--line);border-radius:10px;margin-top:4px"></div>
         </div>
         <div style="margin-bottom:14px"><label style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase">Method *</label>
@@ -264,6 +275,22 @@
     </form>
   </div>
 </div>
+
+<script>
+(function () {
+  // 5.4: "≈ {base amount} {base} at the invoice rate {rate}." under the amount, for an invoice in another currency.
+  const line = document.getElementById('pay-base-line');
+  const amt = document.getElementById('pay-amount');
+  if (!line || !amt) return;
+  const base = @json($base);
+  const show = () => {
+    const v = (parseFloat(amt.value) || 0) * parseFloat(line.dataset.rate);
+    line.textContent = '≈ ' + v.toFixed(parseInt(line.dataset.dec)) + ' ' + base + ' at the invoice rate ' + line.dataset.rate + '.';
+  };
+  amt.addEventListener('input', show);
+  show();
+})();
+</script>
 
 <script>
 const INV_NUMBER = @json($invoice->invoice_number);

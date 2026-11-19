@@ -8,6 +8,7 @@ use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;          // ← added
+use App\Services\Users\UserAdminScope;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -30,7 +31,9 @@ class MembersController extends Controller
         $tenant = Tenant::current();
         abort_unless($tenant, 404);
 
-        $users = User::where('tenant_id', $tenant->id)
+        $scope = $this->scope();
+
+        $users = $scope->scope(User::where('tenant_id', $tenant->id))
             ->with('role')
             ->when($request->filled('role'), fn ($q) =>
                 $q->whereHas('role', fn ($r) => $r->where('code', $request->input('role'))))
@@ -50,7 +53,7 @@ class MembersController extends Controller
             ->paginate(25)
             ->withQueryString();
 
-        $roles = Role::where('tenant_id', $tenant->id)->orderBy('name')->get();
+        $roles = $scope->roles($tenant);
         $activeAdminCount = $this->activeAdminCount($tenant);
 
         return view('tenant.users.index', compact('users', 'roles', 'activeAdminCount'));
@@ -61,13 +64,14 @@ class MembersController extends Controller
         $tenant = Tenant::current();
         abort_unless($tenant, 404);
 
-        $roles = Role::where('tenant_id', $tenant->id)->orderBy('name')->get();
+        $scope = $this->scope();
+        $roles = $scope->roles($tenant);
         $roleDefaults = $this->roleDefaultsFor($tenant, self::EXTRA_PERMS);
 
         return view('tenant.users.form', [
             'user'            => null,
             'roles'           => $roles,
-            'clients'         => Client::where('tenant_id', $tenant->id)->orderBy('name')->get(),
+            'clients'         => $scope->clients($tenant),
             'clientRoleCodes' => self::CLIENT_ROLE_CODES,
             'teamLeads'       => $this->teamLeadOptions($tenant),
             'tenant'          => $tenant,
@@ -81,10 +85,19 @@ class MembersController extends Controller
         $tenant = Tenant::current();
         abort_unless($tenant, 404);
 
+        $scope = $this->scope();
+
         $data = $this->validatedPayload($request, $tenant);
 
         $role = Role::find($data['role_id']);
         $isClientRole = in_array($role?->code, self::CLIENT_ROLE_CODES, true);
+
+        // Only the Company Admin creates staff users or gives the Company Admin role. A Front Desk or Client Admin adds client users only,
+        // and only for a client company they may add to.
+        abort_unless($scope->canAssignRole($role), 403);
+        if ($isClientRole) {
+            abort_unless($scope->canAddForClient((int) ($data['client_id'] ?? 0)), 403);
+        }
 
         do {
             $employeeCode = 'EMP-' . $tenant->id . '-' . strtoupper(Str::random(6));
@@ -113,7 +126,9 @@ class MembersController extends Controller
             'new'       => $user->only(['name', 'email', 'phone', 'role_id', 'employee_code', 'client_id', 'team_lead_id']),
         ]);
         $this->saveDispatchFields($user->load('role'), $data);
-        $this->syncExtraPermissionOverrides($user, $data);
+        if ($scope->isAdmin()) {
+            $this->syncExtraPermissionOverrides($user, $data); // personal extra permissions are the Company Admin's to give
+        }
         if ($isClientRole) {
             $signInUrl = $this->buildClientSignInUrl($tenant);
             return redirect()->route('tenant.users.index')
@@ -141,7 +156,7 @@ class MembersController extends Controller
 
     public function edit(User $user)
     {
-        $this->ensureSameTenant($user);
+        $this->ensureManageable($user);
 
         $applicable = self::EXTRA_PERMS;
         $effectivePerms = collect($applicable)->mapWithKeys(fn ($key) => [$key => $user->canDo($key)]);
@@ -149,8 +164,8 @@ class MembersController extends Controller
 
         return view('tenant.users.form', [
             'user'            => $user,
-            'roles'           => Role::where('tenant_id', $user->tenant_id)->orderBy('name')->get(),
-            'clients'         => Client::where('tenant_id', $user->tenant_id)->orderBy('name')->get(),
+            'roles'           => $this->scope()->roles($user->tenant)->when($user->role, fn ($c) => $c->prepend($user->role))->unique('id')->values(),
+            'clients'         => $this->scope()->clients($user->tenant)->when($user->client, fn ($c) => $c->prepend($user->client))->unique('id')->values(),
             'clientRoleCodes' => self::CLIENT_ROLE_CODES,
             'teamLeads'       => $this->teamLeadOptions($user->tenant, $user->id),
             'tenant'          => $user->tenant,
@@ -165,8 +180,19 @@ class MembersController extends Controller
 
     public function update(Request $request, User $user)
     {
-        $this->ensureSameTenant($user);
+        $this->ensureManageable($user);
         $data = $this->validatedPayload($request, $user->tenant, $user);
+        $scope = $this->scope();
+
+        if ((int) $data['role_id'] !== (int) $user->role_id) {
+            if ((int) $user->id === (int) auth()->id()) {
+                throw ValidationException::withMessages(['role_id' => 'You cannot change your own role.']);
+            }
+            abort_unless($scope->canAssignRole(Role::find($data['role_id'])), 403); // staff roles and Company Admin: Company Admin only
+        }
+        if ((int) ($data['client_id'] ?? 0) !== (int) $user->client_id) {
+            abort_unless($scope->canAddForClient((int) ($data['client_id'] ?? 0)), 403);
+        }
 
         if ($this->isLastActiveAdmin($user)
             && Role::find($data['role_id'])->code !== 'company_admin') {
@@ -201,7 +227,9 @@ class MembersController extends Controller
             ]);
         }
         $this->saveDispatchFields($user->load('role'), $data);
-         $this->syncExtraPermissionOverrides($user, $data);
+        if ($scope->isAdmin()) {
+            $this->syncExtraPermissionOverrides($user, $data);
+        }
         return redirect()
             ->route('tenant.users.index')
             ->with('success', "{$user->name} was updated.");
@@ -209,7 +237,7 @@ class MembersController extends Controller
 
     public function deactivate(User $user)
     {
-        $this->ensureSameTenant($user);
+        $this->ensureManageable($user);
 
         if (Auth::id() === $user->id) {
             return back()->withErrors(['user' => 'You cannot turn off your own account.']);
@@ -234,7 +262,7 @@ class MembersController extends Controller
 
     public function reactivate(User $user)
     {
-        $this->ensureSameTenant($user);
+        $this->ensureManageable($user);
         $user->update(['deactivated_at' => null]);
 
         // ↓ audit
@@ -249,7 +277,7 @@ class MembersController extends Controller
 
     public function temporaryPassword(User $user)
     {
-        $this->ensureSameTenant($user);
+        $this->ensureManageable($user);
         $temp = Str::random(12);
         $user->update([
             'password'             => Hash::make($temp),
@@ -272,7 +300,7 @@ class MembersController extends Controller
 
     public function unlock(User $user)
     {
-        $this->ensureSameTenant($user);
+        $this->ensureManageable($user);
         $user->update(['failed_login_count' => 0, 'locked_until' => null]);
 
         // ↓ audit
@@ -419,6 +447,22 @@ class MembersController extends Controller
         ])->save();
     }
 
+    /** Who this person is for user management (blueprint section 4): Company Admin, Front Desk, Client Admin, or nobody (403). */
+    private function scope(): UserAdminScope
+    {
+        $scope = UserAdminScope::for(auth()->user());
+        abort_unless($scope->allowed(), 403);
+
+        return $scope;
+    }
+
+    /** Same company, and this person is allowed to manage this particular user (403 otherwise). */
+    private function ensureManageable(User $user): void
+    {
+        $this->ensureSameTenant($user);
+        abort_unless($this->scope()->canManage($user), 403);
+    }
+
     private function ensureSameTenant(User $user): void
     {
         abort_unless($user->tenant_id === Tenant::current()?->id, 404);
@@ -450,7 +494,7 @@ class MembersController extends Controller
 
     public function devices(User $user)
     {
-        $this->ensureSameTenant($user);
+        $this->ensureManageable($user);
         $devices = \App\Models\UserDevice::where('user_type', 'user')
             ->where('user_id', $user->id)
             ->whereNull('revoked_at')

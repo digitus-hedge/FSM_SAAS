@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 
 class GeofenceOverrideRequest extends Model
 {
+    use BelongsToTenant; // every query is limited to the signed-in company (off in jobs and commands)
+
     protected $fillable = [
         'tenant_id', 'service_request_id', 'technician_user_id', 'client_event_uuid',
         'reason', 'photo_attachment_id', 'requested_at_device', 'gps_lat', 'gps_lng',

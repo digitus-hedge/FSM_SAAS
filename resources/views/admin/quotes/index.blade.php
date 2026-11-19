@@ -119,7 +119,7 @@
       <tbody>
         @foreach ($items as $q)
           @php
-            $openUrl = ($q->status === 'draft' && $q->source === 'builder')
+            $openUrl = ($q->status === 'draft' && $q->source === 'builder' && \App\Services\Permissions\PermissionLevel::canChange(auth()->user(), 'quote.manage'))
                 ? route('admin.quotes.edit', $q)
                 : route('admin.quotes.show', $q);
           @endphp
@@ -127,7 +127,9 @@
             <td class="qnum">{{ $q->quote_number }}</td>
             <td>{{ $q->serviceRequest?->sr_number ?? '—' }}</td>
             <td>{{ $q->client?->name ?? '—' }}</td>
-            <td class="total">{{ $currencyCode }} {{ number_format($q->total, 2) }}</td>
+            <td class="total">{{ $q->currency_code }} {{ \App\Services\Currency\Money::format($q->total, $q->currency_code) }}
+              @if (strtoupper($q->currency_code) !== $currencyCode)<div style="color:var(--muted);font-size:11.5px;font-weight:400">≈ {{ \App\Services\Currency\Money::format($q->base_total, $currencyCode) }} {{ $currencyCode }}</div>@endif
+            </td>
             <td>{{ $q->valid_until?->format('d M Y') ?? '—' }}</td>
             <td><span class="pill p-{{ $q->status }}">{{ ucfirst($q->status) }}</span></td>
             <td style="color:var(--muted)">{{ $q->updated_at->diffForHumans() }}</td>

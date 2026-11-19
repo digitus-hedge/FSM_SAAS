@@ -114,16 +114,6 @@ class TwoFactorController extends Controller
 
 public function challenge(Request $request)
 {
-    \Log::debug('2FA challenge diagnostic', [
-        'host' => $request->getHost(),
-        'tenant_id' => \App\Models\Tenant::current()?->id,
-        'pending_exists' => $request->session()->has('two_factor_pending'),
-        'pending' => $request->session()->get('two_factor_pending'),
-        'web_authenticated' => Auth::guard('web')->check(),
-        'platform_authenticated' => Auth::guard('platform')->check(),
-        'session_id' => $request->session()->getId(),
-    ]);
-
     $pendingKey = $request->session()->get('two_factor_pending');
 
     abort_unless($pendingKey, 403);
@@ -182,6 +172,13 @@ public function verifyChallenge(Request $request)
         return back()->withErrors([
             'code' => 'That code is not right. Try the next code from your app.',
         ]);
+    }
+
+    // Central sign-in (no company address yet): hand the verified user to their company address.
+    if ($guard === 'web' && ! \App\Models\Tenant::current()) {
+        $request->session()->forget('two_factor_pending');
+
+        return app(CentralLoginController::class)->handoff($user, (bool) ($pending['remember'] ?? false));
     }
 
     // Authenticate only after the 2FA code is verified.

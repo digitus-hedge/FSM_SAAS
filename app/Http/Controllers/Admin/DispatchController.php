@@ -21,7 +21,7 @@ class DispatchController extends Controller
     public function workload()
     {
         $user = auth()->user();
-        abort_unless($user->canDo('sr.assign'), 403);
+        abort_unless(\App\Services\Permissions\PermissionLevel::canView($user, 'sr.assign'), 403);
 
         $tenantId = (int) $user->tenant_id;
         $s     = DispatchSetting::forTenant($tenantId);
@@ -57,7 +57,8 @@ class DispatchController extends Controller
     /** Ranked technicians for one request at a chosen arrival time (the assign form calls this). */
     public function suggestions(Request $request, ServiceRequest $service_request)
     {
-        abort_unless(auth()->user()->canDo('sr.assign'), 403);
+        abort_unless(\App\Services\Permissions\PermissionLevel::canView(auth()->user(), 'sr.assign'), 403);
+        abort_unless(\App\Services\Permissions\ServiceRequestAccess::mayAssign(auth()->user(), $service_request), 403); // Front Desk: critical and emergency requests only
 
         $arrival = null;
         if ($request->filled('arrival')) {
@@ -76,7 +77,7 @@ class DispatchController extends Controller
     public function calendar(Request $request)
     {
         $user = auth()->user();
-        abort_unless($user->canDo('sr.assign'), 403);
+        abort_unless(\App\Services\Permissions\PermissionLevel::canView($user, 'sr.assign'), 403);
         $tenantId = (int) $user->tenant_id;
 
         try {
@@ -145,8 +146,9 @@ class DispatchController extends Controller
     public function reschedule(Request $request, ServiceRequest $service_request)
     {
         $user = auth()->user();
-        abort_unless($user->canDo('sr.assign'), 403);
+        abort_unless(\App\Services\Permissions\PermissionLevel::canChange($user, 'sr.assign'), 403);
         abort_unless((int) $service_request->tenant_id === (int) $user->tenant_id, 404);
+        abort_unless(\App\Services\Permissions\ServiceRequestAccess::mayAssign($user, $service_request), 403); // Front Desk: critical and emergency requests only
 
         if ($service_request->status !== 'assigned') {
             return response()->json(['message' => 'Only an assigned job that has not started can be moved.'], 422);

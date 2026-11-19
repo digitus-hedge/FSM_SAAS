@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 
 class FieldEventLog extends Model
 {
+    use BelongsToTenant; // every query is limited to the signed-in company (off in jobs and commands)
+
     protected $table = 'field_event_log';
 
     protected $fillable = [

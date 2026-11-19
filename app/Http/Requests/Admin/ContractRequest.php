@@ -14,7 +14,7 @@ class ContractRequest extends FormRequest
 
     public function authorize(): bool
     {
-        return (bool) $this->user()?->canDo('contract.manage');
+        return \App\Services\Permissions\PermissionLevel::canChange($this->user(), 'contract.manage');
     }
 
     protected function prepareForValidation(): void

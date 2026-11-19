@@ -70,13 +70,13 @@
     <p>Equipment at your clients' sites.</p>
   </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
-      @if (auth()->user()?->canDo('asset.view') && \App\Models\Tenant::current()?->hasFeature('assets_full'))
+      @if (\App\Services\Permissions\PermissionLevel::canView(auth()->user(), 'asset.view') && \App\Models\Tenant::current()?->hasFeature('assets_full'))
         <a href="{{ route('admin.assets.labels', request()->query()) }}" class="btn btn-ghost" target="_blank">Print labels</a>
       @endif
-    @if (auth()->user()?->canDo('asset.import') && \App\Models\Tenant::current()?->hasFeature('assets_full'))
+    @if (\App\Services\Permissions\PermissionLevel::canChange(auth()->user(), 'asset.import') && \App\Models\Tenant::current()?->hasFeature('assets_full'))
       <a href="{{ route('admin.assets.import') }}" class="btn btn-ghost">Import CSV</a>
     @endif
-    @if (auth()->user()->canDo('asset.manage'))
+    @if (\App\Services\Permissions\PermissionLevel::canChange(auth()->user(), 'asset.manage'))
       <a href="{{ route('admin.assets.create') }}" class="btn btn-primary">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
         New {{ strtolower($label) }}
@@ -162,7 +162,7 @@
                 <p>Try different words or <a href="{{ route('admin.assets.index') }}">clear all filters</a>.</p>
               @else
                 <h4>No {{ strtolower($plural) }} yet</h4>
-                @if (auth()->user()->canDo('asset.manage'))
+                @if (\App\Services\Permissions\PermissionLevel::canChange(auth()->user(), 'asset.manage'))
                   <p><a href="{{ route('admin.assets.create') }}">Add your first {{ strtolower($label) }}</a> to start tracking equipment.</p>
                 @endif
               @endif

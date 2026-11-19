@@ -50,14 +50,14 @@ td{padding:8px 0;border-top:1px solid #F2F1F6}
                 <tr>
                     <td>{{ $item->description }}</td>
                     <td>{{ $item->quantity }} {{ $item->unit }}</td>
-                    <td>{{ number_format($item->unit_rate, 2) }}</td>
-                    <td style="text-align:right">{{ number_format($item->line_total, 2) }}</td>
+                    <td>{{ \App\Services\Currency\Money::format($item->unit_rate, $invoice->currency_code) }}</td>
+                    <td style="text-align:right">{{ \App\Services\Currency\Money::format($item->line_total, $invoice->currency_code) }}</td>
                 </tr>
             @endforeach
             </tbody>
         </table>
-        <div class="tot"><span>Total</span><span>{{ $invoice->currency_code }} {{ number_format($invoice->total, 2) }}</span></div>
-        <div class="tot"><span>Balance due</span><b>{{ $invoice->currency_code }} {{ number_format($invoice->balance, 2) }}</b></div>
+        <div class="tot"><span>Total</span><span>{{ $invoice->currency_code }} {{ \App\Services\Currency\Money::format($invoice->total, $invoice->currency_code) }}</span></div>
+        <div class="tot"><span>Balance due</span><b>{{ $invoice->currency_code }} {{ \App\Services\Currency\Money::format($invoice->balance, $invoice->currency_code) }}</b></div>
         <div class="tot"><span>Due date</span><span>{{ $invoice->due_date?->format('d M Y') }}</span></div>
     </div>
 

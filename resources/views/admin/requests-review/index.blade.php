@@ -237,8 +237,8 @@
     @endphp
 
     @if ($draft)
-        <a href="{{ $draft->source === 'builder' ? route('admin.quotes.edit', $draft) : route('admin.quotes.show', $draft) }}" class="btn-primary">Open quote</a>
-    @elseif ($quotableStatus && ! $hasActiveQuote)
+        <a href="{{ ($draft->source === 'builder' && \App\Services\Permissions\PermissionLevel::canChange(auth()->user(), 'quote.manage')) ? route('admin.quotes.edit', $draft) : route('admin.quotes.show', $draft) }}" class="btn-primary">Open quote</a>
+    @elseif ($quotableStatus && ! $hasActiveQuote && \App\Services\Permissions\PermissionLevel::canChange(auth()->user(), 'quote.manage'))
         <button type="button" class="btn-primary" onclick="openMakeQuote({{ $sr->id }})">Make quote</button>
     @endif
 @endif

@@ -39,7 +39,7 @@ h1{font-family:'Figtree',sans-serif;font-size:22px;font-weight:800}
                 <span class="num">{{ $q->quote_number }}</span>
                 <div class="mid">
                     <b>{{ $q->serviceRequest?->title }}</b>
-                    <span>{{ $q->serviceRequest?->sr_number }} · {{ $q->currency_code }} {{ number_format($q->total, 2) }}</span>
+                    <span>{{ $q->serviceRequest?->sr_number }} · {{ $q->currency_code }} {{ \App\Services\Currency\Money::format($q->total, $q->currency_code) }}</span>
                 </div>
                 <span class="pill p-{{ $q->status }}">{{ ucfirst($q->status) }}</span>
             </a>

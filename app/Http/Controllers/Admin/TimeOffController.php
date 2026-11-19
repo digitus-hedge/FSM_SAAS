@@ -16,7 +16,7 @@ class TimeOffController extends Controller
     public function index()
     {
         $user = auth()->user();
-        abort_unless($user->canDo('sr.assign'), 403);
+        abort_unless(\App\Services\Permissions\PermissionLevel::canView($user, 'sr.assign'), 403);
         $tenantId = (int) $user->tenant_id;
 
         return view('admin.dispatch.time-off', [
@@ -33,7 +33,7 @@ class TimeOffController extends Controller
     public function store(Request $request)
     {
         $user = auth()->user();
-        abort_unless($user->canDo('sr.assign'), 403);
+        abort_unless(\App\Services\Permissions\PermissionLevel::isFull($user, 'sr.assign'), 403); // time off for anyone's team: full only, not record_level
         $tenantId = (int) $user->tenant_id;
         $allowed  = $this->suggester->candidates($tenantId)->pluck('id')->all();
 
@@ -62,7 +62,7 @@ class TimeOffController extends Controller
     public function destroy(int $id)
     {
         $user = auth()->user();
-        abort_unless($user->canDo('sr.assign'), 403);
+        abort_unless(\App\Services\Permissions\PermissionLevel::isFull($user, 'sr.assign'), 403);
 
         $row = UserTimeOff::where('tenant_id', $user->tenant_id)->findOrFail($id);
         $this->audit->log('dispatch.time_off_removed', [

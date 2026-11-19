@@ -19,7 +19,7 @@ class Asset360Controller extends Controller
 
     public function show(Asset $asset)
     {
-        abort_unless(auth()->user()?->canDo('asset.view'), 403);
+        abort_unless(\App\Services\Permissions\PermissionLevel::canView(auth()->user(), 'asset.view'), 403);
 
         $asset->load(['client', 'site', 'category', 'parent', 'children']);
 
@@ -60,7 +60,7 @@ class Asset360Controller extends Controller
 
         // ---- Contracts (only when the plan has contracts and the user may view them) ----
         $contractsOn = (bool) Tenant::current()?->hasFeature('contracts')
-            && (bool) auth()->user()->canDo('contract.view');
+            && \App\Services\Permissions\PermissionLevel::canView(auth()->user(), 'contract.view');
         $pinned = null;
         $covering = collect();
         $assetContracts = collect();
@@ -104,7 +104,7 @@ class Asset360Controller extends Controller
             'photos'        => $photos,
             'srNumbers'     => $requests->pluck('sr_number', 'id'),
             'currency'      => auth()->user()->tenant?->currency_code ?? 'AED',
-            'canManage'     => (bool) auth()->user()->canDo('asset.manage'),
+            'canManage'     => \App\Services\Permissions\PermissionLevel::canChange(auth()->user(), 'asset.manage'),
             'contractsOn'     => $contractsOn,
             'pinned'          => $pinned,
             'covering'        => $covering,

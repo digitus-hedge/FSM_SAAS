@@ -163,7 +163,9 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
                || request()->routeIs('admin.vendors.*')
                || request()->routeIs('admin.terminology.*')
                || request()->routeIs('admin.tenant-business-hours.*')
-               || request()->routeIs('admin.company-settings.*');
+               || request()->routeIs('admin.company-settings.*')
+               || request()->routeIs('admin.currencies.*')
+               || request()->routeIs('admin.reminder-settings.*');
 
     // Who sees the Work and Money sections (same role-name checks as before)
     $roleName    = $isPlatform ? null : $u?->role?->name;
@@ -263,7 +265,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
         {{-- ─────────── MONEY ─────────── --}}
         @if ($showMoney)
             <div class="nav-label">Money</div>
-            @if ($u->role?->name === 'Company Admin')
+            @if (\App\Services\Permissions\PermissionLevel::canChange($u, 'quote.manage'))
               @php
                 $draftQuotesCount = \App\Models\Quote::where('status','draft')->count();
               @endphp
@@ -319,6 +321,28 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
             @endif
             </a>
             @endif
+        @endif
+
+        {{-- ─────────── FINANCE: ledger and aging (billing_full; Operations Manager too) ─────────── --}}
+        @php
+          $__t = $u->tenant;
+          $__money = ! $isPlatform && $__t && ($u->canDo('payment.record') || $u->canDo('invoice.manage') || $u->canDo('invoice.approve'));
+        @endphp
+        @if ($__money && $__t->hasFeature('billing_full'))
+          <a href="{{ route('admin.payments.index') }}" class="nav-item {{ request()->routeIs('admin.payments.*') ? 'active' : '' }}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>
+            Payments
+          </a>
+          <a href="{{ route('admin.aging.index') }}" class="nav-item {{ request()->routeIs('admin.aging.*') ? 'active' : '' }}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
+            Aging
+          </a>
+        @endif
+        @if (! $isPlatform && \App\Services\Permissions\PermissionLevel::canView($u, 'quote.manage') && ! \App\Services\Permissions\PermissionLevel::canChange($u, 'quote.manage'))
+          <a href="{{ route('admin.quotes.index') }}" class="nav-item {{ request()->routeIs('admin.quotes.*') ? 'active' : '' }}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            Quotes
+          </a>
         @endif
 
         {{-- MASTER DATA --}}
@@ -394,9 +418,17 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
                     <!-- <a href="{{ route('admin.vendors.index') }}" class="nav-item {{ request()->routeIs('admin.vendors.*') ? 'active' : '' }}">Vendors</a> -->
                     <a href="{{ route('admin.tenant-business-hours.index') }}" class="nav-item {{ request()->routeIs('admin.tenant-business-hours.*') ? 'active' : '' }}">Business Hours and Holidays</a>
 
+                    @if (\App\Services\Permissions\PermissionLevel::canView($u, 'vocabulary.manage'))
                     <a href="{{ route('admin.terminology.index') }}" class="nav-item {{ request()->routeIs('admin.terminology.*') ? 'active' : '' }}">Terminology</a>
+                    @endif
                     <a href="{{ route('admin.branding.index') }}" class="nav-item {{ request()->routeIs('admin.branding.*') ? 'active' : '' }}">Branding</a>
                     <a href="{{ route('admin.company-settings.index') }}" class="nav-item {{ request()->routeIs('admin.company-settings.*') ? 'active' : '' }}">Company settings</a>
+                    @if ($u->tenant?->hasFeature('multi_currency') && ($u->canDo('settings.manage') || $u->canDo('invoice.manage')))
+                        <a href="{{ route('admin.currencies.index') }}" class="nav-item {{ request()->routeIs('admin.currencies.*') ? 'active' : '' }}">Currencies and rates</a>
+                    @endif
+                    @if ($u->tenant?->hasFeature('billing_full') && ($u->canDo('settings.manage') || $u->canDo('invoice.manage')))
+                        <a href="{{ route('admin.reminder-settings.edit') }}" class="nav-item {{ request()->routeIs('admin.reminder-settings.*') ? 'active' : '' }}">Overdue reminders</a>
+                    @endif
                      @if ($u->role?->name === 'Company Admin')
                         <a href="{{ route('dispatch.settings') }}" class="nav-item {{ request()->routeIs('dispatch.settings*') ? 'active' : '' }}">Dispatch settings</a>
                     @endif

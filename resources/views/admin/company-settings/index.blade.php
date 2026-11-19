@@ -55,4 +55,18 @@
         Save changes
     </button>
 </form>
+
+@if ($tenant->hasFeature('multi_currency') || $tenant->hasFeature('billing_full'))
+<div style="background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px 26px;max-width:560px;margin-top:20px">
+    <div style="font-weight:700;font-size:13px;margin-bottom:10px">Billing</div>
+    <div style="display:flex;flex-direction:column;gap:8px;font-size:14px">
+        @if ($tenant->hasFeature('multi_currency'))
+            <a href="{{ route('admin.currencies.index') }}" style="color:var(--ink)">Currencies and rates</a>
+        @endif
+        @if ($tenant->hasFeature('billing_full'))
+            <a href="{{ route('admin.reminder-settings.edit') }}" style="color:var(--ink)">Overdue reminders</a>
+        @endif
+    </div>
+</div>
+@endif
 @endsection

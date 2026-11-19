@@ -9,7 +9,7 @@
     $hasFilter      = request()->filled('q') || request()->filled('client_id') || request()->filled('contract_type')
                    || request()->filled('status') || request()->filled('expiry') || request()->boolean('has_cap');
     $showMoney      = $showMoney ?? false;
-    $canManage      = auth()->user()?->canDo('contract.manage');
+    $canManage      = \App\Services\Permissions\PermissionLevel::canChange(auth()->user(), 'contract.manage');
 @endphp
 
 @section('title', $plural)

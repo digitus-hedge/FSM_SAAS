@@ -24,6 +24,8 @@ class PlanSeeder extends Seeder
                 'assets_basic' => true,   // assets list, create, edit (all plans)
                 'assets_full'  => false,  // QR, Asset 360, scan, import (Pro+)
                 'contracts'    => false,  // Contracts and AMCs (Pro+)
+                'multi_currency' => false,  // Multi-currency quotes and invoices (Pro+)
+                'billing_full'   => false,  // Payments ledger, aging, overdue reminders (Pro+)
             ],
         ]);
 
@@ -40,6 +42,8 @@ class PlanSeeder extends Seeder
                 'assets_basic' => true,
                 'assets_full'  => true,
                 'contracts'    => true,
+                'multi_currency' => true,
+                'billing_full'   => true,
             ],
         ]);
 
@@ -56,6 +60,8 @@ class PlanSeeder extends Seeder
                 'assets_basic' => true,
                 'assets_full'  => true,
                 'contracts'    => true,
+                'multi_currency' => true,
+                'billing_full'   => true,
             ],
         ]);
     }

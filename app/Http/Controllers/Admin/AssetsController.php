@@ -19,8 +19,8 @@ class AssetsController extends Controller
 
     public function __construct(private AuditLogger $audit) {}
 
-    protected function canView(): void   { abort_unless(auth()->user()?->canDo('asset.view'), 403); }
-    protected function canManage(): void { abort_unless(auth()->user()?->canDo('asset.manage'), 403); }
+    protected function canView(): void   { abort_unless(\App\Services\Permissions\PermissionLevel::canView(auth()->user(), 'asset.view'), 403); }
+    protected function canManage(): void { abort_unless(\App\Services\Permissions\PermissionLevel::canChange(auth()->user(), 'asset.manage'), 403); }
 
     public function index(Request $request)
     {

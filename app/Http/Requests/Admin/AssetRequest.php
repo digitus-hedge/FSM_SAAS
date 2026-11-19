@@ -12,7 +12,7 @@ class AssetRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return (bool) $this->user()?->canDo('asset.manage');
+        return \App\Services\Permissions\PermissionLevel::canChange($this->user(), 'asset.manage');
     }
 
     public function rules(): array

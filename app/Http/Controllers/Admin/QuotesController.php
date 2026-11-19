@@ -4,14 +4,40 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\{Quote, QuoteItem, QuoteEvent, ServiceRequest, TaxRate, Attachment};
+use App\Services\Billing\DocumentTotals;
+use App\Services\Currency\DocumentCurrency;
+use App\Services\Permissions\PermissionLevel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class QuotesController extends Controller
 {
+    /** Quotes are built and sent by whoever holds quote.manage at change level: Company Admin and Finance (blueprint 7.7a). */
     private function guard(): void
     {
-        abort_unless(auth()->user()?->role?->name === 'Company Admin', 403);
+        abort_unless(PermissionLevel::canChange(auth()->user(), 'quote.manage'), 403);
+    }
+
+    /** Open the list, a quote and its PDF read-only: quote.manage at view level or above (Operations Manager, blueprint 7.7a). */
+    private function viewGuard(): void
+    {
+        abort_unless(PermissionLevel::canView(auth()->user(), 'quote.manage'), 403);
+    }
+
+    /** What the builder needs to show the currency picker, the rate line and the lock (spec 5.2). */
+    private function currencyView(Quote $quote): array
+    {
+        $tenant  = auth()->user()->tenant;
+        $dc      = app(DocumentCurrency::class);
+        $options = $dc->options($tenant, $quote->currency_code);
+
+        return [
+            'base'            => DocumentCurrency::base($tenant),
+            'currencyOptions' => $options,
+            'pickerAvailable' => $dc->pickerAvailable($tenant),
+            'rateMap'         => $dc->rateMap($tenant, $options),
+            'docLocked'       => $quote->status !== 'draft',
+        ];
     }
 
     /* ============================================================
@@ -21,7 +47,7 @@ class QuotesController extends Controller
 
     public function index(Request $request)
 {
-    $this->guard();
+    $this->viewGuard();
     $tenantId = auth()->user()->tenant_id;
     $tab = $request->input('tab', 'all');
 
@@ -72,6 +98,7 @@ class QuotesController extends Controller
                     'source'               => 'builder',
                     'status'               => 'draft',
                     'currency_code'        => auth()->user()->tenant?->currency_code ?? 'AED',
+                    'exchange_rate'        => 1,
                     'valid_until'          => now()->addDays(10),
                     'terms'                => 'Prices are before tax. Work starts after acceptance. Payment is due as stated on the invoice.',
                     'created_by_user_id'   => auth()->id(),
@@ -83,15 +110,19 @@ class QuotesController extends Controller
 
         $taxRates = TaxRate::orderBy('name')->get(['id', 'name', 'rate_percent']);
 
-        return view('admin.quotes.build', compact('quote', 'sr', 'taxRates'));
+        return view('admin.quotes.build', array_merge(compact('quote', 'sr', 'taxRates'), $this->currencyView($quote)));
     }
 
     public function edit(Quote $quote)
     {
         $this->guard();
+        // A sent quote is revised, not edited: its totals, currency and rate stay as sent.
+        if ($quote->status !== 'draft') {
+            return redirect()->route('admin.quotes.show', $quote)->with('error', 'Only draft quotes can be edited. Revise the quote instead.');
+        }
         $sr = $quote->serviceRequest;
         $taxRates = TaxRate::orderBy('name')->get(['id', 'name', 'rate_percent']);
-        return view('admin.quotes.build', compact('quote', 'sr', 'taxRates'));
+        return view('admin.quotes.build', array_merge(compact('quote', 'sr', 'taxRates'), $this->currencyView($quote)));
     }
 
     public function saveBuilt(Request $request, ServiceRequest $sr)
@@ -107,6 +138,16 @@ class QuotesController extends Controller
     private function persistBuilder(Request $request, Quote $quote)
     {
         $this->guard();
+
+        $tenant = auth()->user()->tenant;
+        $dc     = app(DocumentCurrency::class);
+        $input  = $request->only(['currency_code', 'exchange_rate', 'rate_manual']);
+
+        // D5: after it is sent, a quote's currency and rate are fixed (RATE_LOCKED), and its totals are never worked out again.
+        if ($quote->status !== 'draft') {
+            $dc->resolve($tenant, $quote, $input, true);
+            abort(422, 'Only draft quotes can be edited. Revise the quote instead.');
+        }
 
         // $data = $request->validate([
         //     'valid_until'           => 'required|date',
@@ -130,6 +171,9 @@ class QuotesController extends Controller
             'terms'                 => 'nullable|string|max:2000',
             'discount_type'         => 'required|in:none,percent,amount',
             'discount_value'        => 'nullable|numeric|min:0',
+            'currency_code'         => 'nullable|string|size:3',
+            'exchange_rate'         => 'nullable|numeric',
+            'rate_manual'           => 'nullable|boolean',
             'lines'                 => 'required|array|min:1',
             'lines.*.description'   => 'required|string|min:2|max:255',
             'lines.*.quantity'      => 'required|numeric|min:0.01',
@@ -149,19 +193,25 @@ class QuotesController extends Controller
             'lines.*.unit_rate.min'         => 'Rate must be 0 or more.',
         ]);
 
-        // Compute totals server-side
-        $subtotal = 0;
-        $taxTotal = 0;
+        // The currency and the rate (D4, D6): from the latest stored rate, or typed by Finance on this document.
+        $cur = $dc->resolve($tenant, $quote, $input, false);
+        if ($cur['changed'] && ! DocumentCurrency::mayChange(auth()->user(), 'quote')) {
+            abort(403);
+        }
+
+        // Totals worked out on the server with the arithmetic of blueprint 7.7a, in the document's currency.
+        $lines   = array_values($data['lines']);
+        $taxPct  = TaxRate::whereIn('id', collect($lines)->pluck('tax_rate_id')->filter())->pluck('rate_percent', 'id');
+        $calc    = DocumentTotals::compute(
+            array_map(fn ($ln) => [
+                'quantity' => $ln['quantity'], 'unit_rate' => $ln['unit_rate'],
+                'tax_percent' => ! empty($ln['tax_rate_id']) ? ($taxPct[$ln['tax_rate_id']] ?? 0) : 0,
+            ], $lines),
+            $data['discount_type'], $data['discount_value'] ?? 0, $cur['currency_code'],
+        );
+
         $built = [];
-        foreach ($data['lines'] as $i => $ln) {
-            $line = (float) $ln['quantity'] * (float) $ln['unit_rate'];
-            $tax  = 0;
-            if (! empty($ln['tax_rate_id'])) {
-                $tr = TaxRate::find($ln['tax_rate_id']);
-                $tax = round($line * (($tr->rate_percent ?? 0) / 100), 3);
-            }
-            $subtotal += $line;
-            $taxTotal += $tax;
+        foreach ($lines as $i => $ln) {
             $built[] = [
                 'line_no'     => $i + 1,
                 'description' => $ln['description'],
@@ -169,27 +219,26 @@ class QuotesController extends Controller
                 'unit'        => $ln['unit'] ?? null,
                 'unit_rate'   => $ln['unit_rate'],
                 'tax_rate_id' => $ln['tax_rate_id'] ?? null,
-                'line_total'  => round($line, 3),
+                'line_total'  => $calc['lines'][$i],
             ];
         }
 
-        $discount = 0;
-        if ($data['discount_type'] === 'percent') $discount = round($subtotal * ((float)$data['discount_value'] / 100), 3);
-        if ($data['discount_type'] === 'amount')  $discount = round((float)$data['discount_value'], 3);
+        $old = DocumentCurrency::snapshot($quote);
 
-        $total = max(0, round($subtotal + $taxTotal - $discount, 3));
-
-        DB::transaction(function () use ($quote, $data, $built, $subtotal, $taxTotal, $discount, $total) {
+        DB::transaction(function () use ($quote, $data, $built, $calc, $cur, $tenant) {
             $quote->update([
                 'valid_until'    => $data['valid_until'],
                 'terms'          => $data['terms'] ?? null,
                 'discount_type'  => $data['discount_type'],
                 'discount_value' => $data['discount_value'] ?? 0,
-                'subtotal'       => round($subtotal, 3),
-                'tax_total'      => round($taxTotal, 3),
-                'discount_total' => $discount,
-                'total'          => $total,
-                'base_total'     => $total,
+                'currency_code'  => $cur['currency_code'],
+                'exchange_rate'  => $cur['exchange_rate'],
+                'rate_source'    => $cur['rate_source'] ?? 'provider', // the column is an enum that cannot be null; a base-currency quote has no rate to speak of
+                'subtotal'       => $calc['subtotal'],
+                'tax_total'      => $calc['tax_total'],
+                'discount_total' => $calc['discount_total'],
+                'total'          => $calc['total'],
+                'base_total'     => DocumentCurrency::baseTotal($calc['total'], $cur['exchange_rate'], $tenant),
             ]);
 
             ServiceRequest::where('id', $quote->service_request_id)
@@ -204,6 +253,9 @@ class QuotesController extends Controller
             QuoteEvent::log($quote->id, 'saved');
         });
 
+        if ($cur['changed']) {
+            $dc->audit('quote.rate_changed', $quote, $tenant, $old, DocumentCurrency::snapshot($quote->fresh()));
+        }
         if ($request->input('and_send')) {
             return redirect()->route('admin.quotes.show', $quote)
                 ->with('open_send', 1);
@@ -294,14 +346,14 @@ class QuotesController extends Controller
 
     public function show(Quote $quote)
     {
-        $this->guard();
+        $this->viewGuard();
         $quote->load(['items.taxRate', 'serviceRequest.site', 'client.contacts', 'creator', 'pdfAttachment', 'events.user']);
         return view('admin.quotes.show', compact('quote'));
     }
 
     public function pdf(Quote $quote)
     {
-        $this->guard();
+        $this->viewGuard();
         $quote->load(['items.taxRate', 'serviceRequest.site', 'client']);
         return view('admin.quotes.pdf', compact('quote'));
     }
@@ -380,7 +432,21 @@ class QuotesController extends Controller
             $new->supersedes_quote_id  = $quote->id;
             $new->quote_number         = Quote::nextNumber(auth()->user()->tenant_id);
             $new->created_by_user_id   = auth()->id();
+
+            // 6.4: the revision keeps the currency and refills the rate from the latest stored rate. Finance can change it.
+            $tenant = auth()->user()->tenant;
+            $dc     = app(DocumentCurrency::class);
+            $old    = DocumentCurrency::snapshot($quote);
+            if (strtoupper($new->currency_code) !== DocumentCurrency::base($tenant) && ($latest = $dc->latest($tenant, $new->currency_code))) {
+                $new->exchange_rate = $latest['exchange_rate'];
+                $new->rate_source   = $latest['rate_source'];
+            }
+            $new->base_total = DocumentCurrency::baseTotal($new->total, $new->exchange_rate, $tenant);
             $new->save();
+
+            if (DocumentCurrency::snapshot($new) !== $old) {
+                $dc->audit('quote.rate_changed', $new, $tenant, $old, DocumentCurrency::snapshot($new));
+            }
 
             foreach ($quote->items as $it) {
                 $copyIt = $it->replicate();

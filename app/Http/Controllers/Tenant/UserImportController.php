@@ -12,12 +12,14 @@ class UserImportController extends Controller
 
     public function show()
     {
+        abort_unless(\App\Services\Users\UserAdminScope::for(auth()->user())->isAdmin(), 403); // creates staff users: Company Admin only
         abort_unless(Tenant::current(), 404);
         return view('tenant.users.import', ['step' => 1]);
     }
 
     public function preview(Request $request)
     {
+        abort_unless(\App\Services\Users\UserAdminScope::for(auth()->user())->isAdmin(), 403); // creates staff users: Company Admin only
         $tenant = Tenant::current();
         abort_unless($tenant, 404);
 
@@ -49,6 +51,7 @@ class UserImportController extends Controller
 
     public function commit(Request $request)
     {
+        abort_unless(\App\Services\Users\UserAdminScope::for(auth()->user())->isAdmin(), 403); // creates staff users: Company Admin only
         $tenant = Tenant::current();
         abort_unless($tenant, 404);
 
@@ -69,6 +72,7 @@ class UserImportController extends Controller
 
     public function sample()
     {
+        abort_unless(\App\Services\Users\UserAdminScope::for(auth()->user())->isAdmin(), 403); // creates staff users: Company Admin only
         $csv  = "name,email,phone,role,employee_code,team_lead_email\n";
         $csv .= "Rahul Nair,rahul@example.com,+919876543210,operations_manager,OPS-001,\n";
         $csv .= "Priya Menon,priya@example.com,,team_lead,TL-002,\n";

@@ -2,88 +2,86 @@
 
 namespace Tests\Feature;
 
-use App\Models\Tenant;
-use App\Models\User;
-use Database\Seeders\PermissionSeeder;
-use Database\Seeders\RoleSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Models\Permission;
+use App\Models\RolePermission;
 use PHPUnit\Framework\Attributes\Test;
-use Spatie\Permission\PermissionRegistrar;
-use Tests\TestCase;
+use Tests\Feature\Currency\BillingTestCase;
 
-class MemberRolesTest extends TestCase
+/**
+ * Roles and permissions as the product works today: each company has the 7 standard roles, seeded from the signed matrix
+ * (database/seeders/data/permission_matrix.csv), and User::canDo() reads them from role_permissions.
+ * (The old version of this file used Spatie roles and seeders that no longer exist.)
+ */
+class MemberRolesTest extends BillingTestCase
 {
-    use RefreshDatabase;
+    private const ROLES = ['company_admin', 'operations_manager', 'team_lead', 'field_technician', 'front_desk', 'finance', 'client_user'];
 
-    protected function setUp(): void
+    /** @return array<string, array<string, string>> permission key => role code => level, from the signed matrix */
+    private function matrix(): array
     {
-        parent::setUp();
-        $this->seed(PermissionSeeder::class);
-    }
-
-    protected function tearDown(): void
-    {
-        Tenant::setCurrent(null);
-        app(PermissionRegistrar::class)->setPermissionsTeamId(null);
-        parent::tearDown();
-    }
-
-    #[Test]
-    public function role_scope_is_isolated_between_tenants(): void
-    {
-        $acme  = Tenant::create(['slug' => 'acme',  'name' => 'Acme',  'status' => 'active']);
-        $wayne = Tenant::create(['slug' => 'wayne', 'name' => 'Wayne', 'status' => 'active']);
-
-        $this->seed(RoleSeeder::class);
-
-        $user = User::factory()->create();
-
-        // Admin in Acme, Finance in Wayne — same user, different roles per tenant.
-        app(PermissionRegistrar::class)->setPermissionsTeamId($acme->id);
-        $user->assignRole('company_admin');
-
-        app(PermissionRegistrar::class)->setPermissionsTeamId($wayne->id);
-        $user->assignRole('finance');
-
-        // Check from Acme's context.
-        app(PermissionRegistrar::class)->setPermissionsTeamId($acme->id);
-        $this->assertTrue($user->hasRole('company_admin'));
-        $this->assertFalse($user->hasRole('finance'));
-
-        // Check from Wayne's context.
-        app(PermissionRegistrar::class)->setPermissionsTeamId($wayne->id);
-        $this->assertTrue($user->hasRole('finance'));
-        $this->assertFalse($user->hasRole('company_admin'));
-    }
-
-    #[Test]
-    public function technician_cannot_approve_service_requests(): void
-    {
-        $tenant = Tenant::create(['slug' => 'acme', 'name' => 'Acme', 'status' => 'active']);
-        $this->seed(RoleSeeder::class);
-
-        $user = User::factory()->create();
-
-        app(PermissionRegistrar::class)->setPermissionsTeamId($tenant->id);
-        $user->assignRole('technician');
-
-        $this->assertTrue($user->hasPermissionTo('tech.punch_in'));
-        $this->assertFalse($user->hasPermissionTo('sr.approve'));
-    }
-
-    #[Test]
-    public function company_admin_has_every_permission(): void
-    {
-        $tenant = Tenant::create(['slug' => 'acme', 'name' => 'Acme', 'status' => 'active']);
-        $this->seed(RoleSeeder::class);
-
-        $user = User::factory()->create();
-
-        app(PermissionRegistrar::class)->setPermissionsTeamId($tenant->id);
-        $user->assignRole('company_admin');
-
-        foreach (PermissionSeeder::KEYS as $key) {
-            $this->assertTrue($user->hasPermissionTo($key), "Admin should have {$key}");
+        $rows = array_map('str_getcsv', file(database_path('seeders/data/permission_matrix.csv')));
+        $head = array_shift($rows);
+        $out  = [];
+        foreach ($rows as $row) {
+            if (count(array_filter($row)) === 0) {
+                continue;
+            }
+            $r = array_combine($head, $row);
+            $out[$r['permission_key']] = array_intersect_key($r, array_flip(self::ROLES));
         }
+
+        return $out;
+    }
+
+    #[Test]
+    public function a_technician_cannot_approve_service_requests_but_can_punch(): void
+    {
+        $tenant = $this->makeTenant(slug: 'acme');
+        $tech   = $this->makeUser($tenant, 'field_technician');
+
+        $this->assertFalse($tech->canDo('sr.approve'));
+        $this->assertTrue($tech->canDo('field.punch'));
+    }
+
+    #[Test]
+    public function every_standard_role_follows_the_signed_matrix_for_every_permission(): void
+    {
+        $tenant = $this->makeTenant(slug: 'acme');
+        $users  = collect(self::ROLES)->mapWithKeys(fn ($code) => [$code => $this->makeUser($tenant, $code)]);
+
+        foreach ($this->matrix() as $key => $levels) {
+            foreach (self::ROLES as $code) {
+                $this->assertSame($levels[$code] !== 'none', $users[$code]->canDo($key), "{$code} on {$key} (matrix says {$levels[$code]})");
+            }
+        }
+    }
+
+    #[Test]
+    public function the_company_admin_has_every_permission_the_matrix_gives_it(): void
+    {
+        $tenant = $this->makeTenant(slug: 'acme');
+        $admin  = $this->makeUser($tenant, 'company_admin');
+
+        $given = collect($this->matrix())->filter(fn ($levels) => $levels['company_admin'] !== 'none')->keys();
+
+        $this->assertGreaterThan(30, $given->count());
+        foreach ($given as $key) {
+            $this->assertTrue($admin->canDo($key), "Admin should have {$key}");
+        }
+    }
+
+    #[Test]
+    public function a_change_to_one_companys_role_never_reaches_another_company(): void
+    {
+        $acme  = $this->makeTenant(slug: 'acme');
+        $wayne = $this->makeTenant(slug: 'wayne');
+        $a = $this->makeUser($acme, 'finance');
+        $w = $this->makeUser($wayne, 'finance');
+        $quote = Permission::where('key', 'quote.manage')->value('id');
+
+        RolePermission::where('tenant_id', $acme->id)->where('role_id', $a->role_id)->where('permission_id', $quote)->update(['level' => 'none']);
+
+        $this->assertFalse($a->fresh()->canDo('quote.manage'));
+        $this->assertTrue($w->fresh()->canDo('quote.manage'));
     }
 }

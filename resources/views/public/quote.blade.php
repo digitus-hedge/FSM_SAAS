@@ -101,20 +101,20 @@
           <tr>
             <td>{{ $it->description }}</td>
             <td class="r">{{ rtrim(rtrim(number_format($it->quantity,2),'0'),'.') }}</td>
-            <td class="r">{{ number_format($it->unit_rate,2) }}</td>
-            <td class="r">{{ number_format($it->line_total,2) }}</td>
+            <td class="r">{{ \App\Services\Currency\Money::format($it->unit_rate, $quote->currency_code) }}</td>
+            <td class="r">{{ \App\Services\Currency\Money::format($it->line_total, $quote->currency_code) }}</td>
           </tr>
         @endforeach
       </tbody>
     </table>
 
     <div class="totals">
-      <div class="row"><span>Subtotal</span><strong>AED {{ number_format($quote->subtotal,2) }}</strong></div>
+      <div class="row"><span>Subtotal</span><strong>{{ $quote->currency_code }} {{ \App\Services\Currency\Money::format($quote->subtotal, $quote->currency_code) }}</strong></div>
       @if ($quote->discount_total > 0)
-        <div class="row"><span>Discount</span><strong>-AED {{ number_format($quote->discount_total,2) }}</strong></div>
+        <div class="row"><span>Discount</span><strong>-{{ $quote->currency_code }} {{ \App\Services\Currency\Money::format($quote->discount_total, $quote->currency_code) }}</strong></div>
       @endif
-      <div class="row"><span>Tax {{ $quote->subtotal > 0 ? rtrim(rtrim(number_format($quote->tax_total/$quote->subtotal*100,0),'0'),'.') : '0' }}%</span><strong>AED {{ number_format($quote->tax_total,2) }}</strong></div>
-      <div class="row total"><span>Total</span><span>AED {{ number_format($quote->total,2) }}</span></div>
+      <div class="row"><span>Tax {{ $quote->subtotal > 0 ? rtrim(rtrim(number_format($quote->tax_total/$quote->subtotal*100,0),'0'),'.') : '0' }}%</span><strong>{{ $quote->currency_code }} {{ \App\Services\Currency\Money::format($quote->tax_total, $quote->currency_code) }}</strong></div>
+      <div class="row total"><span>Total</span><span>{{ $quote->currency_code }} {{ \App\Services\Currency\Money::format($quote->total, $quote->currency_code) }}</span></div>
     </div>
 
     @if ($quote->terms)

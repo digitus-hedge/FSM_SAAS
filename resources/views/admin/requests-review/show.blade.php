@@ -155,7 +155,7 @@
             <span class="pill pill-na" style="margin-left:8px">Draft</span>
           @endif
           @if ($latestQuote->total > 0)
-            <span class="amount">{{ $currencyCode }} {{ number_format($latestQuote->total, 2) }}</span>
+            <span class="amount">{{ $latestQuote->currency_code }} {{ \App\Services\Currency\Money::format($latestQuote->total, $latestQuote->currency_code) }}</span>
           @endif
         @else
           <span style="color:var(--muted)">None</span>
@@ -187,7 +187,7 @@
     <span class="pill {{ $iv[0] }}" style="margin-left:8px">{{ $iv[1] }}</span>
 
     @if ($latestInvoice->total > 0)
-      <span class="amount">{{ $currencyCode }} {{ number_format($latestInvoice->total, 2) }}</span>
+      <span class="amount">{{ $latestInvoice->currency_code }} {{ \App\Services\Currency\Money::format($latestInvoice->total, $latestInvoice->currency_code) }}</span>
     @endif
 
   @else
@@ -227,7 +227,7 @@
   @endif
 
 @elseif ($draft)
-  <a href="{{ $draft->source === 'builder' ? route('admin.quotes.edit', $draft) : route('admin.quotes.show', $draft) }}" class="btn btn-primary">Open quote</a>
+  <a href="{{ ($draft->source === 'builder' && \App\Services\Permissions\PermissionLevel::canChange(auth()->user(), 'quote.manage')) ? route('admin.quotes.edit', $draft) : route('admin.quotes.show', $draft) }}" class="btn btn-primary">Open quote</a>
 
 @elseif ($latestQuote && in_array($latestQuote->status, ['sent','accepted','rejected']))
   {{-- A quote already exists and has gone out — just let them view it --}}
@@ -236,6 +236,7 @@
 @elseif (
     in_array($sr->billing_status, ['not_applicable','pending_quote'])
     && ! in_array($sr->status, ['quoted','cancelled','completed'])
+    && \App\Services\Permissions\PermissionLevel::canChange(auth()->user(), 'quote.manage')
 )
   <button type="button" class="btn btn-primary" onclick="openMakeQuote({{ $sr->id }})">Make quote</button>
 @endif

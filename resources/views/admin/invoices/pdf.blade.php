@@ -11,7 +11,7 @@
   $senderLogo    = ($tenant?->logo_path ?? null) ? asset('storage/'.$tenant->logo_path) : null;
 
   $primaryColor  = $tenant?->primary_color ?? '#FFC61A';
-  $currencyCode  = $tenant?->currency_code ?? 'AED';
+  $currencyCode  = $invoice->currency_code;
 
   $words  = preg_split('/\s+/', trim((string) $senderName));
   $badge  = strtoupper(substr($words[0] ?? '?', 0, 1) . substr($words[1] ?? '', 0, 1));
@@ -268,9 +268,9 @@
         <td class="n">{{ $it->line_no }}</td>
         <td class="d">{{ $it->description }}</td>
         <td class="r">{{ rtrim(rtrim(number_format($it->quantity, 2), '0'), '.') }}</td>
-        <td class="r">{{ number_format($it->unit_rate, 2) }}</td>
+        <td class="r">{{ \App\Services\Currency\Money::format($it->unit_rate, $invoice->currency_code) }}</td>
         <td class="r">{{ $it->taxRate?->rate_percent ? rtrim(rtrim(number_format($it->taxRate->rate_percent,2),'0'),'.').'%' : '—' }}</td>
-        <td class="r">{{ number_format($it->line_total, 2) }}</td>
+        <td class="r">{{ \App\Services\Currency\Money::format($it->line_total, $invoice->currency_code) }}</td>
       </tr>
     @endforeach
   </tbody>
@@ -279,21 +279,21 @@
 {{-- ===== TOTALS ===== --}}
 <div class="totals-wrap">
   <table class="totals">
-    <tr><td>Subtotal</td><td class="v">{{ $currencyCode }} {{ number_format($invoice->subtotal, 2) }}</td></tr>
+    <tr><td>Subtotal</td><td class="v">{{ $currencyCode }} {{ \App\Services\Currency\Money::format($invoice->subtotal, $invoice->currency_code) }}</td></tr>
     @if ($invoice->discount_total > 0)
-      <tr><td>Discount</td><td class="v">-{{ $currencyCode }} {{ number_format($invoice->discount_total, 2) }}</td></tr>
+      <tr><td>Discount</td><td class="v">-{{ $currencyCode }} {{ \App\Services\Currency\Money::format($invoice->discount_total, $invoice->currency_code) }}</td></tr>
     @endif
-    <tr><td>Tax</td><td class="v">{{ $currencyCode }} {{ number_format($invoice->tax_total, 2) }}</td></tr>
-    <tr class="big"><td>Total</td><td class="v">{{ $currencyCode }} {{ number_format($invoice->total, 2) }}</td></tr>
+    <tr><td>Tax</td><td class="v">{{ $currencyCode }} {{ \App\Services\Currency\Money::format($invoice->tax_total, $invoice->currency_code) }}</td></tr>
+    <tr class="big"><td>Total</td><td class="v">{{ $currencyCode }} {{ \App\Services\Currency\Money::format($invoice->total, $invoice->currency_code) }}</td></tr>
 
     @php $paidAmt = max(0, $invoice->total - ($invoice->balance ?? 0)); @endphp
     @if ($paidAmt > 0 && $invoice->balance > 0)
-      <tr><td>Paid</td><td class="v">{{ $currencyCode }} {{ number_format($paidAmt, 2) }}</td></tr>
-      <tr class="balance"><td>Balance due</td><td class="v">{{ $currencyCode }} {{ number_format($invoice->balance, 2) }}</td></tr>
+      <tr><td>Paid</td><td class="v">{{ $currencyCode }} {{ \App\Services\Currency\Money::format($paidAmt, $invoice->currency_code) }}</td></tr>
+      <tr class="balance"><td>Balance due</td><td class="v">{{ $currencyCode }} {{ \App\Services\Currency\Money::format($invoice->balance, $invoice->currency_code) }}</td></tr>
     @elseif ($invoice->status === 'paid')
-      <tr class="balance paid"><td>Balance due</td><td class="v">{{ $currencyCode }} 0.00</td></tr>
+      <tr class="balance paid"><td>Balance due</td><td class="v">{{ $currencyCode }} {{ \App\Services\Currency\Money::format(0, $invoice->currency_code) }}</td></tr>
     @elseif ($invoice->balance > 0 && $invoice->status !== 'draft')
-      <tr class="balance"><td>Balance due</td><td class="v">{{ $currencyCode }} {{ number_format($invoice->balance, 2) }}</td></tr>
+      <tr class="balance"><td>Balance due</td><td class="v">{{ $currencyCode }} {{ \App\Services\Currency\Money::format($invoice->balance, $invoice->currency_code) }}</td></tr>
     @endif
   </table>
 </div>

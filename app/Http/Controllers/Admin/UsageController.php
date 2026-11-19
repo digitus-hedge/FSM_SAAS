@@ -11,7 +11,7 @@ class UsageController extends Controller
     public function index()
     {
         // Blueprint 7.9a: "The Usage page uses settings.manage (view)."
-        abort_unless(auth()->user()?->canDo('settings.manage'), 403);
+        abort_unless(\App\Services\Permissions\PermissionLevel::canView(auth()->user(), 'settings.manage'), 403);
 
         $tenant = Tenant::current();
         abort_unless($tenant, 404);

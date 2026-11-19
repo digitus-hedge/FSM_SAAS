@@ -5,7 +5,7 @@
     <p>Hello,</p>
     <p>A quote for your service request <strong>{{ $quote->serviceRequest?->sr_number }}</strong> is ready for your review.</p>
     <p>
-        <strong>Total:</strong> {{ $quote->currency_code }} {{ number_format($quote->total, 2) }}<br>
+        <strong>Total:</strong> {{ $quote->currency_code }} {{ \App\Services\Currency\Money::format($quote->total, $quote->currency_code) }}<br>
         <strong>Valid until:</strong> {{ $quote->valid_until?->format('d M Y') }}
     </p>
     <p style="margin:24px 0">

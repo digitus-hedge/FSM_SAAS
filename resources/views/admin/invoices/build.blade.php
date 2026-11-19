@@ -47,7 +47,7 @@
 </style>
 
 @php
-  $currencyCode = auth()->user()->tenant?->currency_code ?? 'AED';
+  $currencyCode = strtoupper($invoice->currency_code ?: $base);
 @endphp
 
 <div class="crumb"><a href="{{ route('admin.invoices.index') }}">Invoices</a> / {{ $invoice->invoice_number }}</div>
@@ -90,6 +90,9 @@
 
 
             <div class="line-row">
+  @if (! empty($it->source_expense_id))
+    <input type="hidden" name="lines[{{ $i }}][source_expense_id]" value="{{ $it->source_expense_id }}">
+  @endif
   {{-- Description --}}
   <div class="cell">
     <input type="text"
@@ -165,6 +168,9 @@
           @endforeach
         </div>
         <button type="button" class="btn ghost sm" style="margin-top:12px" onclick="addLine()">+ Add line</button>
+        @if ($expenseNoteRate)
+          <div style="margin-top:12px;font-size:13px;color:var(--muted)">Lines from expenses were converted at {{ rtrim(rtrim($expenseNoteRate, '0'), '.') }}.</div>
+        @endif
       </div>
     </div>
 
@@ -172,6 +178,7 @@
       <div class="panel">
         <div class="panel-h">Invoice settings</div>
         <div class="panel-b">
+          @include('admin.billing._currency', ['doc' => $invoice])
           <div class="fld"><label>Due date</label><input type="date" name="due_date" value="{{ old('due_date', $invoice->due_date?->format('Y-m-d') ?? now()->addDays(20)->format('Y-m-d')) }}" required></div>
           <div class="fld"><label>Legal invoice # (optional)</label><input name="legal_invoice_number" value="{{ old('legal_invoice_number', $invoice->legal_invoice_number) }}" placeholder="e.g. 2026/0892"></div>
           <div class="row2">
@@ -194,6 +201,7 @@
         <div class="tot-row"><span>Discount</span><span>— <span id="tot-disc">0.000</span></span></div>
         <div class="tot-row"><span>Tax</span><span>{{ $currencyCode }} <span id="tot-tax">0.000</span></span></div>
         <div class="tot-row tot"><span>Total</span><span>{{ $currencyCode }} <span id="tot-tot">0.000</span></span></div>
+        <div class="tot-row" style="color:var(--muted);font-size:13px"><span></span><span id="base-total-line"></span></div>
       </div>
 
       <div style="display:flex;flex-direction:column;gap:8px">
@@ -204,6 +212,23 @@
     </div>
   </div>
 </form>
+
+@if ($expenseChoices->isNotEmpty() && ! $docLocked)
+<div class="panel" style="margin-top:16px;max-width:960px">
+  <div class="panel-h">Approved expenses</div>
+  <div class="panel-b">
+    <p style="color:var(--muted);font-size:13px;margin:0 0 10px">Save your changes first: adding an expense reloads the page. Expenses are in {{ $base }}@if (strtoupper($invoice->currency_code) !== $base); each is converted at this invoice's rate{{ $invoice->exchange_rate ? ' (' . rtrim(rtrim(number_format((float) $invoice->exchange_rate, 8, '.', ''), '0'), '.') . ')' : '' }}@endif.</p>
+    @foreach ($expenseChoices as $choice)
+      <form method="POST" action="{{ route('admin.invoices.expenses.add', [$invoice, $choice['expense']]) }}" style="display:flex;gap:12px;align-items:center;padding:8px 0;border-top:1px solid var(--line)">
+        @csrf
+        <div style="flex:1">{{ $choice['expense']->description }}<div style="color:var(--muted);font-size:12px">{{ rtrim(rtrim(number_format((float) $choice['expense']->quantity, 2), '0'), '.') }} × {{ number_format((float) $choice['expense']->unit_rate, 2) }} {{ $base }}</div></div>
+        <div style="font-variant-numeric:tabular-nums">{{ \App\Services\Currency\Money::format($choice['line']['line_total'], $invoice->currency_code) }} {{ strtoupper($invoice->currency_code) }}</div>
+        <button type="submit" class="btn ghost sm">Add as line</button>
+      </form>
+    @endforeach
+  </div>
+</div>
+@endif
 
 <script>
 let lineIdx = {{ max(1, $invoice->items->count()) }};
@@ -225,28 +250,34 @@ function addLine() {
   lineIdx++;
 }
 function recomputeAll() {
-  let sub = 0, tax = 0;
+  // Same steps as the server (blueprint 7.7a): lines, one discount shared by line total, tax on each line after its share.
+  const cc = window.billingCurrency || { code: @json($currencyCode), dec: 2, updateBase() {} };
+  const lines = [];
+  let sub = 0;
   document.querySelectorAll('.line-row').forEach(row => {
     const qty = parseFloat(row.querySelector('[name$="[quantity]"]').value) || 0;
     const rate = parseFloat(row.querySelector('[name$="[unit_rate]"]').value) || 0;
     const sel = row.querySelector('select');
     const pct = parseFloat(sel.selectedOptions[0]?.dataset.pct) || 0;
     const line = qty * rate;
-    const t = line * pct / 100;
     sub += line;
-    tax += t;
-    row.querySelector('[data-total]').textContent = line.toFixed(3);
+    lines.push([line, pct]);
+    row.querySelector('[data-total]').textContent = line.toFixed(cc.dec);
   });
   const dt = document.querySelector('[name="discount_type"]').value;
   const dv = parseFloat(document.querySelector('[name="discount_value"]').value) || 0;
   let disc = 0;
   if (dt === 'percent') disc = sub * dv / 100;
   if (dt === 'amount')  disc = dv;
-  document.getElementById('tot-sub').textContent = sub.toFixed(3);
-  document.getElementById('tot-disc').textContent = disc.toFixed(3);
-  document.getElementById('tot-tax').textContent = tax.toFixed(3);
-  document.getElementById('tot-tot').textContent = Math.max(0, sub + tax - disc).toFixed(3);
-}
-recomputeAll();
+  disc = Math.min(Math.max(disc, 0), sub);
+  let tax = 0;
+  lines.forEach(([line, pct]) => { tax += (line - (sub > 0 ? disc * line / sub : 0)) * pct / 100; });
+  const total = Math.max(0, sub + tax - disc);
+  document.getElementById('tot-sub').textContent = sub.toFixed(cc.dec);
+  document.getElementById('tot-disc').textContent = disc.toFixed(cc.dec);
+  document.getElementById('tot-tax').textContent = tax.toFixed(cc.dec);
+  document.getElementById('tot-tot').textContent = total.toFixed(cc.dec);
+  if (cc.updateBase) cc.updateBase(total);
+}recomputeAll();
 </script>
 @endsection

@@ -8,22 +8,21 @@ use Illuminate\Http\Request;
 
 class ExpenseReviewController extends Controller
 {
-    /**
-     * Only Company Admin can review expenses.
-     * Called at the top of every method.
-     */
+    /** Approving and rejecting need expense.approve at change level (Company Admin, Operations Manager and Finance, blueprint 7.7a). */
     private function guard(): void
     {
-        abort_unless(
-            auth()->user()?->role?->name === 'Company Admin',
-            403,
-            'Only Company Admins can review expenses.'
-        );
+        abort_unless(\App\Services\Permissions\PermissionLevel::canChange(auth()->user(), 'expense.approve'), 403, 'You cannot review expenses.');
+    }
+
+    /** The list is open to anyone who can see the permission. */
+    private function viewGuard(): void
+    {
+        abort_unless(\App\Services\Permissions\PermissionLevel::canView(auth()->user(), 'expense.approve'), 403);
     }
 
     public function index(Request $request)
     {
-        $this->guard();
+        $this->viewGuard();
 
         $tab = $request->input('tab', 'waiting');
 

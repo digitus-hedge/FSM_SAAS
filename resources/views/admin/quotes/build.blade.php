@@ -43,7 +43,7 @@
 </style>
 
 @php
-  $currencyCode = auth()->user()->tenant?->currency_code ?? 'AED';
+  $currencyCode = strtoupper($quote->currency_code ?: $base);
 @endphp
 
 <div class="crumb"><a href="{{ route('admin.requests-review.index') }}">Quotes</a> / {{ $quote->quote_number }}</div>
@@ -65,6 +65,8 @@
 
 
   <div class="card">
+    @include('admin.billing._currency', ['doc' => $quote, 'currencyFixed' => false])
+
     <div class="fld" style="max-width:260px">
       <label>Valid until <span class="req">*</span></label>
       <input type="date" name="valid_until"
@@ -180,6 +182,7 @@
         <tr><td style="color:var(--muted)">Tax</td><td style="text-align:right"><span id="t-tax">{{ $currencyCode }} 0.00</span></td></tr>
         <tr><td style="color:var(--muted)">Discount</td><td style="text-align:right"><span id="t-disc">{{ $currencyCode }} 0.00</span></td></tr>
         <tr><td class="big">Total</td><td class="big" style="text-align:right"><span id="t-total">{{ $currencyCode }} 0.00</span></td></tr>
+        <tr><td></td><td style="text-align:right;color:var(--muted);font-size:13px"><span id="base-total-line"></span></td></tr>
       </table>
     </div>
 
@@ -197,7 +200,7 @@
 </form>
 
 <script>
-const currencyCode = @json($currencyCode);
+const cc = () => window.billingCurrency || { code: @json($currencyCode), dec: 2, updateBase() {} };
 let lineIdx = {{ $existingLines->count() }};
 
 function addLine() {
@@ -235,7 +238,9 @@ function rmLine(btn) {
 }
 
 function recalc() {
-  let sub = 0, tax = 0;
+  // Same steps as the server (blueprint 7.7a): lines, one discount shared by line total, tax on each line after its share.
+  const lines = [];
+  let sub = 0;
   document.querySelectorAll('.line-row').forEach(r => {
     const q = parseFloat(r.querySelector('.qty').value) || 0;
     const u = parseFloat(r.querySelector('.rate').value) || 0;
@@ -243,21 +248,25 @@ function recalc() {
     const rate = t.selectedIndex > 0 ? parseFloat(t.options[t.selectedIndex].dataset.rate) || 0 : 0;
     const line = q * u;
     sub += line;
-    tax += line * rate / 100;
-    r.querySelector('.line-total').textContent = line.toFixed(2);
+    lines.push([line, rate]);
+    r.querySelector('.line-total').textContent = line.toFixed(cc().dec);
   });
   const dtype = document.getElementById('dtype').value;
   const dval = parseFloat(document.getElementById('dval').value) || 0;
   let disc = 0;
   if (dtype === 'percent') disc = sub * dval / 100;
   if (dtype === 'amount')  disc = dval;
+  disc = Math.min(Math.max(disc, 0), sub);
+  let tax = 0;
+  lines.forEach(([line, rate]) => { tax += (line - (sub > 0 ? disc * line / sub : 0)) * rate / 100; });
   const total = Math.max(0, sub + tax - disc);
-  document.getElementById('t-sub').textContent = currencyCode + ' ' + sub.toFixed(2);
-  document.getElementById('t-tax').textContent = currencyCode + ' ' + tax.toFixed(2);
-  document.getElementById('t-disc').textContent = currencyCode + ' ' + disc.toFixed(2);
-  document.getElementById('t-total').textContent = currencyCode + ' ' + total.toFixed(2);
+  const d = cc().dec, c = cc().code;
+  document.getElementById('t-sub').textContent = c + ' ' + sub.toFixed(d);
+  document.getElementById('t-tax').textContent = c + ' ' + tax.toFixed(d);
+  document.getElementById('t-disc').textContent = c + ' ' + disc.toFixed(d);
+  document.getElementById('t-total').textContent = c + ' ' + total.toFixed(d);
+  if (cc().updateBase) cc().updateBase(total);
 }
-
 document.addEventListener('input', e => {
   if (e.target.closest('.line-row') || e.target.id === 'dtype' || e.target.id === 'dval') recalc();
 });

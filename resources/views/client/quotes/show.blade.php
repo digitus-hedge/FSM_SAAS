@@ -51,13 +51,13 @@ td{padding:8px 0;border-top:1px solid #F2F1F6}
                     <tr>
                         <td>{{ $item->description }}</td>
                         <td>{{ $item->quantity }} {{ $item->unit }}</td>
-                        <td>{{ number_format($item->unit_rate, 2) }}</td>
-                        <td style="text-align:right">{{ number_format($item->line_total, 2) }}</td>
+                        <td>{{ \App\Services\Currency\Money::format($item->unit_rate, $quote->currency_code) }}</td>
+                        <td style="text-align:right">{{ \App\Services\Currency\Money::format($item->line_total, $quote->currency_code) }}</td>
                     </tr>
                 @endforeach
                 </tbody>
             </table>
-            <div class="tot"><span>Total</span><span>{{ $quote->currency_code }} {{ number_format($quote->total, 2) }}</span></div>
+            <div class="tot"><span>Total</span><span>{{ $quote->currency_code }} {{ \App\Services\Currency\Money::format($quote->total, $quote->currency_code) }}</span></div>
         </div>
     @endif
 

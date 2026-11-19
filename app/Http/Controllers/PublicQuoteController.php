@@ -10,6 +10,7 @@ class PublicQuoteController extends Controller
         $t = QuoteToken::where('token', $token)->firstOrFail();
         $t->increment('viewed_count');
         if (! $t->viewed_first_at) $t->update(['viewed_first_at' => now()]);
+        abort_unless($t->quote, 404); // the link of another company, or a quote that no longer exists
         $t->quote->load(['items.taxRate','serviceRequest.site','client']);
         return [$t->quote, $t];
     }

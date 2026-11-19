@@ -1,10 +1,13 @@
 <?php
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 
 class ServiceRequestExpense extends Model
 {
+    use BelongsToTenant; // every query is limited to the signed-in company (off in jobs and commands)
+
     protected $table = 'service_request_expenses';
 
     // Table has no updated_at column, so disable timestamps

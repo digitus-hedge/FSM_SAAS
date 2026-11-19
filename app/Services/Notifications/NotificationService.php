@@ -23,7 +23,9 @@ class NotificationService
     public function notify(string $event, iterable $users, array $vars = [], ?string $url = null, array $data = []): void
     {
         try {
-            $def = config("notifications.events.{$event}");
+            // Not config("notifications.events.{$event}"): event names contain dots (invoice.overdue), and config()
+            // would read them as nested keys and find nothing.
+            $def = (config('notifications.events') ?? [])[$event] ?? null;
             if (! $def) {
                 return;
             }

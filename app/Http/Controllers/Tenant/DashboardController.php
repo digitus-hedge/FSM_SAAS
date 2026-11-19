@@ -200,6 +200,12 @@ class DashboardController extends Controller
             ];
         });
 
+        // 5.9 / 6.7: money figures, always in the base currency, for whoever can see the payments ledger.
+        $user  = auth()->user();
+        $money = \App\Services\Permissions\PermissionLevel::canView($user, 'payment.record', 'invoice.manage', 'invoice.approve')
+            ? app(\App\Services\Billing\BaseCurrencyFigures::class)->forPeriod($tenant, $from, $to)
+            : null;
+
         return view('tenant.dashboard', compact(
             'tenant', 'range', 'days', 'from', 'to',
             'openRequests', 'createdInPeriod', 'completed',
@@ -208,7 +214,7 @@ class DashboardController extends Controller
             'customerRating', 'nps',
             'byStatus', 'byStatusMax',
             'chartLabels', 'chartCreated', 'chartComplete',
-            'slaByPriority', 'deltas', 'trend'
+            'slaByPriority', 'deltas', 'trend', 'money'
         ));
     }
 

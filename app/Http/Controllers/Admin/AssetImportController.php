@@ -22,7 +22,7 @@ class AssetImportController extends Controller
 
     private function allowed(): bool
     {
-        return (bool) auth()->user()?->canDo('asset.import');
+        return \App\Services\Permissions\PermissionLevel::canChange(auth()->user(), 'asset.import');
     }
 
     private function tenantId(): int

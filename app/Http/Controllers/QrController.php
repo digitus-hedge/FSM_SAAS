@@ -29,7 +29,7 @@ class QrController extends Controller
 
         $clientCodes = ['client_user', 'client_admin', 'client_viewer'];
         abort_if(in_array($user->role?->code, $clientCodes, true), 403);
-        abort_unless($user->canDo('asset.view'), 403);
+        abort_unless(\App\Services\Permissions\PermissionLevel::canView($user, 'asset.view'), 403);
 
         // QR pages are a Professional-and-above feature (assets_full).
         if (! $user->tenant?->hasFeature('assets_full')) {
@@ -65,7 +65,7 @@ class QrController extends Controller
             $code = $user->role?->code;
             if ($code === 'team_lead') {
                 $raiseUrl = route('technician.team.desktop.requests.create', ['asset' => $asset->id]);
-            } elseif ($code !== 'field_technician' && $user->canDo('sr.create')) {
+            } elseif ($code !== 'field_technician' && \App\Services\Permissions\PermissionLevel::canChange($user, 'sr.create')) {
                 $raiseUrl = route('service-requests.create', ['asset' => $asset->id]);
             }
         }
@@ -73,7 +73,7 @@ class QrController extends Controller
         return view('admin.assets.qr-landing', [
             'asset'     => $asset,
             'recent'    => $recent,
-            'canManage' => (bool) $user->canDo('asset.manage'),
+            'canManage' => \App\Services\Permissions\PermissionLevel::canChange($user, 'asset.manage'),
             'raiseUrl'  => $raiseUrl,
         ]);
     }

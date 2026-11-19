@@ -377,8 +377,8 @@ class ServiceRequestController extends Controller
         'acceptedQuote'   => $acceptedQuote,
         'contractsOn'     => $contractsOn,
         'coverage'        => $coverage,
-        'canSeeContract'  => (bool) $user?->canDo('contract.view'),
-        'canChoose'       => (bool) $user?->canDo('contract.choose'),
+        'canSeeContract'  => \App\Services\Permissions\PermissionLevel::canView($user, 'contract.view'),
+        'canChoose'       => \App\Services\Permissions\PermissionLevel::canChange($user, 'contract.choose'),
         'suggestions'     => $suggestions,
     ]);
 }
@@ -537,6 +537,7 @@ class ServiceRequestController extends Controller
 
     public function approve(Request $request, ServiceRequest $service_request)
 {
+    abort_unless(\App\Services\Permissions\ServiceRequestAccess::mayApprove(auth()->user()), 403); // sr.approve (Company Admin, Operations Manager)
     $data = $request->validate([
         'coverage' => ['required', 'in:in_contract,in_warranty,goodwill,needs_quote'],
         'note'     => ['nullable', 'string', 'max:500'],
@@ -652,7 +653,7 @@ class ServiceRequestController extends Controller
     /** CNT-04: the manager picks one of several matching contracts. Counts nothing. */
     public function chooseContract(Request $request, ServiceRequest $service_request)
     {
-        abort_unless(auth()->user()?->canDo('contract.choose'), 403);
+        abort_unless(\App\Services\Permissions\PermissionLevel::canChange(auth()->user(), 'contract.choose'), 403);
         abort_unless($service_request->status === 'pending', 422, 'Only a pending request can have its contract chosen.');
 
         $data = $request->validate(['contract_id' => ['required', 'integer']], ['contract_id.required' => 'Choose a contract.']);
@@ -665,7 +666,7 @@ class ServiceRequestController extends Controller
     /** CNT-06 / D9: the cap is reached. The choice also approves the request (decision B1). */
     public function contractDecision(Request $request, ServiceRequest $service_request)
     {
-        abort_unless(auth()->user()?->canDo('contract.choose'), 403);
+        abort_unless(\App\Services\Permissions\PermissionLevel::canChange(auth()->user(), 'contract.choose'), 403);
         abort_unless(
             $service_request->status === 'pending' && $service_request->contract_choice_pending && $service_request->contract_choice_reason === 'cap_reached',
             422, 'This request is not waiting for a cap decision.'
@@ -716,8 +717,9 @@ class ServiceRequestController extends Controller
 
     public function assign(Request $request, ServiceRequest $service_request)
 {
+    abort_unless(\App\Services\Permissions\ServiceRequestAccess::mayAssign(auth()->user(), $service_request), 403); // sr.assign: Front Desk only for critical and emergency requests
     $data = $request->validate([
-        'technician_id'          => ['required', 'exists:users,id'],
+        'technician_id'          => ['required', \Illuminate\Validation\Rule::exists('users', 'id')->where('tenant_id', auth()->user()->tenant_id)], // this company's users only
         'arrival_time'           => ['required', 'date'],
         'enforce_geofence'       => ['nullable', 'boolean'],
         'allow_signature_waiver' => ['nullable', 'boolean'],
@@ -777,6 +779,10 @@ class ServiceRequestController extends Controller
 
     public function sendForQuote(ServiceRequest $service_request)
     {
+        abort_unless(\App\Services\Permissions\ServiceRequestAccess::maySendForQuote(auth()->user()), 403); // sr.approve (Company Admin, Operations Manager)
+        // Blueprint 7.1: only a Pending request is forwarded for quoting.
+        abort_unless($service_request->status === 'pending', 422, 'Only a pending request can be sent for quoting.');
+
         // Blueprint 7.1: stays Pending with quote_requested_at set.
         // Finance moves it to Quoted when the quote is actually sent.
         $service_request->update([
@@ -788,6 +794,7 @@ class ServiceRequestController extends Controller
 
     public function changePriority(Request $request, ServiceRequest $service_request)
     {
+        abort_unless(\App\Services\Permissions\ServiceRequestAccess::mayChangePriority(auth()->user(), $service_request), 403); // sr.assign: Front Desk only for requests they raised
         $data = $request->validate([
             'priority' => ['required', 'in:' . implode(',', array_keys(ServiceRequest::PRIORITIES))],
         ]);
@@ -825,6 +832,7 @@ class ServiceRequestController extends Controller
 
     public function cancel(Request $request, ServiceRequest $service_request)
     {
+        abort_unless(\App\Services\Permissions\ServiceRequestAccess::mayCancel(auth()->user(), $service_request), 403); // sr.cancel: Front Desk only for requests they raised
         $data = $request->validate([
             'reason' => ['required', 'string', 'max:500'],
         ]);
@@ -844,6 +852,7 @@ class ServiceRequestController extends Controller
 
     public function markReview(ServiceRequest $service_request)
     {
+        abort_unless(\App\Services\Permissions\ServiceRequestAccess::mayMarkReview(auth()->user()), 403); // sr.qc (Company Admin, Operations Manager)
         abort_unless(
             $service_request->status === 'in_progress',
             422,
@@ -926,7 +935,7 @@ class ServiceRequestController extends Controller
 
     public function reopen(Request $request, ServiceRequest $service_request)
 {
-    abort_unless(auth()->user()->canDo('sr.reopen'), 403);
+    abort_unless(\App\Services\Permissions\PermissionLevel::canChange(auth()->user(), 'sr.reopen'), 403);
     abort_unless($service_request->status === 'completed', 422, 'Only a Completed request can be reopened.');
 
     $data = $request->validate([

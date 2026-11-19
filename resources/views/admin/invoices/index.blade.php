@@ -83,9 +83,11 @@ table.inv tbody tr:hover{background:#F8F7FB}
             <td class="inv-num">{{ $i->invoice_number }}</td>
             <td>{{ $i->serviceRequest?->sr_number ?? '—' }}</td>
             <td>{{ $i->client?->name ?? '—' }}</td>
-            <td class="total">{{ $currencyCode }} {{ number_format($i->total, 2) }}</td>
+            <td class="total">{{ $i->currency_code }} {{ \App\Services\Currency\Money::format($i->total, $i->currency_code) }}
+              @if (strtoupper($i->currency_code) !== $currencyCode)<div style="color:var(--muted);font-size:11.5px;font-weight:400">≈ {{ \App\Services\Currency\Money::format($i->base_total, $currencyCode) }} {{ $currencyCode }}</div>@endif
+            </td>
             <td class="total" style="color:{{ $i->balance > 0 ? 'var(--amber)' : 'var(--muted)' }}">
-              {{ $i->balance > 0 ? $currencyCode . ' ' . number_format($i->balance, 2) : '—' }}
+              {{ $i->balance > 0 ? $i->currency_code . ' ' . \App\Services\Currency\Money::format($i->balance, $i->currency_code) : '—' }}
             </td>
             <td>{{ $i->due_date?->format('d M Y') ?? '—' }}</td>
             <td><span class="pill p-{{ $i->status }}">{{ ucfirst(str_replace('_',' ',$i->status)) }}</span></td>

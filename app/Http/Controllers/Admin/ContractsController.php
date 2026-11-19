@@ -24,8 +24,8 @@ class ContractsController extends Controller
 
     public function __construct(private AuditLogger $audit) {}
 
-    protected function canView(): void   { abort_unless(auth()->user()?->canDo('contract.view'), 403); }
-    protected function canManage(): void { abort_unless(auth()->user()?->canDo('contract.manage'), 403); }
+    protected function canView(): void   { abort_unless(\App\Services\Permissions\PermissionLevel::canView(auth()->user(), 'contract.view'), 403); }
+    protected function canManage(): void { abort_unless(\App\Services\Permissions\PermissionLevel::canChange(auth()->user(), 'contract.manage'), 403); }
 
     /* ---------------------------------------------------------------- CNT-01 */
 
@@ -216,7 +216,7 @@ class ContractsController extends Controller
             'history'   => $history,
             'documents' => $money ? $contract->documents()->orderByDesc('id')->get() : collect(),
             'showMoney' => $money,
-            'canManage' => (bool) auth()->user()?->canDo('contract.manage'),
+            'canManage' => \App\Services\Permissions\PermissionLevel::canChange(auth()->user(), 'contract.manage'),
             'tab'       => in_array(request('tab'), ['details', 'calls', 'requests', 'documents', 'history'], true) ? request('tab') : 'details',
         ] + $this->labels());
     }

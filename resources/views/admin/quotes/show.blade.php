@@ -8,7 +8,9 @@
       ? \App\Models\Invoice::where('service_request_id', $quote->service_request_id)
           ->orderByDesc('id')->first()
       : null;
-  $currencyCode = auth()->user()->tenant?->currency_code ?? 'AED';
+  $currencyCode = strtoupper($quote->currency_code);
+  $canChange       = \App\Services\Permissions\PermissionLevel::canChange(auth()->user(), 'quote.manage');   // Revise, Resend, Edit, Send
+  $canBuildInvoice = \App\Services\Permissions\PermissionLevel::canChange(auth()->user(), 'invoice.manage'); // Start invoice from this quote
 @endphp
 
 <style>
@@ -72,7 +74,7 @@
 <div class="actions">
 
   {{-- SENT / REJECTED / SUPERSEDED → Revise + Resend --}}
-  @if (in_array($quote->status, ['sent','rejected','superseded']))
+  @if ($canChange && in_array($quote->status, ['sent','rejected','superseded']))
     <form method="POST" action="{{ route('admin.quotes.revise', $quote) }}" style="margin:0">
       @csrf
       <button type="submit" class="btn">Revise</button>
@@ -86,7 +88,7 @@
       <a href="{{ route('admin.invoices.show', $srInvoice) }}" class="btn">
         View invoice {{ $srInvoice->invoice_number }}
       </a>
-    @else
+    @elseif ($canBuildInvoice)
       <a href="{{ route('admin.invoices.build', $quote->service_request_id) }}" class="btn primary">
         Start invoice from this quote
       </a>
@@ -94,7 +96,7 @@
   @endif
 
   {{-- DRAFT → Edit (builder only) + Send --}}
-  @if ($quote->status === 'draft')
+  @if ($canChange && $quote->status === 'draft')
     @if ($quote->source === 'builder')
       <a href="{{ route('admin.quotes.edit', $quote) }}" class="btn">Edit</a>
     @endif
@@ -120,13 +122,13 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
       Uploaded document:
       <a href="{{ asset('storage/'.$quote->pdfAttachment->storage_path) }}" target="_blank" style="color:var(--ink);text-decoration:underline;font-weight:700">{{ $quote->pdfAttachment->original_name }}</a>.
-      Total entered: {{ $currencyCode }} {{ number_format($quote->total,2) }}.
+      Total entered: {{ $currencyCode }} {{ \App\Services\Currency\Money::format($quote->total, $quote->currency_code) }}.
     </div>
     <div style="padding:22px;display:flex;justify-content:flex-end">
       <table style="min-width:280px;font-size:14px">
-        <tr><td style="color:var(--muted);padding:5px 0">Subtotal</td><td style="text-align:right;padding:5px 0">{{ $currencyCode }} {{ number_format($quote->subtotal,2) }}</td></tr>
-        <tr><td style="color:var(--muted);padding:5px 0">Tax included</td><td style="text-align:right;padding:5px 0">{{ $currencyCode }} {{ number_format($quote->tax_total,2) }}</td></tr>
-        <tr><td style="font-family:var(--font-display);font-weight:800;border-top:1px solid var(--line);padding:10px 0">Total</td><td style="font-family:var(--font-display);font-weight:800;text-align:right;border-top:1px solid var(--line);padding:10px 0">{{ $currencyCode }} {{ number_format($quote->total,2) }}</td></tr>
+        <tr><td style="color:var(--muted);padding:5px 0">Subtotal</td><td style="text-align:right;padding:5px 0">{{ $currencyCode }} {{ \App\Services\Currency\Money::format($quote->subtotal, $quote->currency_code) }}</td></tr>
+        <tr><td style="color:var(--muted);padding:5px 0">Tax included</td><td style="text-align:right;padding:5px 0">{{ $currencyCode }} {{ \App\Services\Currency\Money::format($quote->tax_total, $quote->currency_code) }}</td></tr>
+        <tr><td style="font-family:var(--font-display);font-weight:800;border-top:1px solid var(--line);padding:10px 0">Total</td><td style="font-family:var(--font-display);font-weight:800;text-align:right;border-top:1px solid var(--line);padding:10px 0">{{ $currencyCode }} {{ \App\Services\Currency\Money::format($quote->total, $quote->currency_code) }}</td></tr>
       </table>
     </div>
     @if ($quote->terms)
@@ -145,21 +147,26 @@
             <td>{{ $it->description }}</td>
             <td>{{ rtrim(rtrim(number_format($it->quantity,2),'0'),'.') }}</td>
             <td>{{ $it->unit }}</td>
-            <td>{{ number_format($it->unit_rate,2) }}</td>
+            <td>{{ \App\Services\Currency\Money::format($it->unit_rate, $quote->currency_code) }}</td>
             <td>{{ $it->taxRate?->name }} @if($it->taxRate) {{ rtrim(rtrim(number_format($it->taxRate->rate_percent,2),'0'),'.') }}%@endif</td>
-            <td style="text-align:right">{{ number_format($it->line_total,2) }}</td>
+            <td style="text-align:right">{{ \App\Services\Currency\Money::format($it->line_total, $quote->currency_code) }}</td>
           </tr>
         @endforeach
       </tbody>
     </table>
     <div class="totals">
       <table>
-        <tr><td style="color:var(--muted)">Subtotal</td><td style="text-align:right">{{ $currencyCode }} {{ number_format($quote->subtotal,2) }}</td></tr>
-        <tr><td style="color:var(--muted)">Tax {{ $quote->subtotal > 0 ? number_format($quote->tax_total / $quote->subtotal * 100, 0) : '0' }}%</td><td style="text-align:right">{{ $currencyCode }} {{ number_format($quote->tax_total,2) }}</td></tr>
+        <tr><td style="color:var(--muted)">Subtotal</td><td style="text-align:right">{{ $currencyCode }} {{ \App\Services\Currency\Money::format($quote->subtotal, $quote->currency_code) }}</td></tr>
+        <tr><td style="color:var(--muted)">Tax {{ $quote->subtotal > 0 ? number_format($quote->tax_total / $quote->subtotal * 100, 0) : '0' }}%</td><td style="text-align:right">{{ $currencyCode }} {{ \App\Services\Currency\Money::format($quote->tax_total, $quote->currency_code) }}</td></tr>
         @if ($quote->discount_total > 0)
-          <tr><td style="color:var(--muted)">Discount</td><td style="text-align:right">-{{ $currencyCode }} {{ number_format($quote->discount_total,2) }}</td></tr>
+          <tr><td style="color:var(--muted)">Discount</td><td style="text-align:right">-{{ $currencyCode }} {{ \App\Services\Currency\Money::format($quote->discount_total, $quote->currency_code) }}</td></tr>
         @endif
-        <tr><td class="big">Total</td><td class="big" style="text-align:right">{{ $currencyCode }} {{ number_format($quote->total,2) }}</td></tr>
+        <tr><td class="big">Total</td><td class="big" style="text-align:right">{{ $currencyCode }} {{ \App\Services\Currency\Money::format($quote->total, $quote->currency_code) }}</td></tr>
+        @php $baseCur = \App\Services\Currency\DocumentCurrency::base(auth()->user()->tenant); @endphp
+        @if ($currencyCode !== $baseCur)
+          <tr><td></td><td style="text-align:right;color:var(--muted);font-size:13px">≈ {{ \App\Services\Currency\Money::format($quote->base_total, $baseCur) }} {{ $baseCur }}</td></tr>
+          <tr><td></td><td style="text-align:right;color:var(--muted);font-size:12px">1 {{ $currencyCode }} = {{ rtrim(rtrim(number_format((float) $quote->exchange_rate, 8, '.', ''), '0'), '.') }} {{ $baseCur }} · {{ $quote->rate_source === 'manual' ? 'entered by hand' : 'from provider' }}</td></tr>
+        @endif
       </table>
     </div>
     @if ($quote->terms)
@@ -232,7 +239,7 @@ function openSendSheet() {
     `;
   }).join('');
 
-   const msg = `A quote for your service request {{ $quote->serviceRequest?->sr_number }} is ready. The total is {{ $currencyCode }} {{ number_format($quote->total,2) }} and it is valid until {{ $quote->valid_until?->format('d M Y') }}. Please review it and let us know your decision.\n[View quote: a secure link is created per recipient]`;
+   const msg = `A quote for your service request {{ $quote->serviceRequest?->sr_number }} is ready. The total is {{ $currencyCode }} {{ \App\Services\Currency\Money::format($quote->total, $quote->currency_code) }} and it is valid until {{ $quote->valid_until?->format('d M Y') }}. Please review it and let us know your decision.\n[View quote: a secure link is created per recipient]`;
 
   Swal.fire({
     title: 'Send quote',

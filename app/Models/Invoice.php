@@ -1,10 +1,13 @@
 <?php
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 
 class Invoice extends Model
 {
+    use BelongsToTenant; // every query is limited to the signed-in company (the scope is off in jobs and commands)
+
     protected $fillable = [
         'tenant_id', 'invoice_number', 'service_request_id', 'client_id',
         'source', 'status',
@@ -20,6 +23,7 @@ class Invoice extends Model
         'legal_invoice_number', 'notes',
         'pdf_attachment_id', 'bank_snapshot_json',
         'created_by_user_id',
+        'reminder_count', 'last_reminder_at', 'reminders_paused_at', 'reminders_paused_reason',
     ];
 
     protected $casts = [
@@ -31,7 +35,10 @@ class Invoice extends Model
         'send_back_at'       => 'datetime',
         'voided_at'          => 'datetime',
         'written_off_at'     => 'datetime',
+        'last_reminder_at'    => 'datetime',
+        'reminders_paused_at' => 'datetime',
         'bank_snapshot_json' => 'array',
+        'exchange_rate'      => 'decimal:8',
     ];
 
     public function items()           { return $this->hasMany(InvoiceItem::class)->orderBy('line_no'); }

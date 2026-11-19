@@ -17,7 +17,7 @@ class AssetLabelsController extends Controller
 
     private function allowed(): void
     {
-        abort_unless(auth()->user()?->canDo('asset.view'), 403);
+        abort_unless(\App\Services\Permissions\PermissionLevel::canView(auth()->user(), 'asset.view'), 403);
     }
 
     /** One label, from the asset form. */

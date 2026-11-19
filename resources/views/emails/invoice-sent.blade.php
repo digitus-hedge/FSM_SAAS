@@ -5,7 +5,7 @@
     <p>Hello,</p>
     <p>An invoice for your service request <strong>{{ $invoice->serviceRequest?->sr_number }}</strong> is ready.</p>
     <p>
-        <strong>Total:</strong> {{ $invoice->currency_code }} {{ number_format($invoice->total, 2) }}<br>
+        <strong>Total:</strong> {{ $invoice->currency_code }} {{ \App\Services\Currency\Money::format($invoice->total, $invoice->currency_code) }}<br>
         <strong>Due date:</strong> {{ $invoice->due_date?->format('d M Y') }}
     </p>
     <p style="margin:24px 0">

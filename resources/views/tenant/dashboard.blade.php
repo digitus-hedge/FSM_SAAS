@@ -246,6 +246,22 @@
     @endforeach
   </section>
 
+  {{-- ============== MONEY (base currency) ============== --}}
+  @if ($money)
+  <section class="dx-kpis" id="dx-money" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+    @foreach ([['Unpaid', $money['unpaid'], 'open invoices'], ['Overdue', $money['overdue'], 'unpaid after the due date'], ['Payments received', $money['received'], 'in the period, reversed ones left out']] as [$mt, $mv, $ms])
+      <div class="card dx-kpi">
+        <div class="t">{{ $mt }}</div>
+        <div class="vr"><span class="v tnum">{{ $money['currency'] }} {{ $mv }}</span></div>
+        <div class="s">{{ $ms }}</div>
+      </div>
+    @endforeach
+  </section>
+  @if ($money['converted'])
+    <div style="color:var(--muted);font-size:12.5px;margin:-4px 2px 4px">Converted at each document's rate.</div>
+  @endif
+  @endif
+
   {{-- ============== TIME STRIP ============== --}}
   <div class="card dx-strip">
     <div class="it">

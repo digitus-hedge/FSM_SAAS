@@ -105,7 +105,8 @@ function copyText(text, btn) {
         </select>
         <button type="submit" style="background:var(--yellow);color:var(--ink);border:0;padding:9px 18px;border-radius:999px;font-weight:600;cursor:pointer;font-family:var(--font-body)">Filter</button>
         <a href="{{ route('tenant.users.create') }}" style="margin-left:auto;background:var(--ink);color:#fff;padding:9px 18px;border-radius:999px;text-decoration:none;font-weight:600;font-size:13px;font-family:var(--font-body)">+ New user</a>
-      <a href="{{ route('tenant.users.import.show') }}" class="btn-ghost">
+      @if (\App\Services\Users\UserAdminScope::for(auth()->user())->isAdmin())
+<a href="{{ route('tenant.users.import.show') }}" class="btn-ghost">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
     <polyline points="17 8 12 3 7 8"/>
@@ -113,6 +114,7 @@ function copyText(text, btn) {
   </svg>
   Import CSV
 </a>
+@endif
     </form>
 
     <div style="background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden">

@@ -26,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'platform.2fa'   => \App\Http\Middleware\EnsurePlatformTwoFactor::class,
             'role'           => \App\Http\Middleware\EnsureRole::class,
             'platform.host'  => \App\Http\Middleware\PlatformHostOnly::class,
+            'level'          => \App\Http\Middleware\EnsurePermissionLevel::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

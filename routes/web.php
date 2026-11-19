@@ -65,7 +65,7 @@ Route::get('/admin/login',   [PlatformAuthView::class, 'login'])->name('platform
 Route::post('/admin/login',  [PlatformAuthView::class, 'loginStub'])->name('platform.login.attempt');
 Route::post('/admin/logout', [PlatformAuthView::class, 'logout'])
     ->middleware('auth:platform')->name('platform.logout');
-Route::get('/admin/usage', [\App\Http\Controllers\Admin\UsageController::class, 'index'])->name('admin.usage.index');
+Route::get('/admin/usage', [\App\Http\Controllers\Admin\UsageController::class, 'index'])->middleware(['auth', DenyClientRole::class, 'level:settings.manage'])->name('admin.usage.index');
 /*
 |--------------------------------------------------------------------------
 | Company user sign-in (staff + clients on a tenant subdomain)
@@ -74,6 +74,10 @@ Route::get('/admin/usage', [\App\Http\Controllers\Admin\UsageController::class, 
 Route::get('/login',   [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login',  [AuthController::class, 'login'])->name('login.attempt');
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
+
+// Central sign-in (root address): workspace picker + one-time hand-off to the company address.
+Route::post('/login/choose', [\App\Http\Controllers\CentralLoginController::class, 'choose'])->name('login.choose');
+Route::get('/auth/handoff/{token}', [\App\Http\Controllers\CentralLoginController::class, 'consume'])->name('auth.handoff');
 
 Route::get('/login/technician', [FieldLoginController::class, 'showTechnician'])->name('login.technician');
 Route::get('/login/team-lead',  [FieldLoginController::class, 'showTeamLead'])->name('login.team-lead');
@@ -135,7 +139,7 @@ Route::get('/i/{token}',     [PublicInvoiceController::class, 'show'])->name('pu
 Route::get('/i/{token}/pdf', [PublicInvoiceController::class, 'pdf'])->name('public.invoice.pdf');
 
 // Invoices
-Route::prefix('admin/invoices')->name('admin.invoices.')->group(function () {
+Route::prefix('admin/invoices')->middleware(['auth', DenyClientRole::class])->name('admin.invoices.')->group(function () {
     Route::get('/',                            [InvoicesController::class, 'index'])->name('index');
     Route::get('/build/{sr}',                  [InvoicesController::class, 'build'])->name('build');
     Route::get('/upload/{sr}',                 [InvoicesController::class, 'uploadForm'])->name('upload');
@@ -151,6 +155,7 @@ Route::prefix('admin/invoices')->name('admin.invoices.')->group(function () {
     Route::post('/{invoice}/send',              [InvoicesController::class, 'send'])->name('send');
     Route::post('/{invoice}/payment',           [InvoicesController::class, 'recordPayment'])->name('payment');
     Route::post('/payment/{payment}/reverse',   [InvoicesController::class, 'reversePayment'])->name('payment.reverse');
+    Route::post('/{invoice}/expenses/{expense}', [InvoicesController::class, 'addExpense'])->name('expenses.add');
     Route::post('/{invoice}/write-off',         [InvoicesController::class, 'writeOff'])->name('write-off');
     Route::post('/{invoice}/undo-write-off',    [InvoicesController::class, 'undoWriteOff'])->name('undo-write-off');
     Route::post('/{invoice}/void',              [InvoicesController::class, 'void'])->name('void');
@@ -216,7 +221,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/invoices/{invoice}/pdf', [ClientPortalController::class, 'invoicePdf'])->name('invoices.pdf');
     });
     // Users (was Members) — Company Admins only
-    Route::prefix('manage/users')->name('tenant.users.')->group(function () {
+    Route::prefix('manage/users')->middleware(['level:user.manage'])->name('tenant.users.')->group(function () {
         Route::get('/',                        [MembersController::class, 'index'])->name('index');
         Route::get('/create',                  [MembersController::class, 'create'])->name('create');
         Route::post('/',                       [MembersController::class, 'store'])->name('store');
@@ -230,7 +235,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{user}/devices', [MembersController::class, 'devices'])->name('devices');
     });
 
-    Route::prefix('manage/users/import')->name('tenant.users.import.')->group(function () {
+    Route::prefix('manage/users/import')->middleware(['level:user.manage'])->name('tenant.users.import.')->group(function () {
         Route::get('/',           [\App\Http\Controllers\Tenant\UserImportController::class, 'show'])->name('show');
         Route::post('/preview',   [\App\Http\Controllers\Tenant\UserImportController::class, 'preview'])->name('preview');
         Route::post('/commit',    [\App\Http\Controllers\Tenant\UserImportController::class, 'commit'])->name('commit');
@@ -238,7 +243,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // Clients + contacts
-    Route::prefix('admin/clients')->name('admin.clients.')->group(function () {
+    Route::prefix('admin/clients')->middleware([DenyClientRole::class, 'level:client.manage'])->name('admin.clients.')->group(function () {
         Route::get('/',                      [ClientsController::class, 'index'])->name('index');
         Route::get('/create',                [ClientsController::class, 'create'])->name('create');
         Route::post('/',                     [ClientsController::class, 'store'])->name('store');
@@ -266,7 +271,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // Sites
-    Route::prefix('admin/sites')->name('admin.sites.')->group(function () {
+    Route::prefix('admin/sites')->middleware([DenyClientRole::class, 'level:site.manage'])->name('admin.sites.')->group(function () {
         Route::get('/',                      [ProjectSitesController::class, 'index'])->name('index');
         Route::get('/create',                [ProjectSitesController::class, 'create'])->name('create');
         Route::post('/',                     [ProjectSitesController::class, 'store'])->name('store');
@@ -285,14 +290,14 @@ Route::middleware(['auth'])->group(function () {
     });
 
 
-    Route::prefix('admin/terminology')->name('admin.terminology.')->group(function () {
+    Route::prefix('admin/terminology')->middleware([DenyClientRole::class, 'level:vocabulary.manage'])->name('admin.terminology.')->group(function () {
         Route::get('/',          [TerminologyController::class, 'index'])->name('index');
         Route::put('/',          [TerminologyController::class, 'update'])->name('update');
         Route::delete('/{key}',  [TerminologyController::class, 'resetOne'])->name('reset');
     });
 
     // Service Categories
-    Route::prefix('admin/service-categories')->name('admin.service-categories.')->group(function () {
+    Route::prefix('admin/service-categories')->middleware([DenyClientRole::class, 'level:category.manage'])->name('admin.service-categories.')->group(function () {
         Route::get('/',                        [ServiceCategoriesController::class, 'index'])->name('index');
         Route::get('/create',                  [ServiceCategoriesController::class, 'create'])->name('create');
         Route::post('/',                       [ServiceCategoriesController::class, 'store'])->name('store');
@@ -314,15 +319,15 @@ Route::middleware(['auth'])->group(function () {
     // });
 
        // Team Lead categories
-    Route::get('/admin/team-lead-categories', [\App\Http\Controllers\Admin\TeamLeadCategoriesController::class, 'index'])->name('admin.team-lead-categories.index');
-    Route::post('/admin/team-lead-categories/{teamLead}', [\App\Http\Controllers\Admin\TeamLeadCategoriesController::class, 'update'])->name('admin.team-lead-categories.update');
+    Route::get('/admin/team-lead-categories', [\App\Http\Controllers\Admin\TeamLeadCategoriesController::class, 'index'])->middleware([DenyClientRole::class, 'level:category.manage'])->name('admin.team-lead-categories.index');
+    Route::post('/admin/team-lead-categories/{teamLead}', [\App\Http\Controllers\Admin\TeamLeadCategoriesController::class, 'update'])->middleware([DenyClientRole::class, 'level:category.manage'])->name('admin.team-lead-categories.update');
 
-    Route::prefix('admin/sla-policies')->name('admin.sla-policies.')->group(function () {
+    Route::prefix('admin/sla-policies')->middleware([DenyClientRole::class, 'level:settings.manage'])->name('admin.sla-policies.')->group(function () {
         Route::get('/',           [SlaPoliciesController::class, 'index'])->name('index');
         Route::post('/save-all',  [SlaPoliciesController::class, 'saveAll'])->name('save-all');
     });
 
-    Route::prefix('admin/branding')->name('admin.branding.')->group(function () {
+    Route::prefix('admin/branding')->middleware([DenyClientRole::class, 'level:settings.manage'])->name('admin.branding.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Admin\BrandingController::class, 'index'])->name('index');
         Route::put('/', [\App\Http\Controllers\Admin\BrandingController::class, 'update'])->name('update');
     });
@@ -332,8 +337,32 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/', [\App\Http\Controllers\Admin\CompanySettingsController::class, 'update'])->name('update');
     });
 
+    // Currency and payments, slice B7 part 1 (docs/specs/Currency-and-Payments.md)
+    Route::middleware([DenyClientRole::class, EnsurePlanFeature::class . ':multi_currency'])->group(function () {
+        Route::get('admin/currencies',                   [\App\Http\Controllers\Admin\CurrenciesController::class, 'index'])->name('admin.currencies.index');
+        Route::post('admin/currencies',                  [\App\Http\Controllers\Admin\CurrenciesController::class, 'store'])->name('admin.currencies.store');
+        Route::delete('admin/currencies/{code}',         [\App\Http\Controllers\Admin\CurrenciesController::class, 'destroy'])->name('admin.currencies.destroy');
+        Route::get('admin/currencies/{code}/rates',      [\App\Http\Controllers\Admin\CurrenciesController::class, 'history'])->name('admin.currencies.history');
+        Route::post('admin/currencies/{code}/rates',     [\App\Http\Controllers\Admin\CurrenciesController::class, 'addRate'])->name('admin.currencies.rates.store');
+    });
+
+    Route::middleware([DenyClientRole::class, EnsurePlanFeature::class . ':billing_full'])->group(function () {
+        Route::get('admin/payments',        [\App\Http\Controllers\Admin\PaymentsLedgerController::class, 'index'])->name('admin.payments.index');
+        Route::get('admin/payments/export', [\App\Http\Controllers\Admin\PaymentsLedgerController::class, 'export'])->name('admin.payments.export');
+
+        Route::get('admin/aging',           [\App\Http\Controllers\Admin\AgingReportController::class, 'index'])->name('admin.aging.index');
+        Route::get('admin/aging/invoices',  [\App\Http\Controllers\Admin\AgingReportController::class, 'invoices'])->name('admin.aging.invoices');
+        Route::get('admin/aging/export',    [\App\Http\Controllers\Admin\AgingReportController::class, 'export'])->name('admin.aging.export');
+
+        Route::get('admin/reminder-settings', [\App\Http\Controllers\Admin\ReminderSettingsController::class, 'edit'])->name('admin.reminder-settings.edit');
+        Route::put('admin/reminder-settings', [\App\Http\Controllers\Admin\ReminderSettingsController::class, 'update'])->name('admin.reminder-settings.update');
+
+        Route::post('admin/invoices/{invoice}/reminders/pause',  [\App\Http\Controllers\Admin\InvoiceRemindersController::class, 'pause'])->name('admin.invoices.reminders.pause');
+        Route::post('admin/invoices/{invoice}/reminders/resume', [\App\Http\Controllers\Admin\InvoiceRemindersController::class, 'resume'])->name('admin.invoices.reminders.resume');
+    });
+
     // Tax Rates
-    Route::prefix('admin/tax-rates')->name('admin.tax-rates.')->group(function () {
+    Route::prefix('admin/tax-rates')->middleware([DenyClientRole::class, 'level:settings.manage'])->name('admin.tax-rates.')->group(function () {
         Route::get('/',                       [TaxRatesController::class, 'index'])->name('index');
         Route::get('/create',                 [TaxRatesController::class, 'create'])->name('create');
         Route::post('/',                      [TaxRatesController::class, 'store'])->name('store');
@@ -348,7 +377,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/change-password',  [AuthController::class, 'showChangePassword'])->name('password.change');
     Route::post('/change-password', [AuthController::class, 'changePassword'])->name('password.change.submit');
 
-    Route::prefix('manage/roles')->name('tenant.roles.')->group(function () {
+    Route::prefix('manage/roles')->middleware([DenyClientRole::class, 'level:role.manage'])->name('tenant.roles.')->group(function () {
         Route::get('/',                       [\App\Http\Controllers\Tenant\RolesController::class, 'index'])->name('index');
         Route::get('/create',                 [\App\Http\Controllers\Tenant\RolesController::class, 'create'])->name('create');
         Route::post('/',                      [\App\Http\Controllers\Tenant\RolesController::class, 'store'])->name('store');
@@ -357,13 +386,13 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{role}/reset-defaults', [\App\Http\Controllers\Tenant\RolesController::class, 'resetDefaults'])->name('reset-defaults');
         Route::delete('/{role}',              [\App\Http\Controllers\Tenant\RolesController::class, 'destroy'])->name('destroy');
     });
-    Route::prefix('manage/audit')->name('tenant.audit.')->group(function () {
+    Route::prefix('manage/audit')->middleware([DenyClientRole::class, 'level:audit.view'])->name('tenant.audit.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Tenant\AuditLogsController::class, 'index'])->name('index');
     });
 });
 
     // Notifications (staff only)
-    Route::prefix('notifications')->middleware(DenyClientRole::class)->name('notifications.')->group(function () {
+    Route::prefix('notifications')->middleware(['auth', DenyClientRole::class])->name('notifications.')->group(function () {
         Route::get('/',                        [NotificationController::class, 'index'])->name('index');
         Route::post('/read-all',               [NotificationController::class, 'readAll'])->name('read-all');
         Route::get('/{notification}/open',     [NotificationController::class, 'open'])->name('open');
@@ -388,7 +417,7 @@ Route::get('/two-factor/challenge',  [\App\Http\Controllers\TwoFactorController:
 Route::post('/two-factor/challenge', [\App\Http\Controllers\TwoFactorController::class, 'verifyChallenge'])->name('two-factor.verify');
 
 
-Route::prefix('admin/hold-reasons')->name('admin.hold-reasons.')->group(function () {
+Route::prefix('admin/hold-reasons')->middleware(['auth', DenyClientRole::class, 'level:settings.manage'])->name('admin.hold-reasons.')->group(function () {
     Route::get('/',                               [HoldReasonController::class, 'index'])->name('index');
     Route::get('/create',                         [HoldReasonController::class, 'create'])->name('create');
     Route::post('/',                              [HoldReasonController::class, 'store'])->name('store');
@@ -401,7 +430,7 @@ Route::prefix('admin/hold-reasons')->name('admin.hold-reasons.')->group(function
 
 
 // Expense Categories
-Route::prefix('admin/expense-categories')->name('admin.expense-categories.')->group(function () {
+Route::prefix('admin/expense-categories')->middleware(['auth', DenyClientRole::class, 'level:settings.manage'])->name('admin.expense-categories.')->group(function () {
     Route::get('/',                              [ExpenseCategoryController::class, 'index'])->name('index');
     Route::get('/create',                        [ExpenseCategoryController::class, 'create'])->name('create');
     Route::post('/',                             [ExpenseCategoryController::class, 'store'])->name('store');
@@ -414,7 +443,7 @@ Route::prefix('admin/expense-categories')->name('admin.expense-categories.')->gr
 
 
 // Requests Review (billing)
-Route::prefix('admin/requests-review')->name('admin.requests-review.')->group(function () {
+Route::prefix('admin/requests-review')->middleware(['auth', DenyClientRole::class])->name('admin.requests-review.')->group(function () {
     Route::get('/', [RequestsReviewController::class, 'index'])->name('index');
     Route::get('/{sr}',  [RequestsReviewController::class, 'show'])->name('show');
     Route::post('/{sr}/qc-pass',  [RequestsReviewController::class, 'qcPass'])->name('qc-pass');
@@ -423,7 +452,7 @@ Route::prefix('admin/requests-review')->name('admin.requests-review.')->group(fu
 });
 
 // Quotes
-Route::prefix('admin/quotes')->name('admin.quotes.')->group(function () {
+Route::prefix('admin/quotes')->middleware(['auth', DenyClientRole::class])->name('admin.quotes.')->group(function () {
     Route::get('/',                    [QuotesController::class, 'index'])->name('index');  // ← NEW
 
     Route::get('/build/{sr}',          [QuotesController::class, 'build'])->name('build');          // start/edit builder
@@ -440,7 +469,7 @@ Route::prefix('admin/quotes')->name('admin.quotes.')->group(function () {
 
 
 // Expenses to review
-Route::prefix('admin/expenses-review')->name('admin.expenses-review.')->group(function () {
+Route::prefix('admin/expenses-review')->middleware(['auth', DenyClientRole::class])->name('admin.expenses-review.')->group(function () {
     Route::get('/',                              [ExpenseReviewController::class, 'index'])->name('index');
     Route::post('/{expense}/approve',             [ExpenseReviewController::class, 'approve'])->name('approve');
     Route::post('/{expense}/reject',              [ExpenseReviewController::class, 'reject'])->name('reject');
@@ -448,7 +477,7 @@ Route::prefix('admin/expenses-review')->name('admin.expenses-review.')->group(fu
 
 
 // Tenant Holidays
-Route::prefix('admin/tenant-holidays')->name('admin.tenant-holidays.')->group(function () {
+Route::prefix('admin/tenant-holidays')->middleware(['auth', DenyClientRole::class, 'level:settings.manage'])->name('admin.tenant-holidays.')->group(function () {
     Route::get('/',                            [TenantHolidayController::class, 'index'])->name('index');
     Route::get('/create',                      [TenantHolidayController::class, 'create'])->name('create');
     Route::post('/',                           [TenantHolidayController::class, 'store'])->name('store');
@@ -458,7 +487,7 @@ Route::prefix('admin/tenant-holidays')->name('admin.tenant-holidays.')->group(fu
 });
 
 // Vendors
-Route::prefix('admin/vendors')->name('admin.vendors.')->group(function () {
+Route::prefix('admin/vendors')->middleware(['auth', DenyClientRole::class, 'level:vendor.manage'])->name('admin.vendors.')->group(function () {
     Route::get('/',                      [VendorController::class, 'index'])->name('index');
     Route::get('/create',                [VendorController::class, 'create'])->name('create');
     Route::post('/',                     [VendorController::class, 'store'])->name('store');
@@ -470,13 +499,13 @@ Route::prefix('admin/vendors')->name('admin.vendors.')->group(function () {
 });
 
 // Business Hours
-Route::prefix('admin/business-hours')->name('admin.tenant-business-hours.')->group(function () {
+Route::prefix('admin/business-hours')->middleware(['auth', DenyClientRole::class, 'level:settings.manage'])->name('admin.tenant-business-hours.')->group(function () {
     Route::get('/',  [TenantBusinessHourController::class, 'index'])->name('index');
     Route::put('/',  [TenantBusinessHourController::class, 'update'])->name('update');
 });
 
 // Operations queue
-Route::prefix('admin/operations-queue')->name('admin.operations-queue.')->group(function () {
+Route::prefix('admin/operations-queue')->middleware(['auth', DenyClientRole::class, 'level:sr.qc'])->name('admin.operations-queue.')->group(function () {
     Route::get('/', [OperationsQueueController::class, 'index'])->name('index');
 });
 

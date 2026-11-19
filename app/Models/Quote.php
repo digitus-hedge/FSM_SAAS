@@ -1,10 +1,13 @@
 <?php
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 
 class Quote extends Model
 {
+    use BelongsToTenant; // every query is limited to the signed-in company (the scope is off in jobs and commands)
+
     protected $fillable = [
         'tenant_id','quote_number','service_request_id','client_id',
         'source','status','version_no','supersedes_quote_id',
@@ -21,6 +24,7 @@ class Quote extends Model
         'sent_at'     => 'datetime',
         'responded_at'=> 'datetime',
         'expired_at'  => 'datetime',
+        'exchange_rate' => 'decimal:8',
     ];
 
     public function items()           { return $this->hasMany(QuoteItem::class)->orderBy('line_no'); }
