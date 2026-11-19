@@ -22,7 +22,12 @@ class Vendor extends Model
         'tax_id',
         'status',
         'notes',
+        'default_may_log_expenses',
     ];
+
+    protected $casts = ['default_may_log_expenses' => 'boolean'];
+
+    public function technicians() { return $this->hasMany(User::class); }
 
     /* ---------- Scopes ---------- */
 

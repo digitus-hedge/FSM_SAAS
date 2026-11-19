@@ -217,6 +217,26 @@
           @error('primary_asset_id') <small class="err-inline">{{ $message }}</small> @enderror
         </div>
 
+        {{-- MULTI-TRADE (MTR-01) --}}
+        @if (! $sr->exists && ($multiTrade ?? false))
+        <div class="full" id="trade-box" style="border:1px solid var(--line);border-radius:10px;padding:12px 14px">
+          <label class="lbl"><input type="checkbox" id="trade-on"> This job needs several trades <span class="opt">(2 to 10, each with its own category)</span></label>
+          <div id="trade-rows" style="display:none;margin-top:10px"></div>
+          <button type="button" id="trade-add" class="btn btn-ghost" style="display:none;margin-top:8px">Add a trade</button>
+        </div>
+        @endif
+
+        {{-- WORKSHOP (DEP-02) --}}
+        @if (! $sr->exists && ($depotOn ?? false) && $workshops->isNotEmpty())
+        <div class="full" id="depot-box" style="border:1px solid var(--line);border-radius:10px;padding:12px 14px">
+          <label class="lbl"><input type="checkbox" id="depot-on" name="service_mode" value="depot" @checked(old('service_mode') === 'depot')> Service the equipment at our workshop</label>
+          <div id="depot-pick" style="display:none;margin-top:8px">
+            <select name="workshop_site_id" class="select"><option value="">Choose a workshop</option>@foreach ($workshops as $w)<option value="{{ $w->id }}">{{ $w->name }}</option>@endforeach</select>
+            <div class="hint">The site above stays the equipment's home site.</div>
+          </div>
+        </div>
+        @endif
+
         {{-- BATCH (BAT-02): many assets of this site in one request --}}
         @if (! $sr->exists)
         <div class="full" id="batch-box" style="display:none;border:1px solid var(--line);border-radius:10px;padding:12px 14px">
@@ -515,6 +535,37 @@
       assetInfo.style.display = 'block';
     } catch (err) { console.error(err); }
   }
+
+  /* -------- Multi-trade (MTR-01) and workshop (DEP-02) -------- */
+  (function () {
+    const on = document.getElementById('trade-on'), rows = document.getElementById('trade-rows'), add = document.getElementById('trade-add');
+    if (on) {
+      const cats = @json(($categories ?? collect())->map(fn ($c) => ['id' => $c->id, 'name' => $c->name])->values());
+      const techs = @json(($tradeTechs ?? collect())->map(fn ($t) => ['id' => $t->id, 'name' => $t->name . ($t->vendor_id ? ' (vendor)' : '')])->values());
+      let n = 0;
+      function addRow() {
+        if (rows.children.length >= 10) return;
+        const i = n++;
+        const d = document.createElement('div');
+        d.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px';
+        d.innerHTML = '<select class="select" name="children[' + i + '][service_category_id]"><option value="">Trade (category)</option>' + cats.map(c => '<option value="' + c.id + '">' + esc(c.name) + '</option>').join('') + '</select>'
+          + '<select class="select" name="children[' + i + '][technician_id]"><option value="">Technician (optional)</option>' + techs.map(t => '<option value="' + t.id + '">' + esc(t.name) + '</option>').join('') + '</select>'
+          + '<input class="input" type="datetime-local" name="children[' + i + '][planned_at]">'
+          + '<input class="input" name="children[' + i + '][notes]" placeholder="Notes" maxlength="500">'
+          + '<button type="button" class="btn btn-ghost">Remove</button>';
+        d.querySelector('button').addEventListener('click', () => d.remove());
+        rows.appendChild(d);
+      }
+      on.addEventListener('change', () => {
+        rows.style.display = add.style.display = on.checked ? 'block' : 'none';
+        if (!on.checked) rows.innerHTML = '';
+        else { addRow(); addRow(); }
+      });
+      add.addEventListener('click', addRow);
+    }
+    const dep = document.getElementById('depot-on'), pick = document.getElementById('depot-pick');
+    if (dep) { const f = () => pick.style.display = dep.checked ? 'block' : 'none'; dep.addEventListener('change', f); f(); }
+  })();
 
   /* -------- Batch (BAT-02) -------- */
   const batchBox = document.getElementById('batch-box');

@@ -18,6 +18,14 @@ use Illuminate\Support\Collection;
  */
 class ExpenseLines
 {
+    /** @return int[] the invoice's request, and its trades when it is a multi-trade master */
+    private function requestIds(Invoice $invoice): array
+    {
+        $sr = \App\Models\ServiceRequest::withoutGlobalScopes()->find($invoice->service_request_id);
+
+        return $sr ? app(\App\Services\Trades\MasterRequests::class)->ids($sr) : [$invoice->service_request_id];
+    }
+
     /** Approved, billable expenses of the invoice's request that are not already on an invoice that is not void. */
     public function eligible(Invoice $invoice): Collection
     {
@@ -28,7 +36,7 @@ class ExpenseLines
 
         return ServiceRequestExpense::query()
             ->where('tenant_id', $invoice->tenant_id)
-            ->where('service_request_id', $invoice->service_request_id)
+            ->whereIn('service_request_id', $this->requestIds($invoice))   // a master's invoice takes its trades' expenses (D7)
             ->where('approval_status', 'approved')
             ->where('is_billable_to_client', true)
             ->whereNotIn('id', $taken)

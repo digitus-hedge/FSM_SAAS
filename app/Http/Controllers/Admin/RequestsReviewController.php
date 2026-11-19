@@ -83,7 +83,9 @@ class RequestsReviewController extends Controller
     // Blueprint 7.1: Awaiting Invoice only when BOTH out-of-coverage AND the
     // category is invoice-mandatory. Everything else (any covered job, or an
     // out-of-coverage job in a non-invoice-mandatory category) completes here.
-    $needsInvoice = $sr->coverage_type === 'out_of_coverage' && (bool) $sr->invoice_mandatory;
+    app(\App\Services\Trades\Depot::class)->assertReturned($sr);   // DEPOT_RETURN_FIRST
+    // a trade is billed on its master's invoice (D3), so it completes here
+    $needsInvoice = ! $sr->parent_sr_id && $sr->coverage_type === 'out_of_coverage' && (bool) $sr->invoice_mandatory;
 
     if ($needsInvoice) {
         $sr->update([

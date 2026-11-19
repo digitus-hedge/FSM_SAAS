@@ -282,6 +282,60 @@
       </div>
     </div>
 
+    {{-- MULTI-TRADE (MTR-02, MTR-03) --}}
+    @if ($sr->is_master_sr)
+    <div class="card">
+      <div class="card-head"><h3>Trades</h3></div>
+      <div class="card-body" style="font-size:13px">
+        <div style="margin-bottom:8px;font-weight:600">{{ $children->whereIn('status', ['completed', 'cancelled'])->count() }} of {{ $children->count() }} done</div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr><th style="text-align:left">Trade</th><th style="text-align:left">Assigned to</th><th style="text-align:left">Status</th><th style="text-align:right">Expenses</th></tr></thead>
+          <tbody>
+          @foreach ($children as $child)
+            <tr style="border-top:1px solid var(--line)">
+              <td><a href="{{ route('service-requests.show', $child) }}">{{ $child->sr_number }}</a> {{ $child->category?->name }}</td>
+              <td>{{ $child->assignedTech?->name ?? '—' }}</td>
+              <td>{{ ucfirst(str_replace('_', ' ', $child->status)) }}</td>
+              <td style="text-align:right">{{ number_format((float) ($expenseByChild[$child->id] ?? 0), 2) }}</td>
+            </tr>
+          @endforeach
+          </tbody>
+          <tfoot><tr style="border-top:2px solid var(--line);font-weight:700"><td colspan="3">Expenses of all trades</td><td style="text-align:right">{{ number_format((float) $expenseByChild->sum(), 2) }}</td></tr></tfoot>
+        </table>
+      </div>
+    </div>
+    @endif
+    @if ($parentRequest)
+    <div class="card"><div class="card-body" style="font-size:13px">Part of <a href="{{ route('service-requests.show', $parentRequest) }}">{{ $parentRequest->sr_number }}</a>. It is invoiced on that request.</div></div>
+    @endif
+
+    {{-- DEPOT (DEP-04) --}}
+    @if ($sr->service_mode === 'depot')
+    <div class="card">
+      <div class="card-head"><h3>Workshop</h3></div>
+      <div class="card-body" style="font-size:13px">
+        <div>Workshop: <strong>{{ $sr->site?->name }}</strong> · Home site: {{ $homeSite?->name ?? '—' }}</div>
+        <div style="margin:8px 0;display:flex;gap:6px;flex-wrap:wrap">
+          @foreach ($depotStages as $key => $label)
+            <span class="chip" style="{{ $sr->depot_stage === $key ? 'font-weight:700;background:var(--yellow-soft)' : '' }}">{{ $label }}</span>
+          @endforeach
+        </div>
+        @if ($mayDepot)
+          @php
+            $order = array_keys($depotStages);
+            $next  = $sr->depot_stage === null ? 'received' : ($order[array_search($sr->depot_stage, $order) + 1] ?? null);
+          @endphp
+          @if ($next)
+            <form method="POST" action="{{ route('service-requests.depot.stage', $sr) }}" style="display:inline">@csrf
+              <input type="hidden" name="stage" value="{{ $next }}"><button class="act-btn act-primary" style="width:auto">Mark {{ strtolower($depotStages[$next]) }}</button></form>
+          @endif
+          @if ($sr->intake_form_version_id)<a href="{{ route('service-requests.depot.checklist', [$sr, 'intake']) }}" class="act-btn act-neutral" style="width:auto;display:inline-flex">Intake checklist{{ $sr->intake_result ? ' ✓' : '' }}</a>@endif
+          @if ($sr->return_form_version_id)<a href="{{ route('service-requests.depot.checklist', [$sr, 'return']) }}" class="act-btn act-neutral" style="width:auto;display:inline-flex">Return checklist{{ $sr->return_result ? ' ✓' : '' }}</a>@endif
+        @endif
+      </div>
+    </div>
+    @endif
+
     {{-- APPROVAL (Forms-Approvals-Batch spec, FRM-07, section 5.9) --}}
     @if ($sr->auto_approved_mode || $sr->approval_state || $approvalMode !== 'manual' || ($sr->category?->approval_mode ?? 'manual') !== 'manual')
     <div class="card">

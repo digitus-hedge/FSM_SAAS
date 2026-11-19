@@ -30,6 +30,7 @@ class User extends Authenticatable
         'email_verified_at'       => 'datetime',
         'password'                => 'hashed',
         'must_change_password'    => 'boolean',
+        'may_log_expenses'        => 'boolean',
         'two_factor_secret'       => 'encrypted',
         'two_factor_confirmed_at' => 'datetime',
         'locked_until'            => 'datetime',
@@ -42,6 +43,8 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Tenant::class);
     }
+
+    public function vendor() { return $this->belongsTo(Vendor::class)->withTrashed(); }
 
     public function role(): BelongsTo
     {

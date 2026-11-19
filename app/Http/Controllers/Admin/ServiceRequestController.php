@@ -18,6 +18,8 @@ use App\Services\Approval\ApprovalModes;
 use App\Services\Approval\RequestApprover;
 use App\Services\Forms\BatchService;
 use App\Services\Forms\Checklists;
+use App\Services\Trades\Depot;
+use App\Services\Trades\MasterRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -247,7 +249,13 @@ class ServiceRequestController extends Controller
             }
         }
 
+        $tenant = Tenant::findOrFail($tenantId);
+
         return view('admin.service-requests.form', [
+            'multiTrade' => app(MasterRequests::class)->enabled($tenant),
+            'depotOn'    => app(Depot::class)->enabled($tenant),
+            'workshops'  => ProjectSite::withoutGlobalScopes()->where('tenant_id', $tenantId)->where('site_type', 'tenant_workshop')->where('is_active', 1)->orderBy('name')->get(['id', 'name']),
+            'tradeTechs' => User::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereNull('deactivated_at')->whereHas('role', fn ($q) => $q->whereIn('code', ['field_technician', 'team_lead']))->orderBy('name')->get(['id', 'name', 'vendor_id']),
             'sr'         => $sr,
             'mode'       => 'create',
             'clients'    => Client::active()->orderBy('name')->get(['id', 'name']),
@@ -282,6 +290,21 @@ class ServiceRequestController extends Controller
         // A request raised from an asset's QR page is tagged as such.
         $source = ($request->boolean('from_qr') && ! empty($data['primary_asset_id'])) ? 'qr_scan' : 'front_desk';
 
+        // MTR-01: several trades make a master request with one child request for each trade.
+        $childRows = array_values(array_filter((array) $request->input('children', []), fn ($c) => ! empty($c['service_category_id'])));
+        if ($childRows) {
+            $tenant = Tenant::findOrFail($tenantId);
+            $master = app(MasterRequests::class)->create($tenant, auth()->user(), $data, array_map(fn ($c) => [
+                'service_category_id'  => (int) $c['service_category_id'],
+                'planned_tech_user_id' => ! empty($c['technician_id']) ? (int) $c['technician_id'] : null,
+                'planned_at'           => ! empty($c['planned_at']) ? $c['planned_at'] : null,
+                'notes'                => $c['notes'] ?? null,
+            ], $childRows));
+            $this->storeAttachments($request, $master);
+
+            return redirect()->route('service-requests.index')->with('success', "Request {$master->sr_number} created with " . count($childRows) . ' trades.');
+        }
+
         // BAT-01/02: a batch is a request with 2 to 200 assets of this site. The checks throw FormException (422).
         $batchAssets = null;
         $assetIds    = array_values(array_filter((array) $request->input('asset_ids', [])));
@@ -289,7 +312,15 @@ class ServiceRequestController extends Controller
             $batchAssets = app(BatchService::class)->validate($cat, (int) $data['project_site_id'], $assetIds, $request->boolean('confirm_open'));
         }
 
-        $sr = DB::transaction(function () use ($data, $tenantId, $cat, $proofSnapshot, $teamLeadId, $source, $batchAssets) {
+        // DEP-02: service at the company's workshop. The request's site becomes the workshop, the client's site is kept as the home site.
+        $homeSiteId = null;
+        if ($request->input('service_mode') === 'depot') {
+            $workshop  = app(Depot::class)->validate(Tenant::findOrFail($tenantId), $cat, (int) $request->input('workshop_site_id'), $assetIds ?: array_filter([$data['primary_asset_id'] ?? null]));
+            $homeSiteId = (int) $data['project_site_id'];
+            $data['project_site_id'] = $workshop->id;
+        }
+
+        $sr = DB::transaction(function () use ($data, $tenantId, $cat, $proofSnapshot, $teamLeadId, $source, $batchAssets, $homeSiteId) {
             $sr = ServiceRequest::create([
                 'tenant_id'              => $tenantId,
                 'sr_number'              => ServiceRequest::nextSrNumber($tenantId),
@@ -301,7 +332,8 @@ class ServiceRequestController extends Controller
                 'title'                  => $data['title'],
                 'description'            => $data['description'] ?? null,
                 'client_po_reference'    => $data['client_po_reference'] ?? null,
-                'service_mode'           => 'on_site',
+                'service_mode'           => $homeSiteId ? 'depot' : 'on_site',
+                'home_site_id'           => $homeSiteId,
                 'source'                 => $source,
                 'coverage_type'          => 'out_of_coverage',
                 'status'                 => 'pending',
@@ -330,6 +362,9 @@ class ServiceRequestController extends Controller
                 app(BatchService::class)->attach($sr, $batchAssets, $cat);
             } else {
                 $checklists->bind($sr, $cat, ! empty($data['primary_asset_id']) ? Asset::find($data['primary_asset_id']) : null);
+            }
+            if ($homeSiteId) {
+                app(Depot::class)->bind($sr, $cat);   // D15: the intake and return checklists
             }
             app(ContractCoverage::class)->onCreated($sr);   // D3: flag when several contracts match
             return $sr;
@@ -408,6 +443,12 @@ class ServiceRequestController extends Controller
         'checklistVersion' => $service_request->form_template_version_id ? \App\Models\FormTemplateVersion::withoutGlobalScopes()->find($service_request->form_template_version_id) : null,
         'approvalMode'    => app(ApprovalModes::class)->effective($service_request->category, Tenant::find($service_request->tenant_id)),
         'mayApproveFinance' => \App\Services\Permissions\ServiceRequestAccess::mayApproveAsFinance($user),
+        'children'        => $service_request->is_master_sr ? ServiceRequest::withoutGlobalScopes()->where('parent_sr_id', $service_request->id)->with(['category:id,name', 'assignedTech:id,name'])->orderBy('id')->get() : collect(),
+        'expenseByChild'  => $service_request->is_master_sr ? app(MasterRequests::class)->expenseTotals($service_request) : collect(),
+        'parentRequest'   => $service_request->parent_sr_id ? ServiceRequest::withoutGlobalScopes()->find($service_request->parent_sr_id) : null,
+        'homeSite'        => $service_request->home_site_id ? ProjectSite::withoutGlobalScopes()->find($service_request->home_site_id) : null,
+        'depotStages'     => Depot::LABELS,
+        'mayDepot'        => $service_request->service_mode === 'depot' && \App\Services\Permissions\ServiceRequestAccess::mayAssign($user, $service_request),
     ]);
 }
 
@@ -720,6 +761,7 @@ class ServiceRequestController extends Controller
     public function assign(Request $request, ServiceRequest $service_request)
 {
     abort_unless(\App\Services\Permissions\ServiceRequestAccess::mayAssign(auth()->user(), $service_request), 403); // sr.assign: Front Desk only for critical and emergency requests
+    abort_if($service_request->is_master_sr, 422, 'This is a multi-trade request. Assign its trades one by one.');
     $data = $request->validate([
         'technician_id'          => ['required', \Illuminate\Validation\Rule::exists('users', 'id')->where('tenant_id', auth()->user()->tenant_id)], // this company's users only
         'arrival_time'           => ['required', 'date'],
@@ -906,6 +948,13 @@ class ServiceRequestController extends Controller
             'reason' => ['required', 'string', 'max:500'],
         ]);
 
+        // D20: cancelling a master cancels every trade that is not complete; the master's status follows
+        if ($service_request->is_master_sr) {
+            app(MasterRequests::class)->cancel($service_request, $data['reason']);
+
+            return redirect()->route('service-requests.show', $service_request)->with('success', "{$service_request->sr_number} cancelled.");
+        }
+
         $fromStatus = $service_request->status;
 
 
@@ -922,6 +971,7 @@ class ServiceRequestController extends Controller
     public function markReview(ServiceRequest $service_request)
     {
         abort_unless(\App\Services\Permissions\ServiceRequestAccess::mayMarkReview(auth()->user()), 403); // sr.qc (Company Admin, Operations Manager)
+        abort_if($service_request->is_master_sr, 422, 'The status of a multi-trade request follows its trades.');
         abort_unless(
             $service_request->status === 'in_progress',
             422,

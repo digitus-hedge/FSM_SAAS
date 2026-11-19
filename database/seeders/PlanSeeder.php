@@ -28,6 +28,7 @@ class PlanSeeder extends Seeder
                 'billing_full'   => false,  // Payments ledger, aging, overdue reminders (Pro+)
                 'forms' => false, 'approval_auto' => false, 'approval_finance' => false, 'form_templates_limit' => null, // B3
                 'pm_time' => false, // B4
+                'multi_trade' => false, 'vendors' => false, 'depot' => false, // B6
             ],
         ]);
 
@@ -48,6 +49,7 @@ class PlanSeeder extends Seeder
                 'billing_full'   => true,
                 'forms' => true, 'approval_auto' => true, 'approval_finance' => false, 'form_templates_limit' => 10, // B3
                 'pm_time' => true, // B4
+                'multi_trade' => true, 'vendors' => true, 'depot' => true, // B6
             ],
         ]);
 
@@ -68,6 +70,7 @@ class PlanSeeder extends Seeder
                 'billing_full'   => true,
                 'forms' => true, 'approval_auto' => true, 'approval_finance' => true, 'form_templates_limit' => null, // B3
                 'pm_time' => true, // B4
+                'multi_trade' => true, 'vendors' => true, 'depot' => true, // B6
             ],
         ]);
     }

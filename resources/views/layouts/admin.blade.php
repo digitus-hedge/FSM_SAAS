@@ -145,7 +145,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
     $showContracts = ! $isPlatform
                   && $u?->canDo('contract.view')
                   && \App\Models\Tenant::current()?->hasFeature('contracts');   // Contracts and AMCs: Professional and above
-    $hasOps     = $u?->canDo('client.manage') || $u?->canDo('form.manage') || $u?->canDo('workflow.manage') || $u?->canDo('pm.view') || $u?->canDo('site.manage') || $u?->canDo('category.manage') || $u?->canDo('asset.view') || $showContracts;
+    $hasOps     = $u?->canDo('client.manage') || $u?->canDo('form.manage') || $u?->canDo('workflow.manage') || $u?->canDo('pm.view') || $u?->canDo('vendor.manage') || $u?->canDo('site.manage') || $u?->canDo('category.manage') || $u?->canDo('asset.view') || $showContracts;
     $hasSetup   = $u?->canDo('settings.manage');
     $hasPeople  = $u?->canDo('user.manage') || $u?->canDo('role.manage') || $u?->canDo('audit.view');
 
@@ -156,6 +156,8 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
                || request()->routeIs('admin.service-categories.*')
                || request()->routeIs('admin.checklists.*')
                || request()->routeIs('admin.maintenance.*')
+               || request()->routeIs('admin.vendors.*')
+               || request()->routeIs('admin.vendor-spend.*')
                || request()->routeIs('admin.approval-rules.*')
                || request()->routeIs('admin.team-lead-categories.*');
     $setupOpen  = request()->routeIs('admin.sla-policies.*')
@@ -378,6 +380,12 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
                     @endif
                     @if ($u->canDo('pm.view') && \App\Models\Tenant::current()?->hasFeature('pm_time'))
                         <a href="{{ route('admin.maintenance.index') }}" class="nav-item {{ request()->routeIs('admin.maintenance.*') ? 'active' : '' }}">Maintenance</a>
+                    @endif
+                    @if ($u->canDo('vendor.manage') && \App\Models\Tenant::current()?->hasFeature('vendors'))
+                        <a href="{{ route('admin.vendors.index') }}" class="nav-item {{ request()->routeIs('admin.vendors.*') ? 'active' : '' }}">Vendors</a>
+                    @endif
+                    @if ($u->canDo('report.view') && \App\Models\Tenant::current()?->hasFeature('vendors'))
+                        <a href="{{ route('admin.vendor-spend.index') }}" class="nav-item {{ request()->routeIs('admin.vendor-spend.*') ? 'active' : '' }}">Vendor spend</a>
                     @endif
                     @if ($u->canDo('workflow.manage'))
                         <a href="{{ route('admin.approval-rules.index') }}" class="nav-item {{ request()->routeIs('admin.approval-rules.*') ? 'active' : '' }}">Approval rules</a>

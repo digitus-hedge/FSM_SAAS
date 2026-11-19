@@ -488,7 +488,7 @@ Route::prefix('admin/tenant-holidays')->middleware(['auth', DenyClientRole::clas
 });
 
 // Vendors
-Route::prefix('admin/vendors')->middleware(['auth', DenyClientRole::class, 'level:vendor.manage'])->name('admin.vendors.')->group(function () {
+Route::prefix('admin/vendors')->middleware(['auth', DenyClientRole::class, 'level:vendor.manage', EnsurePlanFeature::class . ':vendors'])->name('admin.vendors.')->group(function () {
     Route::get('/',                      [VendorController::class, 'index'])->name('index');
     Route::get('/create',                [VendorController::class, 'create'])->name('create');
     Route::post('/',                     [VendorController::class, 'store'])->name('store');
@@ -550,6 +550,13 @@ Route::prefix('admin/maintenance')->middleware(['auth', DenyClientRole::class, E
         });
     });
 
+// Vendor spend (VND-04): vendor expenses apart from the company's own technicians
+Route::prefix('admin/vendor-spend')->middleware(['auth', DenyClientRole::class, 'level:report.view', EnsurePlanFeature::class . ':vendors'])
+    ->name('admin.vendor-spend.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\VendorSpendController::class, 'index'])->name('index');
+        Route::get('/export', [\App\Http\Controllers\Admin\VendorSpendController::class, 'export'])->middleware('level:report.export')->name('export');
+    });
+
 // Approval rules (FRM-08): Company Admin changes, Operations Manager looks (workflow.manage)
 Route::prefix('admin/approval-rules')->middleware(['auth', DenyClientRole::class, 'level:workflow.manage'])
     ->name('admin.approval-rules.')->group(function () {
@@ -601,6 +608,9 @@ Route::prefix('admin/approval-rules')->middleware(['auth', DenyClientRole::class
     Route::post('/{service_request}/change-priority', [ServiceRequestController::class, 'changePriority'])->name('change-priority');
     // Route::delete('/{service_request}/attachments/{filename}', [ServiceRequestController::class, 'deleteAttachment'])
     //     ->name('attachments.delete');
+    Route::post('/{service_request}/depot/stage',       [\App\Http\Controllers\Admin\DepotController::class, 'stage'])->name('depot.stage');
+    Route::get('/{service_request}/depot/{slot}',       [\App\Http\Controllers\Admin\DepotController::class, 'checklist'])->name('depot.checklist');
+    Route::post('/{service_request}/depot/{slot}',      [\App\Http\Controllers\Admin\DepotController::class, 'saveChecklist'])->name('depot.checklist.save');
     Route::post('/{service_request}/approve-finance',   [ServiceRequestController::class, 'approveFinance'])->name('approve-finance');
     Route::post('/{service_request}/reject-finance',    [ServiceRequestController::class, 'rejectFinance'])->name('reject-finance');
     Route::post('/{service_request}/choose-contract',   [ServiceRequestController::class, 'chooseContract'])->name('choose-contract');

@@ -20,11 +20,23 @@ class JobsController extends Controller
 {
     private function authorizeTech(ServiceRequest $sr): void
     {
+        $this->hideTradesOfOthers($sr);
         abort_unless((int) $sr->assigned_tech_user_id === (int) auth()->id(), 403);
+    }
+
+    /** MTR-05 / D6: a master, or a trade that is not yours, does not exist for a field user (404, not 403). */
+    private function hideTradesOfOthers(ServiceRequest $sr): void
+    {
+        if ($sr->is_master_sr || $sr->parent_sr_id) {
+            $mine = (int) $sr->assigned_tech_user_id === (int) auth()->id()
+                || ($sr->team_lead_user_id && (int) $sr->team_lead_user_id === (int) auth()->id());
+            abort_unless($mine && ! $sr->is_master_sr, 404);
+        }
     }
 
     private function authorizeView(ServiceRequest $sr): void
 {
+    $this->hideTradesOfOthers($sr);
     $uid = auth()->id();
     $isAssignedTech = (int) $sr->assigned_tech_user_id === (int) $uid;
     $isOwnTeamLead  = $sr->team_lead_user_id && (int) $sr->team_lead_user_id === (int) $uid;
@@ -662,6 +674,12 @@ class JobsController extends Controller
         return back()->with('success', 'Note added.');
     }
 
+    /** VND-03 / D10: a vendor technician logs expenses only once an admin has switched it on for them. */
+    private function mayLogExpenses(): void
+    {
+        abort_unless((bool) (auth()->user()->may_log_expenses ?? true), 403, 'Your company has not allowed you to log expenses.');
+    }
+
     public function expenses(ServiceRequest $serviceRequest)
     {
         $this->authorizeView($serviceRequest);
@@ -673,6 +691,7 @@ class JobsController extends Controller
     public function createExpense(ServiceRequest $serviceRequest)
     {
         $this->authorizeTech($serviceRequest);
+        $this->mayLogExpenses();
         $categories = ExpenseCategory::active()->orderBy('name')->get();
 
         return view('technician.jobs.expense_create', compact('serviceRequest', 'categories'));
@@ -681,6 +700,7 @@ class JobsController extends Controller
     public function storeExpense(Request $request, ServiceRequest $serviceRequest)
     {
         $this->authorizeTech($serviceRequest);
+        $this->mayLogExpenses();
 
         $data = $request->validate([
             'expense_category_id' => ['required', 'exists:expense_categories,id'],
@@ -721,6 +741,7 @@ class JobsController extends Controller
             'service_request_id'    => $serviceRequest->id,
             'logged_by_user_id'      => auth()->id(),
             'client_event_uuid'      => (string) Str::uuid(),
+            'vendor_id'              => auth()->user()->vendor_id,   // D11: vendor spend is reported apart
             'expense_category_id'    => $category->id,
             'description'             => $data['description'],
             'quantity'                => $data['quantity'],

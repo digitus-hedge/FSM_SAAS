@@ -46,6 +46,11 @@ class RequestApprover
             'sla_resolution_due_at' => $reso !== null ? $started->copy()->addMinutes($reso) : null,
         ])->save();
 
+        // MTR / D5: one approval covers every trade of a multi-trade job
+        if ($sr->is_master_sr) {
+            app(\App\Services\Trades\MasterRequests::class)->onMasterApproved($sr->fresh());
+        }
+
         $audit = app(AuditLogger::class);
         if ($autoMode) {
             SrStatusHistory::log($sr, $fromStatus, 'approved', 'system', null, "Approved automatically ({$autoMode}).", ['coverage' => $coverage, 'mode' => $autoMode]);

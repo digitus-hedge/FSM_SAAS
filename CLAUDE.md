@@ -19,6 +19,7 @@ Labels such as "service request", "client" and "quote" can be renamed per compan
 - B3 built (docs/specs/Forms-Approvals-Batch.md): checklist templates and versions, the builder, the checklist in the Field View with the proof lock,
   approval modes and the rules page, batch requests. The API (spec section 8) is not built.
 - B4 built (docs/specs/Preventive-Maintenance.md, calendar only): schedules, the 06:00 job, calendar, client list. The API is not built.
+- B6 built (docs/specs/Multi-Trade-Vendors-Depot.md): multi-trade masters, vendor technicians, workshops and depot stages. The API and the depot screens of the Field View are not built.
 - B9 checkout and billing: payment gateway on hold until last.
 
 ## Tenancy
@@ -100,6 +101,16 @@ Labels such as "service request", "client" and "quote" can be renamed per compan
 - No duplicates: `pm_schedule_runs` (unique schedule + due date) and the unique key `(pm_schedule_id, pm_due_date)` on `service_requests`.
 - A request from a schedule has source `pm_auto`, `created_by_user_id` null, the schedule's template (wins over asset and category), the pinned contract in
   `contract_id` (`ContractCoverage::onCreated` treats it as a pin), geofence only if the site always enforces it, signature waiver allowed.
+
+## Multi-trade, vendors, depot (B6)
+- `Services/Trades`: `MasterRequests` (create a master with 2 to 10 trades, derive the master status, approve and cancel the trades, `ids()` for expense and invoice roll-up),
+  `Depot` (stages `received` to `returned`, intake and return checklists as `Checklists` slots, `assertReturned`), `VendorTechnicians` (vendor link and expense switch on the user form).
+- A master's status is never set by hand: a `ServiceRequest::updated` listener (AppServiceProvider) recomputes it when a trade changes. A trade QC-passes straight to Completed;
+  the master is the one invoice (`ExpenseLines::eligible` takes the trades' expenses; `InvoicesController` refuses a trade).
+- A vendor technician is a technician user with `users.vendor_id`. `EnsureVendorActive` (web group) signs them out while the vendor is suspended. `may_log_expenses`
+  (default true, set from the vendor's default on first assignment) is checked in `JobsController`. A master or another technician's trade is a 404 in the field app.
+- A depot request keeps `service_mode = depot`, the workshop as its site and the client's site in `home_site_id`; the client portal shows the home site and the stage only.
+- Plan keys `multi_trade`, `vendors`, `depot` (Professional and Enterprise). `/admin/vendors` and the vendor spend report are behind `vendors`.
 
 ## Conventions
 - Every company table has `tenant_id`. Many models have the global scope (trait `App\Models\Concerns\BelongsToTenant`: Client,

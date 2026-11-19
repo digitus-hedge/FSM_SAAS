@@ -100,6 +100,23 @@ h1{font-family:var(--font-display);font-size:28px;font-weight:700;letter-spacing
         </div>
     </div>
 
+    @if (\App\Services\Permissions\PermissionLevel::isFull(auth()->user(), 'vendor.manage') && \App\Models\Tenant::current()?->hasFeature('vendors'))
+    <div class="client-box" id="vendor-field">
+        <div class="field">
+            <label for="vendor_id">Belongs to vendor</label>
+            <select name="vendor_id" id="vendor_id">
+                <option value="">— our own staff —</option>
+                @foreach (\App\Models\Vendor::active()->orderBy('name')->get() as $v)
+                    <option value="{{ $v->id }}" @selected((string) old('vendor_id', $user?->vendor_id) === (string) $v->id)>{{ $v->name }}</option>
+                @endforeach
+            </select>
+            <span class="hint">For a technician who works for a subcontractor. They see only their own jobs and no prices.</span>
+            <label style="margin-top:8px;display:block"><input type="hidden" name="may_log_expenses" value="0">
+                <input type="checkbox" name="may_log_expenses" value="1" @checked(old('may_log_expenses', $user?->may_log_expenses ?? true))> May log expenses</label>
+        </div>
+    </div>
+    @endif
+
     <div class="client-box" id="team-lead-field" style="display:none">
         <div class="field">
             <label for="team_lead_id">Team lead</label>

@@ -58,6 +58,7 @@
     <span class="code-pill">{{ $asset->asset_code }}</span>
     <span class="status {{ $statusClass[$asset->status] ?? 'status-off' }}" style="margin-left:6px">{{ $statusLabels[$asset->status] ?? $asset->status }}</span>
     <h1>{{ $asset->name }}</h1>
+    @if ($atWorkshop)<span class="status status-warn">{{ $atWorkshop }}</span>@endif
   </div>
   <div class="actions">
     <a class="btn" href="{{ route('admin.assets.label', $asset) }}" target="_blank">Print label</a>

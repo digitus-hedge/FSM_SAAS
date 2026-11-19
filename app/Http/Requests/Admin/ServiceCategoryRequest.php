@@ -26,6 +26,9 @@ class ServiceCategoryRequest extends FormRequest
             'service_domain' => 'nullable|string|max:80',
             // FRM-07: the mode is checked against the plan in the controller (APPROVAL_MODE_NOT_IN_PLAN).
             'approval_mode'  => ['required', Rule::in(array_keys(ServiceCategory::APPROVAL_MODES))],
+            // DEP-03: the intake and return checklists of a workshop job
+            'intake_form_template_id' => ['nullable', 'integer', Rule::exists('form_templates', 'id')->where('tenant_id', $tenantId ?? auth()->user()?->tenant_id)->where('status', 'active')],
+            'return_form_template_id' => ['nullable', 'integer', Rule::exists('form_templates', 'id')->where('tenant_id', $tenantId ?? auth()->user()?->tenant_id)->where('status', 'active')],
             // FRM-04: the category's checklist template (an active one of this company)
             'active_form_template_id' => [
                 'nullable', 'integer',
@@ -93,6 +96,8 @@ class ServiceCategoryRequest extends FormRequest
                 ? $this->input('approval_mode')
                 : ($this->route('category')?->approval_mode ?? 'manual'),
             'active_form_template_id' => $this->filled('active_form_template_id') ? $this->input('active_form_template_id') : null,
+            'intake_form_template_id' => $this->filled('intake_form_template_id') ? $this->input('intake_form_template_id') : null,
+            'return_form_template_id' => $this->filled('return_form_template_id') ? $this->input('return_form_template_id') : null,
 
             'is_active' => $this->has('is_active') ? $this->boolean('is_active') : true,
             // Normalise all booleans

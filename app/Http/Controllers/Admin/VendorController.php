@@ -19,7 +19,7 @@ class VendorController extends Controller
         $status = $request->input('status');          // null | active | suspended
         $search = trim((string) $request->input('q', ''));
 
-        $query = Vendor::query()->orderBy('name');
+        $query = Vendor::query()->withCount('technicians')->orderBy('name');
 
         if ($status === 'active')    $query->active();
         if ($status === 'suspended') $query->suspended();

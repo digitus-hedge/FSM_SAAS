@@ -60,6 +60,7 @@ abstract class BillingTestCase extends TestCase
         return $this->plan('professional', [
             'multi_currency' => true, 'billing_full' => true,
             'forms' => true, 'form_templates_limit' => 10, 'approval_auto' => true, 'approval_finance' => false, 'pm_time' => true,
+            'multi_trade' => true, 'vendors' => true, 'depot' => true,
         ]);
     }
 

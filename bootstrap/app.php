@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // All global web middleware in ONE call — Laravel 12 only honours the last.
         $middleware->web(append: [
             \App\Http\Middleware\TenantResolver::class,
+            \App\Http\Middleware\EnsureVendorActive::class,
             \App\Http\Middleware\ForcePasswordChange::class,
             \App\Http\Middleware\TouchDevice::class,
             \App\Http\Middleware\RouteTechnicianMobile::class,

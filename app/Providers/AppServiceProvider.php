@@ -54,6 +54,22 @@ class AppServiceProvider extends ServiceProvider
             }
         });
 
+        // MTR-02: a trade changed, so the master's status is worked out again; a trade is created with its master.
+        \App\Models\ServiceRequest::updated(function (\App\Models\ServiceRequest $sr) {
+            if ($sr->parent_sr_id && $sr->wasChanged('status')) {
+                $master = \App\Models\ServiceRequest::withoutGlobalScopes()->find($sr->parent_sr_id);
+                if ($master) {
+                    app(\App\Services\Trades\MasterRequests::class)->recompute($master);
+                    if ($sr->status === 'completed') {
+                        $svc = app(\App\Services\Notifications\NotificationService::class);
+                        $svc->notify('master.child_completed', $svc->usersWithRole('operations_manager', $sr->tenant_id), [
+                            'sr_number' => $sr->sr_number, 'trade' => $sr->category?->name, 'master_number' => $master->sr_number,
+                        ], route('service-requests.show', $master, false));
+                    }
+                }
+            }
+        });
+
         foreach ([
             'invoice'  => \App\Models\Invoice::class,
             'quote'    => \App\Models\Quote::class,
@@ -67,6 +83,7 @@ class AppServiceProvider extends ServiceProvider
             'version'  => \App\Models\FormTemplateVersion::class,
             'sra'      => \App\Models\ServiceRequestAsset::class,
             'schedule' => \App\Models\PmSchedule::class,
+            'vendor'   => \App\Models\Vendor::class,
         ] as $name => $model) {
             \Illuminate\Support\Facades\Route::bind($name, function ($value) use ($model) {
                 $tenantId = auth()->user()?->tenant_id ?? \App\Models\Tenant::current()?->id;

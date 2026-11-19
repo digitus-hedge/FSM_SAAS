@@ -28,6 +28,7 @@ class VendorRequest extends FormRequest
             'tax_id'       => ['nullable', 'string', 'max:60'],
             'status'       => ['required', Rule::in(['active', 'suspended'])],
             'notes'        => ['nullable', 'string', 'max:5000'],
+            'default_may_log_expenses' => ['nullable', 'boolean'],
         ];
     }
 

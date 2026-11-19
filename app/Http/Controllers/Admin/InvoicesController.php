@@ -51,6 +51,13 @@ class InvoicesController extends Controller
      */
     private function readyToInvoiceOrRedirect(ServiceRequest $sr)
     {
+        // MTR-04 / D3: invoice the master, not one trade
+        if ($sr->parent_sr_id) {
+            $master = ServiceRequest::withoutGlobalScopes()->find($sr->parent_sr_id);
+
+            return redirect()->route('service-requests.show', $sr)
+                ->with('error', 'Invoice the main request ' . ($master?->sr_number ?? '') . ', not one trade.');
+        }
         if ($sr->status !== 'awaiting_invoice') {
             return redirect()->route('service-requests.show', $sr)
                 ->with('error', "{$sr->sr_number} isn't ready to invoice yet — it must pass QC review first (status: " . $sr->statusLabel() . ').');
@@ -106,6 +113,7 @@ class InvoicesController extends Controller
         return ServiceRequest::query()
             ->with(['client:id,name'])
             ->where('status', 'awaiting_invoice')
+            ->whereNull('parent_sr_id')
             ->whereNotIn('id', Invoice::whereNotIn('status', ['void'])->pluck('service_request_id'))
             ->orderByDesc('updated_at')
             ->get();

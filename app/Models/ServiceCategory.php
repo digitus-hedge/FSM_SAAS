@@ -12,7 +12,7 @@ class ServiceCategory extends Model
 
     protected $fillable = [
         'tenant_id', 'code', 'name', 'service_domain',
-        'active_form_template_id', 'custom_workflow_json', 'approval_mode',
+        'active_form_template_id', 'intake_form_template_id', 'return_form_template_id', 'custom_workflow_json', 'approval_mode',
         'require_before_photo', 'require_after_photo', 'require_signature',
         'require_checklist', 'invoice_mandatory',
         'allow_multi_asset_batch', 'require_per_asset_checklist', 'allow_depot_mode',

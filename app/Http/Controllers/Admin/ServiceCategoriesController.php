@@ -47,6 +47,7 @@ class ServiceCategoriesController extends Controller
 
         return [
             'formsOn'        => app(\App\Services\Forms\FormTemplates::class)->enabled($tenant),
+            'depotOn'        => app(\App\Services\Trades\Depot::class)->enabled($tenant),
             'templates'      => \App\Models\FormTemplate::withoutGlobalScopes()->where('tenant_id', $tenant->id)->where('status', 'active')->orderBy('name')->get(),
             'allowedModes'   => collect(ServiceCategory::APPROVAL_MODES)->mapWithKeys(fn ($l, $m) => [$m => $modes->allowed($tenant, $m)])->all(),
             'mayEditApproval' => \App\Services\Permissions\PermissionLevel::canChange(auth()->user(), 'workflow.manage'),
@@ -61,7 +62,10 @@ class ServiceCategoriesController extends Controller
             app(\App\Services\Approval\ApprovalModes::class)->assertAllowed($tenant, $data['approval_mode']);
         }
         if (! app(\App\Services\Forms\FormTemplates::class)->enabled($tenant)) {
-            unset($data['active_form_template_id']);
+            unset($data['active_form_template_id'], $data['intake_form_template_id'], $data['return_form_template_id']);
+        }
+        if (! app(\App\Services\Trades\Depot::class)->enabled($tenant)) {
+            unset($data['allow_depot_mode']);   // D1: depot jobs are in the plan or not at all
         }
 
         return $data;

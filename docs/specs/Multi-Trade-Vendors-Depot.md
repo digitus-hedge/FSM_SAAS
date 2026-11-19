@@ -100,6 +100,14 @@ D25. A client sees one request, with the status of the master and the depot stag
 - `service_request_expenses.vendor_id` (null) (SCH-B6-06).
 - Plan keys `multi_trade`, `vendors` and `depot` in `plans.features` (SCH-B6-07).
 
+**Added while building (November 2026)**
+
+- `service_requests` also gets `planned_tech_user_id` and `planned_at` (a trade's planned technician and time, applied when the master is approved), and the depot checklists live in `intake_form_version_id`, `return_form_version_id`, `intake_payload`, `return_payload`, `intake_result`, `return_result` (D15).
+- A master that needs an invoice (out of coverage and invoice mandatory) waits in Awaiting Invoice when every trade is done, like any request after QC. Otherwise it is Completed (D4). A trade completes at QC without an invoice (D3).
+- A master with no trade started is Pending until it is approved, then Approved (D5).
+- Left out of this build: the depot screens in the Field View (stages are changed in the office by `sr.assign`), the notification to the client contact for `depot.received` and `depot.ready_for_return` (staff only, the Front Desk), the vendor technician count on the vendors list, and the API (section 8).
+- Error codes added: `DEPOT_STAGE_ORDER`, `DEPOT_STAGE_BACK`, `FEATURE_NOT_IN_PLAN` (403).
+
 **Error codes**
 
 `MASTER_CHILD_COUNT`, `MASTER_CHILD_OF_CHILD`, `MASTER_NOT_BILLABLE_CHILD` (`INVOICE_CHILD_REQUEST`), `VENDOR_SUSPENDED`, `VENDOR_ROLE_LOCKED`, `EXPENSE_NOT_ALLOWED`, `DEPOT_NOT_ALLOWED`, `DEPOT_CHECKLIST_REQUIRED`, `DEPOT_RETURN_FIRST`, `WORKSHOP_HAS_NO_CLIENT`.

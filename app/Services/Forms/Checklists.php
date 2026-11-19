@@ -24,6 +24,23 @@ class Checklists
 {
     public const EVENT = 'checklist_saved';
 
+    /** The depot checklists: [version column, payload column, result column] (Multi-Trade-Vendors-Depot spec D15). */
+    public const SLOTS = [
+        'intake' => ['intake_form_version_id', 'intake_payload', 'intake_result'],
+        'return' => ['return_form_version_id', 'return_payload', 'return_result'],
+    ];
+
+    /** The published version of an active template of the company, or null. */
+    public function publishedVersionOf(?int $templateId, int $tenantId): ?FormTemplateVersion
+    {
+        if (! $templateId || ! app(FormTemplates::class)->enabled(Tenant::find($tenantId))) {
+            return null;
+        }
+        $template = FormTemplate::withoutGlobalScopes()->where('tenant_id', $tenantId)->where('status', 'active')->find($templateId);
+
+        return $template ? FormTemplateVersion::withoutGlobalScopes()->where('form_template_id', $template->id)->where('status', 'published')->first() : null;
+    }
+
     /** The published version a new job takes: the schedule's template, then the asset's, then the category's (D8). */
     public function versionFor(?ServiceCategory $category, ?Asset $asset, ?int $scheduleTemplateId = null): ?FormTemplateVersion
     {
@@ -62,15 +79,16 @@ class Checklists
      * @param  array<string,mixed> $input    answers by field key (files already turned into paths by prepareInput)
      * @return array{result:?string, complete:bool, missing:int, applied:bool}
      */
-    public function save(ServiceRequest $sr, ?ServiceRequestAsset $row, User $user, array $input, string $uuid, ?Carbon $deviceAt = null, ?int $versionId = null): array
+    public function save(ServiceRequest $sr, ?ServiceRequestAsset $row, User $user, array $input, string $uuid, ?Carbon $deviceAt = null, ?int $versionId = null, string $slot = 'main'): array
     {
-        $boundId = $row ? $row->form_template_version_id : $sr->form_template_version_id;
+        $cols    = self::SLOTS[$slot] ?? null;   // depot intake and return checklists keep their own columns (spec D15)
+        $boundId = $cols ? $sr->{$cols[0]} : ($row ? $row->form_template_version_id : $sr->form_template_version_id);
         $version = $boundId ? FormTemplateVersion::withoutGlobalScopes()->find($boundId) : null;
         if (! $version) {
             throw new FormException('CHECKLIST_NOT_BOUND', 'This job has no checklist.');
         }
         if ($versionId !== null && (int) $versionId !== (int) $version->id) {
-            $this->log($sr, $user, $uuid, $deviceAt, 'conflict_rejected', ['asset_id' => $row?->asset_id, 'version_id' => $versionId], 'version_mismatch');
+            $this->log($sr, $user, $uuid, $deviceAt, 'conflict_rejected', ['asset_id' => $row?->asset_id, 'version_id' => $versionId, 'slot' => $slot], 'version_mismatch');
             throw new FormException('CHECKLIST_VERSION_MISMATCH', 'This checklist changed. Reload the job to continue.', 409);
         }
 
@@ -81,34 +99,36 @@ class Checklists
         // The same event twice changes nothing.
         $dup = FieldEventLog::withoutGlobalScopes()->where('tenant_id', $sr->tenant_id)->where('client_event_uuid', $uuid)->exists();
         if ($dup) {
-            return $this->state($version, $this->payload($sr, $row), false);
+            return $this->state($version, $this->payload($sr, $row, $slot), false);
         }
 
         // An older event arriving after a newer one is ignored (D10).
         $newest = FieldEventLog::withoutGlobalScopes()
             ->where('tenant_id', $sr->tenant_id)->where('service_request_id', $sr->id)
             ->where('event_type', self::EVENT)->where('result', 'applied')
-            ->get()->filter(fn ($e) => ($e->payload_json['asset_id'] ?? null) == $assetId)
+            ->get()->filter(fn ($e) => ($e->payload_json['asset_id'] ?? null) == $assetId && ($e->payload_json['slot'] ?? 'main') === $slot)
             ->max('recorded_at_device');
         if ($newest && $deviceAt->lt($newest)) {
-            $this->log($sr, $user, $uuid, $deviceAt, 'conflict_rejected', ['asset_id' => $assetId, 'version_id' => $version->id], 'older_event');
+            $this->log($sr, $user, $uuid, $deviceAt, 'conflict_rejected', ['asset_id' => $assetId, 'version_id' => $version->id, 'slot' => $slot], 'older_event');
 
-            return $this->state($version, $this->payload($sr, $row), false);
+            return $this->state($version, $this->payload($sr, $row, $slot), false);
         }
 
         $eval = FormSchema::evaluate($version->schema_json ?? [], $input);
         if ($eval['errors']) {
-            $this->log($sr, $user, $uuid, $deviceAt, 'invalid', ['asset_id' => $assetId, 'version_id' => $version->id], 'invalid_answer');
+            $this->log($sr, $user, $uuid, $deviceAt, 'invalid', ['asset_id' => $assetId, 'version_id' => $version->id, 'slot' => $slot], 'invalid_answer');
             throw new FormException('CHECKLIST_INVALID', (string) array_values($eval['errors'])[0]);
         }
 
-        DB::transaction(function () use ($sr, $row, $user, $uuid, $deviceAt, $version, $eval, $assetId) {
-            if ($row) {
+        DB::transaction(function () use ($sr, $row, $user, $uuid, $deviceAt, $version, $eval, $assetId, $cols, $slot) {
+            if ($cols) {
+                $sr->forceFill([$cols[1] => $eval['answers'], $cols[2] => $eval['result']])->save();
+            } elseif ($row) {
                 $row->forceFill(['asset_checklist_payload' => $eval['answers'], 'checklist_result' => $eval['result']])->save();
             } else {
                 $sr->forceFill(['sr_checklist_payload' => $eval['answers'], 'checklist_result' => $eval['result'], 'checklist_saved_at' => now()])->save();
             }
-            $this->log($sr, $user, $uuid, $deviceAt, 'applied', ['asset_id' => $assetId, 'version_id' => $version->id, 'answers' => $eval['answers']]);
+            $this->log($sr, $user, $uuid, $deviceAt, 'applied', ['asset_id' => $assetId, 'version_id' => $version->id, 'slot' => $slot, 'answers' => $eval['answers']]);
         });
 
         return $this->state($version, $eval['answers'], true);
@@ -118,9 +138,9 @@ class Checklists
      * Turns what a device posted into answers: uploaded photos are stored, a drawn signature (data URL) is stored, and a
      * photo or signature that was not sent again keeps its saved value. A path the server did not create is never accepted.
      */
-    public function prepareInput(ServiceRequest $sr, ?ServiceRequestAsset $row, FormTemplateVersion $version, array $posted, array $files): array
+    public function prepareInput(ServiceRequest $sr, ?ServiceRequestAsset $row, FormTemplateVersion $version, array $posted, array $files, string $slot = 'main'): array
     {
-        $saved  = $this->payload($sr, $row);
+        $saved  = $this->payload($sr, $row, $slot);
         $answers = $posted;
 
         foreach (FormSchema::fields($version->schema_json ?? []) as $key => $f) {
@@ -150,8 +170,12 @@ class Checklists
         return $answers;
     }
 
-    public function payload(ServiceRequest $sr, ?ServiceRequestAsset $row): array
+    public function payload(ServiceRequest $sr, ?ServiceRequestAsset $row, string $slot = 'main'): array
     {
+        if (isset(self::SLOTS[$slot])) {
+            return (array) $sr->{self::SLOTS[$slot][1]};
+        }
+
         return (array) ($row ? $row->asset_checklist_payload : $sr->sr_checklist_payload);
     }
 

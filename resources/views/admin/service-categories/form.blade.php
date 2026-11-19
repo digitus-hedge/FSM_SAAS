@@ -464,7 +464,28 @@
       <span class="hint">A new request takes the published version of this template.</span>
     </div>
     @endif
+    @if ($depotOn && $formsOn)
+    <div class="field">
+      <label for="intake_form_template_id">Workshop: intake checklist</label>
+      <select id="intake_form_template_id" name="intake_form_template_id" class="input"><option value="">None</option>
+        @foreach ($templates as $tpl)<option value="{{ $tpl->id }}" @selected(old('intake_form_template_id', $category->intake_form_template_id) == $tpl->id)>{{ $tpl->name }}</option>@endforeach
+      </select>
+    </div>
+    <div class="field">
+      <label for="return_form_template_id">Workshop: return checklist</label>
+      <select id="return_form_template_id" name="return_form_template_id" class="input"><option value="">None</option>
+        @foreach ($templates as $tpl)<option value="{{ $tpl->id }}" @selected(old('return_form_template_id', $category->return_form_template_id) == $tpl->id)>{{ $tpl->name }}</option>@endforeach
+      </select>
+    </div>
+    @endif
     <div class="flag-grid">
+      @if ($depotOn)
+      <label class="flag-card">
+        <input type="hidden" name="allow_depot_mode" value="0">
+        <input type="checkbox" name="allow_depot_mode" value="1" @checked(old('allow_depot_mode', $category->allow_depot_mode))>
+        <div class="flag-body"><div class="flag-title">Allow service at the workshop</div><div class="flag-desc">Equipment can be brought to your workshop.</div></div>
+      </label>
+      @endif
       <label class="flag-card">
         <input type="hidden" name="allow_multi_asset_batch" value="0">
         <input type="checkbox" name="allow_multi_asset_batch" value="1" @checked(old('allow_multi_asset_batch', $category->allow_multi_asset_batch))>

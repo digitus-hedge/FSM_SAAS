@@ -133,6 +133,12 @@
       @error('status') <small class="err-inline">{{ $message }}</small> @enderror
     </div>
 
+    <div class="field">
+      <label class="lbl"><input type="hidden" name="default_may_log_expenses" value="0">
+        <input type="checkbox" name="default_may_log_expenses" value="1" @checked(old('default_may_log_expenses', $vendor->default_may_log_expenses))> New technicians of this vendor may log expenses</label>
+      <small class="hint">Each technician's own switch is on their user page.</small>
+    </div>
+
     <div class="field {{ $errors->has('notes') ? 'has-error' : '' }}">
       <label for="notes" class="lbl">Internal notes</label>
       <textarea id="notes" name="notes" class="textarea" maxlength="5000"

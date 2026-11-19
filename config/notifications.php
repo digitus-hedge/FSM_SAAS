@@ -60,6 +60,32 @@ return [
             'body'  => '{site}. It was due on {date} and is not done.',
             'email' => true,
         ],
+        // Multi-Trade-Vendors-Depot spec, section 7.
+        'master.child_completed' => [
+            'title' => '{sr_number}: a trade is complete',
+            'body'  => '{trade} is done on the multi-trade job {master_number}.',
+            'email' => false,
+        ],
+        'master.ready_to_invoice' => [
+            'title' => 'Request {sr_number} is complete. Create the invoice.',
+            'body'  => 'Every trade is done.',
+            'email' => true,
+        ],
+        'vendor.assigned' => [
+            'title' => 'You have a new job {sr_number} at {site} on {date}',
+            'body'  => 'Open the job in the app.',
+            'email' => true,
+        ],
+        'depot.received' => [
+            'title' => '{sr_number}: we received {asset} at the workshop',
+            'body'  => 'The equipment is at the workshop.',
+            'email' => true,
+        ],
+        'depot.ready_for_return' => [
+            'title' => '{sr_number}: {asset} is ready to collect',
+            'body'  => 'The work is done and the equipment can go back.',
+            'email' => true,
+        ],
         'batch.unsafe_asset' => [
             'title' => '{sr_number}: {count} asset(s) failed as unsafe',
             'body'  => 'The technician marked assets as failed (unsafe) in this batch.',

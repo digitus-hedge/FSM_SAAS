@@ -1,6 +1,6 @@
 {{-- The fields of one checklist version. Expects: $version, $answers (saved), $editable, $draftKey --}}
 @php($schema = $version->schema_json ?? ['sections' => []])
-<input type="hidden" name="client_event_uuid" class="uuid-field">
+<input type="hidden" name="client_event_uuid" class="uuid-field" value="{{ $eventUuid ?? '' }}">
 <input type="hidden" name="recorded_at" value="{{ now()->toIso8601String() }}">
 <input type="hidden" name="version_id" value="{{ $version->id }}">
 

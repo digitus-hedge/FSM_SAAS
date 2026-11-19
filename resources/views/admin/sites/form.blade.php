@@ -119,14 +119,22 @@
     @csrf
 
     @if ($mode === 'edit') @method('PUT') @endif
+@if (\App\Models\Tenant::current()?->hasFeature('depot'))
+<div class="card" style="margin-bottom:12px"><div class="fld"><label for="site_type">Type of site</label>
+  <select id="site_type" name="site_type" class="sel">
+    <option value="client_site" @selected(old('site_type', $site->site_type ?? 'client_site') === 'client_site')>Client site</option>
+    <option value="tenant_workshop" @selected(old('site_type', $site->site_type ?? 'client_site') === 'tenant_workshop')>Our workshop (no client)</option>
+  </select><div class="hint">A workshop belongs to your company, not to a client.</div></div></div>
+@else
 <input type="hidden" name="site_type"
        value="{{ old('site_type', $site->site_type ?? 'client_site') }}">
+@endif
     <div class="card">
 
       {{-- CLIENT --}}
       <div class="fld">
         <label for="client_id">Client <span class="req">*</span></label>
-        <select id="client_id" name="client_id" required class="sel @error('client_id') err @enderror">
+        <select id="client_id" name="client_id" class="sel @error('client_id') err @enderror">
           <option value="">Choose a client</option>
           @foreach ($clients as $c)
             <option value="{{ $c->id }}" @selected((string) old('client_id', $site->client_id) === (string) $c->id)>

@@ -126,6 +126,7 @@ class MembersController extends Controller
             'new'       => $user->only(['name', 'email', 'phone', 'role_id', 'employee_code', 'client_id', 'team_lead_id']),
         ]);
         $this->saveDispatchFields($user->load('role'), $data);
+        app(\App\Services\Trades\VendorTechnicians::class)->apply($user, $request, auth()->user());   // VND-02
         if ($scope->isAdmin()) {
             $this->syncExtraPermissionOverrides($user, $data); // personal extra permissions are the Company Admin's to give
         }
@@ -227,6 +228,7 @@ class MembersController extends Controller
             ]);
         }
         $this->saveDispatchFields($user->load('role'), $data);
+        app(\App\Services\Trades\VendorTechnicians::class)->apply($user, $request, auth()->user());   // VND-02
         if ($scope->isAdmin()) {
             $this->syncExtraPermissionOverrides($user, $data);
         }

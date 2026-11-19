@@ -24,7 +24,7 @@ class ClientPortalController extends Controller
     private function scopedRequests()
     {
         $user = auth()->user();
-        $query = ServiceRequest::where('client_id', $user->client_id ?? 0);
+        $query = ServiceRequest::where('client_id', $user->client_id ?? 0)->whereNull('parent_sr_id');   // a client sees one request, not its trades (D25)
 
         if ($user->role?->code === 'client_viewer') {
             $siteIds = $user->site_scope_json ?? [];
@@ -95,6 +95,10 @@ class ClientPortalController extends Controller
         );
 
         $serviceRequest->load(['site:id,name,address', 'category:id,name']);
+        // D25: a client never sees the workshop's name, only their own site
+        if ($serviceRequest->service_mode === 'depot' && $serviceRequest->home_site_id) {
+            $serviceRequest->setRelation('site', ProjectSite::withoutGlobalScopes()->find($serviceRequest->home_site_id, ['id', 'name', 'address']));
+        }
 
         // Client-safe field set only — never priority, coverage, internal notes,
         // expenses, GPS, hold/QC reasons or technician contact details.

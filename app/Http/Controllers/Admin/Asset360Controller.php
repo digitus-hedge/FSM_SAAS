@@ -111,6 +111,7 @@ class Asset360Controller extends Controller
 
         return view('admin.assets.show', [
             'pmSchedules'   => $schedules,
+            'atWorkshop'    => app(\App\Services\Trades\Depot::class)->locationOf($asset),
             'checklists'    => $checklists->sortByDesc('at')->values(),
             'asset'         => $asset,
             'requests'      => $requests,
