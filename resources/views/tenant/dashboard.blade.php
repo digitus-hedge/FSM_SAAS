@@ -71,7 +71,8 @@
 .dx-eyebrow{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--acc)}
 
 /* hero */
-.dx-hero{display:flex;gap:26px;align-items:stretch;padding:24px 26px;background:linear-gradient(110deg,var(--acct),var(--fill2) 70%,var(--surface))}
+.dx-hero{display:flex;gap:26px;align-items:stretch;padding:24px 26px;background:var(--surface)}
+.dx .card,.dx-hero,.dx-strip,.dx-glance{background:var(--surface)}
 .dx-hero .l{flex:1;min-width:0}
 .dx-hero h1{font-size:30px;font-weight:700;letter-spacing:-.6px;margin:6px 0 0;line-height:1.15}
 .dx-hero p{margin:8px 0 18px;color:var(--muted);line-height:1.5}
@@ -81,7 +82,7 @@
 .dx-b.p{background:var(--btn);color:var(--btntx);box-shadow:0 6px 18px var(--btnsh)}
 .dx-b.g{background:var(--surface);color:var(--acc);box-shadow:0 2px 10px rgba(31,41,80,.12)}
 .dx-b:hover{transform:translateY(-1px)}
-.dx-glance{width:400px;flex:none;background:color-mix(in srgb,var(--surface) 78%,transparent);border-radius:14px;padding:18px 20px;box-shadow:0 3px 14px rgba(31,41,80,.07)}
+.dx-glance{width:400px;flex:none;background:var(--surface);border:1px solid var(--ln);border-radius:14px;padding:18px 20px}
 .dx-glance .t{font-weight:600;margin-bottom:12px}.dx-glance .t span{color:var(--muted);font-weight:400}
 .dx-glance .g{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .dx-glance .v{font-size:24px;font-weight:600}.dx-glance .k{color:var(--muted);font-size:12px}

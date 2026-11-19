@@ -54,8 +54,8 @@
   --btn:#BBD6A3;--btntx:#26381A;--btnsh:rgba(187,214,163,.55);--bar:#9DC57E;--acc:#5E8A3C;
   --acct:#F6FAF0;--fill:#F1F6EC;--fill2:#F8FBF4;--track:#E9EFE4;--ln:#EEF1EC;--field:#F3F6F0;
 @endif
-  --shadow:0 6px 28px rgba(31,41,80,.10),0 1px 3px rgba(31,41,80,.06);
-  --shadow-hi:0 18px 44px rgba(31,41,80,.17),0 2px 6px rgba(31,41,80,.06);
+  --shadow:0 2px 14px rgba(31,41,80,.05),0 0 0 1px rgba(31,41,80,.06);
+  --shadow-hi:0 10px 30px rgba(31,41,80,.10),0 0 0 1px rgba(31,41,80,.07);
   --ease:cubic-bezier(.2,.8,.2,1);
 }
 
@@ -81,10 +81,19 @@
   --shadow-hi:0 20px 48px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.08);
 }
 
+/* ============ 3b. Dark catch-all: pages that hardcode white ============ */
+:root[data-mode=dark] [data-awd]{background-color:var(--surface)!important}
+:root[data-mode=dark] [data-awt]{color:var(--ink)!important}
+:root[data-mode=dark] [data-awm]{color:var(--muted)!important}
+:root[data-mode=dark] [data-awb]{border-color:var(--ln)!important}
+:root[data-mode=dark] input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=range]):not([type=file]):not(.dx-date),
+:root[data-mode=dark] select,:root[data-mode=dark] textarea{background-color:var(--field);color:var(--ink);border-color:var(--ln)}
+:root[data-mode=dark] ::placeholder{color:var(--subtle)}
+
 @if ($ctx === 'admin')
 /* ============ 4A. Office layout vocabulary ============ */
 :root{
-  --bg:color-mix(in srgb,var(--brand) 3%,#F6F7F8);
+  --bg:#fff;
   --surface:#fff;
   --ink:#14171F;--muted:#5E6573;--subtle:#8A92A0;
   --line:var(--ln);--soft:var(--fill);
@@ -110,7 +119,8 @@ body{background:var(--bg)}
 body .card{background:var(--surface);border:0;border-radius:18px;box-shadow:var(--shadow);transition:transform .3s var(--ease),box-shadow .3s}
 body .card:hover{transform:translateY(-3px);box-shadow:var(--shadow-hi)}
 body .card:has(form):hover,body .card:has(table):hover{transform:none;box-shadow:var(--shadow)}
-body .card-head,body .modal-foot{background:var(--fill2);border-color:var(--ln)}
+body .card-head,body .modal-foot{background:transparent;border-color:var(--ln)}
+:root:not([data-mode=dark]) body .card,:root:not([data-mode=dark]) body .card-head,:root:not([data-mode=dark]) body .card-foot,:root:not([data-mode=dark]) body .card table,:root:not([data-mode=dark]) body .card thead,:root:not([data-mode=dark]) body .card thead th{background:#fff}
 body .modal-card{background:var(--surface);border-radius:20px}
 body .btn,body .act-btn{border-radius:999px;font-weight:600}
 body .btn-primary,body .act-primary{background:var(--btn);color:var(--btntx);border-color:transparent;box-shadow:0 6px 18px var(--btnsh)}
@@ -151,7 +161,7 @@ body table tbody tr:hover{background:var(--fill2)}
   --yellow:var(--btn);--yellow-soft:var(--acct);
   --blue:#7C9CFF;--violet:#AB9DFF;--green:#4CD08A;--amber:#F3B14A;--red:#FF8A82;--slate:#9FB0CC;--teal:#4FD1D9;--indigo:#9A94FF;--pink:#F08CCB;
 }
-html,body{background:var(--fill2)}
+html,body{background:var(--bg)}
 body .card{border:0;border-radius:18px;box-shadow:var(--shadow);transition:transform .3s var(--ease),box-shadow .3s}
 body .btn.primary,body .btn.dark{background:var(--btn);color:var(--btntx);border-color:transparent;box-shadow:0 6px 18px var(--btnsh)}
 body .btn.dark:hover,body .btn.primary:hover{filter:brightness(.97)}
@@ -162,6 +172,7 @@ body .navitem:hover{background:var(--surface);box-shadow:0 8px 22px rgba(31,41,8
 body .navitem.current{background:var(--acct);color:var(--acc)}
 body .side{border-right:0;box-shadow:4px 0 24px rgba(31,41,80,.07)}
 body .kpi,body .tbl{border-color:transparent}
+:root:not([data-mode=dark]) body .card,:root:not([data-mode=dark]) body .kpi,:root:not([data-mode=dark]) body .tbl,:root:not([data-mode=dark]) body .tbl thead,:root:not([data-mode=dark]) body .tbl th,:root:not([data-mode=dark]) body .card-head{background:#fff}
 body .kpi.dark{background:var(--btn);color:var(--btntx);border-color:transparent;box-shadow:0 6px 18px var(--btnsh)}
 body .kpi.dark span{color:color-mix(in srgb,var(--btntx) 70%,transparent)}
 body .frm-select{background:var(--field);border:1px solid transparent;border-radius:10px;color:var(--ink)}
@@ -176,7 +187,7 @@ body .inp:focus,body .sel:focus,body .txt:focus{background:var(--surface);border
 @if ($ctx === 'auth')
 /* ============ 4C. Login pages ============ */
 :root{--accent:var(--btn);--accent-ink:var(--btntx)}
-body{background:radial-gradient(900px 500px at 15% -10%,var(--acct),transparent 60%),radial-gradient(800px 500px at 100% 110%,var(--fill),transparent 60%),var(--fill2)}
+body{background:#fff}
 body .card{border:0;border-radius:24px;box-shadow:var(--shadow-hi)}
 body .brand .logo{background:var(--btn);color:var(--btntx);box-shadow:0 6px 16px var(--btnsh)}
 body .field input{background:var(--field);border-color:transparent;border-radius:12px}
@@ -187,6 +198,9 @@ body input:not([type=checkbox]):not([type=radio]):not([type=hidden]){background:
 body input:not([type=checkbox]):not([type=radio]):not([type=hidden]):focus{background:#fff;border-color:var(--btn);box-shadow:0 0 0 3px var(--btnsh);outline:none}
 body form button[type=submit]{background:var(--btn);color:var(--btntx);box-shadow:0 6px 18px var(--btnsh)}
 @endif
+
+/* ============ 5. Pure white page (light mode) ============ */
+:root:not([data-mode=dark]),:root:not([data-mode=dark]) body,:root:not([data-mode=dark]) .main,:root:not([data-mode=dark]) .content,:root:not([data-mode=dark]) .page,:root:not([data-mode=dark]) .wrap,:root:not([data-mode=dark]) .app,:root:not([data-mode=dark]) .shell,:root:not([data-mode=dark]) .layout,:root:not([data-mode=dark]) main,:root:not([data-mode=dark]) .dx{background:#fff!important}
 
 @media (prefers-reduced-motion:reduce){
   body .card,.nav-item,.nav-group>summary,body .navitem,body table tbody tr{transition:none!important}
@@ -256,6 +270,44 @@ document.addEventListener('DOMContentLoaded',function(){
     }else return;
     paint();window.dispatchEvent(new Event('aw-theme'));});
   paint();if(!inSlot)document.body.appendChild(d);
+
+  // Dark catch-all: flag elements that hardcode a white/light-neutral background, dark text or
+  // light borders, so the CSS in section 3b can recolour them. Runs only in Dark.
+  var SKIP=/^(SCRIPT|STYLE|IMG|SVG|PATH|CANVAS|VIDEO|IFRAME|HEAD|META|LINK|NOSCRIPT|BR|HR)$/;
+  function parse(c){var m=c&&c.match(/rgba?\(([^)]+)\)/);if(!m)return null;var p=m[1].split(/[ ,\/]+/).map(parseFloat);return{r:p[0],g:p[1],b:p[2],a:p.length>3?p[3]:1};}
+  function mx(o){return Math.max(o.r,o.g,o.b);}function mn(o){return Math.min(o.r,o.g,o.b);}
+  function lum(o){return .299*o.r+.587*o.g+.114*o.b;}
+  function fixEl(el,parentEff){
+    var cs=getComputedStyle(el),eff=parentEff,b=parse(cs.backgroundColor);
+    if(b&&b.a>.6){
+      if(mn(b)>=244&&mx(b)-mn(b)<=12){el.setAttribute('data-awd','1');eff=20;}
+      else eff=lum(b);
+    }else if(!b&&cs.backgroundColor.indexOf('color(')===0){eff=20;}   // themed (variable) surface = already dark
+    el.__awEff=eff;
+    var c=parse(cs.color);
+    if(c&&eff<110&&mx(c)-mn(c)<45){
+      if(mx(c)<=60)el.setAttribute('data-awt','1');
+      else if(mx(c)<=140)el.setAttribute('data-awm','1');
+    }
+    var bd=parse(cs.borderTopColor);
+    if(bd&&cs.borderTopWidth!=='0px'&&mn(bd)>=205&&mx(bd)-mn(bd)<=25)el.setAttribute('data-awb','1');
+    return eff;
+  }
+  function walk(el,parentEff){
+    if(el.nodeType!==1||SKIP.test(el.tagName)||el.classList.contains('aw-dock')||el.classList.contains('aw-slot'))return;
+    var eff=fixEl(el,parentEff);
+    for(var k=el.firstElementChild;k;k=k.nextElementSibling)walk(k,eff);
+  }
+  function fixAll(){if(!dark()||!darkReady)return;walk(document.body,255);}
+  window.addEventListener('aw-theme',function(){setTimeout(fixAll,0);});
+  var t=null,pend=[];
+  new MutationObserver(function(ms){
+    if(!dark())return;
+    ms.forEach(function(m){m.addedNodes.forEach(function(n){if(n.nodeType===1)pend.push(n);});});
+    if(t)return;
+    t=setTimeout(function(){t=null;var l=pend;pend=[];l.forEach(function(n){var p=n.parentElement;walk(n,p&&p.__awEff!=null?p.__awEff:20);});},120);
+  }).observe(document.body,{childList:true,subtree:true});
+  setTimeout(fixAll,0);
 });
 </script>
 @endif

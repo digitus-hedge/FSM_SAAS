@@ -362,6 +362,10 @@ class MembersController extends Controller
             'home_base_lat'          => ['nullable', 'numeric', 'between:-90,90'],
             'home_base_lng'          => ['nullable', 'numeric', 'between:-180,180'],
             'daily_capacity_minutes' => ['nullable', 'integer', 'between:60,1440'],
+            'extra_perms'           => ['sometimes', 'array'],
+            'extra_perms.*'         => [Rule::in(self::EXTRA_PERMS)],
+            'extra_perms_ends_at'   => ['sometimes', 'array'],
+            'extra_perms_ends_at.*' => ['nullable', 'date', 'after_or_equal:today'],
         ], [
             'name.required'      => 'Enter a name of 2 to 150 characters.',
             'email.required'     => 'Email is required.',
@@ -375,11 +379,6 @@ class MembersController extends Controller
             'home_base_lat.between'          => 'Latitude must be between -90 and 90.',
             'home_base_lng.between'          => 'Longitude must be between -180 and 180.',
             'daily_capacity_minutes.between' => 'Enter between 60 and 1440 minutes.',
-         ], [
-            'extra_perms'           => ['sometimes', 'array'],
-            'extra_perms.*'         => [Rule::in(['sr.approve', 'sr.qc', 'expense.approve', 'sr.assign'])],
-            'extra_perms_ends_at'   => ['sometimes', 'array'],
-            'extra_perms_ends_at.*' => ['nullable', 'date', 'after_or_equal:today'],
         ]);
 
         $role = Role::find($data['role_id']);
