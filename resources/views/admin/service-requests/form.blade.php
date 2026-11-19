@@ -201,7 +201,7 @@
           <select id="service_category_id" name="service_category_id" class="select">
             <option value="">Choose a category</option>
             @foreach ($categories as $cat)
-              <option value="{{ $cat->id }}" @selected(old('service_category_id', $sr->service_category_id) == $cat->id)>{{ $cat->name }}</option>
+              <option value="{{ $cat->id }}" data-batch="{{ $cat->allow_multi_asset_batch ? 1 : 0 }}" @selected(old('service_category_id', $sr->service_category_id) == $cat->id)>{{ $cat->name }}</option>
             @endforeach
           </select>
           @error('service_category_id') <small class="err-inline">{{ $message }}</small> @enderror
@@ -216,6 +216,16 @@
           </select>
           @error('primary_asset_id') <small class="err-inline">{{ $message }}</small> @enderror
         </div>
+
+        {{-- BATCH (BAT-02): many assets of this site in one request --}}
+        @if (! $sr->exists)
+        <div class="full" id="batch-box" style="display:none;border:1px solid var(--line);border-radius:10px;padding:12px 14px">
+          <label class="lbl"><input type="checkbox" id="batch-on"> Make this a batch request <span class="opt">(2 to 200 assets of this site and category)</span></label>
+          <div id="batch-list" style="display:none;max-height:260px;overflow:auto;margin-top:10px"></div>
+          <label id="batch-confirm" style="display:none;margin-top:8px;font-size:12px"><input type="checkbox" name="confirm_open" value="1"> Include assets that already have an open request</label>
+          <div id="batch-count" class="hint" style="margin-top:6px"></div>
+        </div>
+        @endif
 
         {{-- Asset warranty and recent requests --}}
         <div class="full" id="asset-info"
@@ -471,6 +481,7 @@
       });
       assetSel.innerHTML = html;
       if (assetSel.value) showAsset(assetSel.value, false);
+      if (typeof renderBatch === 'function') renderBatch();
     } catch (err) {
       assetSel.innerHTML = '<option value="">Could not load assets</option>';
       console.error(err);
@@ -503,6 +514,40 @@
         <div class="section-sublabel" style="margin:10px 0 0">Recent requests</div>${recent}`;
       assetInfo.style.display = 'block';
     } catch (err) { console.error(err); }
+  }
+
+  /* -------- Batch (BAT-02) -------- */
+  const batchBox = document.getElementById('batch-box');
+  function renderBatch() {
+    if (!batchBox) return;
+    const opt = catSel.options[catSel.selectedIndex];
+    const allowed = opt && opt.dataset.batch === '1' && catSel.value;
+    batchBox.style.display = allowed ? 'block' : 'none';
+    const on = document.getElementById('batch-on');
+    const list = document.getElementById('batch-list');
+    if (!allowed) { on.checked = false; }
+    list.style.display = (allowed && on.checked) ? 'block' : 'none';
+    assetSel.disabled = !!(allowed && on.checked);
+    if (!(allowed && on.checked)) { list.innerHTML = ''; document.getElementById('batch-count').textContent = ''; return; }
+    let html = '', anyOpen = false;
+    Object.values(assetsMap).filter(a => String(a.service_category_id) === String(catSel.value)).forEach(a => {
+      const open = (a.open || []).filter(o => String(o.service_category_id) === String(catSel.value));
+      if (open.length) anyOpen = true;
+      html += `<label style="display:block;padding:3px 0"><input type="checkbox" class="batch-item" name="asset_ids[]" value="${a.id}" ${open.length ? '' : ''}> ${esc(a.label)}`
+            + (open.length ? ` <span style="color:var(--red);font-size:11px">In open request ${esc(open[0].sr_number)}</span>` : '') + '</label>';
+    });
+    list.innerHTML = html || '<div class="hint">No assets of this category at this site.</div>';
+    document.getElementById('batch-confirm').style.display = anyOpen ? 'block' : 'none';
+    updateBatchCount();
+  }
+  function updateBatchCount() {
+    const n = document.querySelectorAll('.batch-item:checked').length;
+    const c = document.getElementById('batch-count'); if (c) c.textContent = n + ' selected';
+  }
+  if (batchBox) {
+    document.getElementById('batch-on').addEventListener('change', renderBatch);
+    document.getElementById('batch-list').addEventListener('change', updateBatchCount);
+    catSel.addEventListener('change', renderBatch);
   }
 
   assetSel.addEventListener('change', () => {

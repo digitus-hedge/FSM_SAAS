@@ -133,6 +133,24 @@
         </div>
       </div>
 
+      @php($formsOn = app(\App\Services\Forms\FormTemplates::class)->enabled(\App\Models\Tenant::current()))
+      @if ($formsOn)
+      <div class="two">
+        <div class="fld">
+          <label for="form_template_id">Checklist template</label>
+          <select id="form_template_id" name="form_template_id" class="sel @error('form_template_id') err @enderror">
+            <option value="">Use the category's checklist</option>
+            @foreach (\App\Models\FormTemplate::where('status', 'active')->orderBy('name')->get() as $tpl)
+              <option value="{{ $tpl->id }}" @selected((string) old('form_template_id', $asset->form_template_id) === (string) $tpl->id)>{{ $tpl->name }}</option>
+            @endforeach
+          </select>
+          @error('form_template_id')<div class="errtxt">{{ $message }}</div>@else
+            <div class="hint">Overrides the category's checklist for this asset.</div>
+          @enderror
+        </div>
+      </div>
+      @endif
+
       <div class="fld">
         <label for="name">Name <span class="req">*</span></label>
         <input id="name" name="name" value="{{ old('name', $asset->name) }}" maxlength="180" required class="inp @error('name') err @enderror">

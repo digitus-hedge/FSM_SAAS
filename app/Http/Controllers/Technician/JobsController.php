@@ -249,8 +249,11 @@ class JobsController extends Controller
             ->where('technician_user_id', auth()->id())
             ->latest('id')->first();
         $missingProof = $serviceRequest->status === 'in_progress' ? $this->missingProof($serviceRequest) : [];
+        $blockers     = $serviceRequest->status === 'in_progress' ? app(\App\Services\Forms\Checklists::class)->blockers($serviceRequest) : [];
+        $batchRows    = \App\Models\ServiceRequestAsset::where('service_request_id', $serviceRequest->id)->get();
+        $hasChecklist = $serviceRequest->form_template_version_id && $batchRows->isEmpty() && app(\App\Services\Forms\FormTemplates::class)->enabled(\App\Models\Tenant::find($serviceRequest->tenant_id));
 
-        return view('technician.jobs.show', compact('serviceRequest', 'holdReasons', 'pendingOverride', 'missingProof'));
+        return view('technician.jobs.show', compact('serviceRequest', 'holdReasons', 'pendingOverride', 'missingProof', 'blockers', 'batchRows', 'hasChecklist'));
     }
 
     public function accept(ServiceRequest $serviceRequest)
@@ -466,6 +469,12 @@ class JobsController extends Controller
             return back()->withErrors(['identifier' => 'Resume the job before punching out.']);
         }
 
+        // FRM-05 / BAT-03: the checklist and the batch join the proof lock.
+        $blockers = app(\App\Services\Forms\Checklists::class)->blockers($serviceRequest);
+        if ($blockers) {
+            return back()->withErrors(['identifier' => $blockers[0]]);
+        }
+
         $missing = $this->missingProof($serviceRequest);
         if ($missing) {
             return back()->withErrors([
@@ -512,6 +521,8 @@ class JobsController extends Controller
             'last_punch_out_at'  => now(),
             'total_work_minutes' => max(0, $workMinutes),
         ]);
+
+        app(\App\Services\Forms\BatchService::class)->onPunchedOut($serviceRequest);   // D26
 
         return redirect()->route('technician.jobs.show', $serviceRequest)->with('success', 'Punched out. Job sent for review.');
     }

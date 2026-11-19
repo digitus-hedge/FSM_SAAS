@@ -66,7 +66,12 @@ class ClientPortalController extends Controller
 
         // Client-safe field set only — never priority, coverage, internal notes,
         // expenses, GPS, hold/QC reasons or technician contact details.
+        // D25: a client sees the checklist result and only the answers marked "visible to client".
+        $checklistVersion = ($serviceRequest->checklist_result && $serviceRequest->form_template_version_id)
+            ? \App\Models\FormTemplateVersion::withoutGlobalScopes()->find($serviceRequest->form_template_version_id) : null;
+
         return view('client.requests.show', [
+            'checklistVersion' => $checklistVersion,
             'sr'       => $serviceRequest,
             'canEdit'  => $serviceRequest->status === 'pending'
                           && $serviceRequest->created_by_user_id === auth()->id(),

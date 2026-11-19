@@ -21,7 +21,7 @@ class Asset extends Model
         'location_within_site', 'installation_date', 'warranty_expiry_date',
         'default_contract_id', 'status', 'tracks_meter', 'meter_unit',
         'current_meter_reading', 'last_meter_recorded_at', 'photo_attachment_id',
-        'specifications_json', 'notes',
+        'specifications_json', 'notes', 'form_template_id',
     ];
 
     protected $casts = [

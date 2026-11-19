@@ -33,5 +33,26 @@ return [
             'body'  => 'Asset {asset_code}: {request_title}',
             'email' => true,
         ],
+        // Forms-Approvals-Batch spec, section 7.
+        'sr.auto_approved' => [
+            'title' => '{sr_number} was approved automatically',
+            'body'  => 'Approved automatically ({mode}). {client}.',
+            'email' => false,
+        ],
+        'sr.approval_needed' => [
+            'title' => '{sr_number} needs your approval',
+            'body'  => '{client}. {waiting_for} must approve it.',
+            'email' => true,
+        ],
+        'sr.approval_rejected' => [
+            'title' => '{sr_number} was not approved',
+            'body'  => 'Reason: {reason}',
+            'email' => true,
+        ],
+        'batch.unsafe_asset' => [
+            'title' => '{sr_number}: {count} asset(s) failed as unsafe',
+            'body'  => 'The technician marked assets as failed (unsafe) in this batch.',
+            'email' => true,
+        ],
     ],
 ];

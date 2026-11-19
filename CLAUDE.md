@@ -16,6 +16,8 @@ Labels such as "service request", "client" and "quote" can be renamed per compan
   and the payment dialog, base-currency dashboard figures, the Reminders line on the invoice page. The API (spec section 8) is not built.
 - Security clean-up built: every office route is behind sign-in and gated by the signed matrix, scoped bindings, record_level holders
   narrowed to their own records (users, service request actions, dispatch), the full suite passes.
+- B3 built (docs/specs/Forms-Approvals-Batch.md): checklist templates and versions, the builder, the checklist in the Field View with the proof lock,
+  approval modes and the rules page, batch requests. The API (spec section 8) is not built.
 - B9 checkout and billing: payment gateway on hold until last.
 
 ## Tenancy
@@ -71,6 +73,24 @@ Labels such as "service request", "client" and "quote" can be renamed per compan
 - Order: permission check first (404 for roles with no access), plan gate on the route. Client roles are blocked by `DenyClientRole`
   on every office group except `manage/users` (a client admin adds users for their own company).
 
+## Forms, approvals and batch (B3)
+- `Services/Forms`: `FormSchema` (pure: validate a template, evaluate answers, the result `ok`/`issues`; the device never sends a result),
+  `FormTemplates` (create, draft, publish, retire, archive; plan limit), `Checklists` (bind a request to the published version at creation, save
+  answers offline-safe through `field_event_log` event `checklist_saved`, `blockers()` for the punch-out), `BatchService`, `FormException`
+  (carries the spec's error code; a 403 one aborts with 403). A published or retired `FormTemplateVersion` throws on any content change.
+- Plan keys: `forms`, `form_templates_limit` (10 Professional, null Enterprise), `approval_auto`, `approval_finance` (blueprint "forms" and "approval" rows).
+  The unused `form_builder` and `reports_pdf` keys of PlanSeeder are left alone.
+- Punch-out lock (`Technician/JobsController::punchOut`): `Checklists::blockers()` first (pending batch assets, missing checklist answers), then the old proof lock.
+  A lost `forms` plan pauses the checklist rule. The office "Submit for review" still skips all of it.
+- Approval: `ApprovalModes` (effective mode = stored mode, or manual when the plan lacks it), `RequestApprover::complete()` writes any approval
+  (a person's or automatic, `approved_by_user_id` null). `finance_and_manager` keeps `approval_state` and the two approvers on the request;
+  Finance uses `service-requests.approve-finance` (expense.approve full). Automatic modes run after the request is created, on the company
+  host only when contracts are on (`ContractCoverage::enabled()` needs `Tenant::current()`, so tests that need it post to `onHost()`).
+- A batch has `primary_asset_id` null and one `service_request_assets` row for each asset (2 to 200, one site, one category as the request).
+  A request counts for an asset as primary asset or as a batch row (Asset 360 reads both). `ServiceRequest::updated` (AppServiceProvider) gives
+  finished rows their `completed_at` when the request becomes Completed.
+- Route binders `{template}`, `{version}`, `{sra}` are scoped by the signed-in user's company like the others.
+
 ## Conventions
 - Every company table has `tenant_id`. Many models have the global scope (trait `App\Models\Concerns\BelongsToTenant`: Client,
   ClientContact, Contract, ServiceRequest, Vendor, Invoice, Quote, Payment, ServiceRequestExpense, GeofenceOverrideRequest,
@@ -119,6 +139,8 @@ Labels such as "service request", "client" and "quote" can be renamed per compan
 - On Windows, composer install can fail with a file lock in phpspreadsheet. Exclude the project folder from Windows Defender and run it again.
 
 ## Known issues, not yet fixed
+- Approval rules: the amount limit column is stored and shown but nothing applies it (no amount exists when a mode runs).
+- `service_requests` route binding (`{service_request}`) relies on the model scope only: with no company on the host (root address) it is not narrowed.
 - Undoing a write-off, the dispatch settings and (with UserAdminScope) staff user management are for the Company Admin by role code:
   no permission key exists for them. The client portal checks the client roles (client_admin, client_viewer) by code on purpose.
 - `mark-review` (office "Submit for review", sr.qc full) moves In Progress to Pending Review WITHOUT the proof lock: it does not check the

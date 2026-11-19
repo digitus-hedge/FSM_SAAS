@@ -23,7 +23,9 @@ class Asset360Controller extends Controller
 
         $asset->load(['client', 'site', 'category', 'parent', 'children']);
 
-        $requests = ServiceRequest::where('primary_asset_id', $asset->id)
+        // A request counts for the asset as its own asset or as a row of a batch (BAT-01).
+        $requests = ServiceRequest::where(fn ($q) => $q->where('primary_asset_id', $asset->id)
+                ->orWhereIn('id', \App\Models\ServiceRequestAsset::where('asset_id', $asset->id)->select('service_request_id')))
             ->orderByDesc('id')
             ->get(['id', 'sr_number', 'title', 'status', 'priority', 'created_at', 'completed_at', 'contract_id', 'coverage_type']);
         $srIds = $requests->pluck('id');
@@ -92,7 +94,19 @@ class Asset360Controller extends Controller
                 ->pluck('contract_number', 'id');
         }
 
+        // FRM-06: the checklists filled for this asset, newest first
+        $checklists = collect();
+        foreach (ServiceRequest::where('primary_asset_id', $asset->id)->whereNotNull('checklist_result')->get() as $sr) {
+            $checklists->push(['at' => $sr->checklist_saved_at, 'result' => $sr->checklist_result, 'sr' => $sr,
+                'version' => \App\Models\FormTemplateVersion::withoutGlobalScopes()->with('template')->find($sr->form_template_version_id)]);
+        }
+        foreach (\App\Models\ServiceRequestAsset::where('asset_id', $asset->id)->whereNotNull('checklist_result')->with('serviceRequest')->get() as $row) {
+            $checklists->push(['at' => $row->completed_at ?? $row->serviceRequest?->updated_at, 'result' => $row->checklist_result, 'sr' => $row->serviceRequest,
+                'version' => $row->version?->load('template')]);
+        }
+
         return view('admin.assets.show', [
+            'checklists'    => $checklists->sortByDesc('at')->values(),
             'asset'         => $asset,
             'requests'      => $requests,
             'expenseTotal'  => $expenseTotal,

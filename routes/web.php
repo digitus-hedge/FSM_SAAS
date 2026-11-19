@@ -509,6 +509,29 @@ Route::prefix('admin/operations-queue')->middleware(['auth', DenyClientRole::cla
     Route::get('/', [OperationsQueueController::class, 'index'])->name('index');
 });
 
+// Checklists (Forms-Approvals-Batch spec, FRM-01 to FRM-04): permission first, then the plan gate
+Route::prefix('admin/checklists')->middleware(['auth', DenyClientRole::class, 'level:form.manage', EnsurePlanFeature::class . ':forms'])
+    ->name('admin.checklists.')->group(function () {
+        Route::get('/',        [\App\Http\Controllers\Admin\FormTemplatesController::class, 'index'])->name('index');
+        Route::get('/create',  [\App\Http\Controllers\Admin\FormTemplatesController::class, 'create'])->name('create');
+        Route::post('/',       [\App\Http\Controllers\Admin\FormTemplatesController::class, 'store'])->name('store');
+        Route::get('/{template}',                [\App\Http\Controllers\Admin\FormTemplatesController::class, 'show'])->name('show');
+        Route::post('/{template}/draft',         [\App\Http\Controllers\Admin\FormTemplatesController::class, 'saveDraft'])->name('draft.save');
+        Route::post('/{template}/draft/discard', [\App\Http\Controllers\Admin\FormTemplatesController::class, 'discardDraft'])->name('draft.discard');
+        Route::post('/{template}/edit-draft',    [\App\Http\Controllers\Admin\FormTemplatesController::class, 'editDraft'])->name('edit-draft');
+        Route::post('/{template}/publish',       [\App\Http\Controllers\Admin\FormTemplatesController::class, 'publish'])->name('publish');
+        Route::post('/{template}/archive',       [\App\Http\Controllers\Admin\FormTemplatesController::class, 'archive'])->name('archive');
+        Route::post('/{template}/duplicate',     [\App\Http\Controllers\Admin\FormTemplatesController::class, 'duplicate'])->name('duplicate');
+        Route::delete('/{template}',             [\App\Http\Controllers\Admin\FormTemplatesController::class, 'destroy'])->name('destroy');
+    });
+
+// Approval rules (FRM-08): Company Admin changes, Operations Manager looks (workflow.manage)
+Route::prefix('admin/approval-rules')->middleware(['auth', DenyClientRole::class, 'level:workflow.manage'])
+    ->name('admin.approval-rules.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\ApprovalRulesController::class, 'index'])->name('index');
+        Route::post('/{category}', [\App\Http\Controllers\Admin\ApprovalRulesController::class, 'update'])->name('update');
+    });
+
 // Service Requests
     Route::prefix('service-requests')->middleware(['auth', DenyClientRole::class])->name('service-requests.')->group(function () {
     Route::get('/',                       [ServiceRequestController::class, 'index'])->name('index');
@@ -553,6 +576,8 @@ Route::prefix('admin/operations-queue')->middleware(['auth', DenyClientRole::cla
     Route::post('/{service_request}/change-priority', [ServiceRequestController::class, 'changePriority'])->name('change-priority');
     // Route::delete('/{service_request}/attachments/{filename}', [ServiceRequestController::class, 'deleteAttachment'])
     //     ->name('attachments.delete');
+    Route::post('/{service_request}/approve-finance',   [ServiceRequestController::class, 'approveFinance'])->name('approve-finance');
+    Route::post('/{service_request}/reject-finance',    [ServiceRequestController::class, 'rejectFinance'])->name('reject-finance');
     Route::post('/{service_request}/choose-contract',   [ServiceRequestController::class, 'chooseContract'])->name('choose-contract');
     Route::post('/{service_request}/contract-decision', [ServiceRequestController::class, 'contractDecision'])->name('contract-decision');
 
@@ -597,6 +622,13 @@ Route::prefix('admin/operations-queue')->middleware(['auth', DenyClientRole::cla
         Route::delete('/jobs/{serviceRequest}/photos/{attachment}', [JobsController::class, 'deletePhoto'])->name('jobs.photos.delete');
 
         Route::get('/jobs/{serviceRequest}/notes', [JobsController::class, 'notes'])->name('jobs.notes');
+
+        // Checklist and batch (Forms-Approvals-Batch spec FRM-05, BAT-03)
+        Route::get('/jobs/{serviceRequest}/checklist', [\App\Http\Controllers\Technician\ChecklistController::class, 'show'])->name('jobs.checklist');
+        Route::post('/jobs/{serviceRequest}/checklist', [\App\Http\Controllers\Technician\ChecklistController::class, 'save'])->name('jobs.checklist.save');
+        Route::get('/jobs/{serviceRequest}/batch', [\App\Http\Controllers\Technician\ChecklistController::class, 'assets'])->name('jobs.batch');
+        Route::get('/jobs/{serviceRequest}/batch/{sra}', [\App\Http\Controllers\Technician\ChecklistController::class, 'asset'])->name('jobs.batch.asset');
+        Route::post('/jobs/{serviceRequest}/batch/{sra}', [\App\Http\Controllers\Technician\ChecklistController::class, 'saveAsset'])->name('jobs.batch.asset.save');
         Route::post('/jobs/{serviceRequest}/notes', [JobsController::class, 'storeNote'])->name('jobs.notes.store');
 
         Route::get('/jobs/{serviceRequest}/expenses', [JobsController::class, 'expenses'])->name('jobs.expenses');

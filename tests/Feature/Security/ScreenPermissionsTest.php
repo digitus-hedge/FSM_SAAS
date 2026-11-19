@@ -72,6 +72,8 @@ class ScreenPermissionsTest extends BillingTestCase
             ['/manage/roles', 'role.manage', 'page'], ['/manage/roles/create', 'role.manage', 'form'],
             ['/manage/audit', 'audit.view', 'page'],
             ['/admin/operations-queue', 'sr.qc', 'page'],
+            ['/admin/checklists', 'form.manage', 'page'], ['/admin/checklists/create', 'form.manage', 'form'],   // B3
+            ['/admin/approval-rules', 'workflow.manage', 'page'],                                              // B3
         ];
     }
 

@@ -36,6 +36,8 @@ class AssetRequest extends FormRequest
             'default_contract_id'  => ['nullable', $own('contracts')],
             'status'               => ['required', Rule::in(['active', 'under_repair', 'inactive'])],
             'notes'                => ['nullable', 'string', 'max:5000'],
+            // FRM-04: the asset's checklist template (an active one of this company)
+            'form_template_id'     => ['nullable', Rule::exists('form_templates', 'id')->where('tenant_id', $tid)->where('status', 'active')],
         ];
     }
 

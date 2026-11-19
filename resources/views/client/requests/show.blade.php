@@ -51,6 +51,14 @@ h1{font-family:'Figtree',sans-serif;font-size:22px;font-weight:800;margin-bottom
         <div class="meta">Raised: {{ $sr->created_at->format('d M Y, H:i') }}</div>
     </div>
 
+    @if ($checklistVersion)
+    <div class="card">
+        <h3>Checklist</h3>
+        <p>{{ $sr->checklist_result === 'ok' ? 'All good' : 'Issues found' }}</p>
+        @include('admin.service-requests._checklist_answers', ['version' => $checklistVersion, 'answers' => (array) $sr->sr_checklist_payload, 'clientOnly' => true])
+    </div>
+    @endif
+
     <div class="card">
         <h3>Description</h3>
         <p>{{ $sr->description }}</p>

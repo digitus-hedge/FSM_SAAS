@@ -282,6 +282,74 @@
       </div>
     </div>
 
+    {{-- APPROVAL (Forms-Approvals-Batch spec, FRM-07, section 5.9) --}}
+    @if ($sr->auto_approved_mode || $sr->approval_state || $approvalMode !== 'manual' || ($sr->category?->approval_mode ?? 'manual') !== 'manual')
+    <div class="card">
+      <div class="card-head"><h3>Approval</h3></div>
+      <div class="card-body" style="font-size:13px">
+        <div>Mode: <strong>{{ \App\Models\ServiceCategory::APPROVAL_MODES[$approvalMode] ?? $approvalMode }}</strong></div>
+        @if ($sr->category && $sr->category->approval_mode !== $approvalMode)
+          <div style="color:var(--muted)">The company's plan does not include {{ \App\Models\ServiceCategory::APPROVAL_MODES[$sr->category->approval_mode] ?? $sr->category->approval_mode }}, so this runs as manual.</div>
+        @endif
+        @if ($sr->auto_approved_mode)
+          <div style="margin-top:6px">Approved automatically ({{ $sr->auto_approved_mode }}).</div>
+        @endif
+        @if ($sr->approval_state)
+          <div style="margin-top:8px">Operations Manager: {{ $sr->approved_by_ops_user_id ? 'approved' : 'waiting' }}</div>
+          <div>Finance: {{ $sr->approved_by_finance_user_id ? 'approved' : 'waiting' }}</div>
+          @if ($sr->status === 'pending' && $mayApproveFinance && ! $sr->approved_by_finance_user_id)
+            <form method="POST" action="{{ route('service-requests.approve-finance', $sr) }}" style="margin-top:10px">@csrf
+              <button type="submit" class="act-btn act-primary">Approve as Finance</button></form>
+            <form method="POST" action="{{ route('service-requests.reject-finance', $sr) }}" style="margin-top:8px;display:flex;gap:6px">@csrf
+              <input name="reason" required maxlength="500" placeholder="Reason" style="flex:1;padding:8px;border:1px solid var(--line);border-radius:8px">
+              <button type="submit" class="act-btn act-danger-outline" style="width:auto">Send back</button></form>
+          @endif
+        @endif
+      </div>
+    </div>
+    @endif
+
+    {{-- CHECKLIST AND BATCH (FRM-06, BAT-01) --}}
+    @if ($checklistVersion && $batchRows->isEmpty())
+    <div class="card">
+      <div class="card-head"><h3>Checklist</h3></div>
+      <div class="card-body" style="font-size:13px">
+        <div>{{ $checklistVersion->template?->name }}, version {{ $checklistVersion->version_no }}
+          @if ($sr->checklist_result)
+            <span class="chip" style="margin-left:6px">{{ $sr->checklist_result === 'ok' ? 'All good' : 'Issues found' }}</span>
+          @else
+            <span style="color:var(--muted);margin-left:6px">Checklist not completed.</span>
+          @endif
+        </div>
+        @if ($sr->checklist_result || ! empty($sr->sr_checklist_payload))
+          @include('admin.service-requests._checklist_answers', ['version' => $checklistVersion, 'answers' => (array) $sr->sr_checklist_payload, 'clientOnly' => false])
+        @endif
+      </div>
+    </div>
+    @endif
+
+    @if ($batchRows->isNotEmpty())
+    <div class="card">
+      <div class="card-head"><h3>Assets in this request</h3></div>
+      <div class="card-body" style="font-size:13px">
+        <div style="margin-bottom:8px;font-weight:600">{{ $batchLine }}</div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr><th style="text-align:left">Asset</th><th style="text-align:left">Status</th><th style="text-align:left">Checklist</th><th style="text-align:left">Remarks</th></tr></thead>
+          <tbody>
+          @foreach ($batchRows as $row)
+            <tr style="border-top:1px solid var(--line)">
+              <td>{{ $row->asset?->asset_code }} {{ $row->asset?->name }}</td>
+              <td>{{ ucfirst(str_replace('_', ' ', $row->inspection_status)) }}</td>
+              <td>{{ $row->checklist_result ? ($row->checklist_result === 'ok' ? 'All good' : 'Issues found') : ($row->form_template_version_id ? 'Checklist not completed' : '—') }}</td>
+              <td>{{ $row->technician_remarks }}</td>
+            </tr>
+          @endforeach
+          </tbody>
+        </table>
+      </div>
+    </div>
+    @endif
+
     {{-- ATTACHMENTS --}}
     @php $atts = $sr->attachments(); @endphp
     @if (!empty($atts))

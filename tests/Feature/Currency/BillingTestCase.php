@@ -57,7 +57,10 @@ abstract class BillingTestCase extends TestCase
 
     protected function proPlan(): Plan
     {
-        return $this->plan('professional', ['multi_currency' => true, 'billing_full' => true]);
+        return $this->plan('professional', [
+            'multi_currency' => true, 'billing_full' => true,
+            'forms' => true, 'form_templates_limit' => 10, 'approval_auto' => true, 'approval_finance' => false,
+        ]);
     }
 
     protected function starterPlan(): Plan

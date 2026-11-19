@@ -366,16 +366,14 @@
 
    <div class="field">
   <label for="approval_mode">Approval mode <span class="req">*</span></label>
-  <select id="approval_mode" name="approval_mode" required
+  <select id="approval_mode" name="approval_mode" required @disabled(! $mayEditApproval)
           class="input @error('approval_mode') has-error @enderror">
-    <option value="manual" selected>Manual approval by Ops Manager</option>
     @foreach ($approvalModes as $value => $label)
-      @if ($value !== 'manual')
-        <option value="{{ $value }}" disabled>{{ $label }} — Available later</option>
-      @endif
+      <option value="{{ $value }}" @selected(old('approval_mode', $category->approval_mode ?? 'manual') === $value)
+              @disabled(! ($allowedModes[$value] ?? false) && ($category->approval_mode ?? 'manual') !== $value)>{{ $label }}{{ ($allowedModes[$value] ?? false) ? '' : ' (Not in your plan)' }}</option>
     @endforeach
   </select>
-  <span class="hint">Only Manual approval is available in this release.</span>
+  <span class="hint">@if ($mayEditApproval) Modes outside your plan are not available. @else Only the Company Admin changes the approval mode. @endif</span>
   @error('approval_mode')<span class="err">{{ $message }}</span>@enderror
 </div>
   </div>
@@ -427,12 +425,12 @@
         </div>
       </label> -->
 
-      <label class="flag-card" style="opacity:.55;cursor:not-allowed">
+      <label class="flag-card" @unless ($formsOn) style="opacity:.55;cursor:not-allowed" @endunless>
         <input type="hidden" name="require_checklist" value="0">
-        <input type="checkbox" name="require_checklist" value="1" disabled>
+        <input type="checkbox" name="require_checklist" value="1" @checked(old('require_checklist', $category->require_checklist)) @disabled(! $formsOn)>
         <div class="flag-body">
-          <div class="flag-title">Checklist required <span style="font-weight:400;color:#5F5D6E">(Available later)</span></div>
-          <div class="flag-desc">Forms arrive in Release B.</div>
+          <div class="flag-title">Checklist required @unless ($formsOn)<span style="font-weight:400;color:#5F5D6E">(Not in your plan)</span>@endunless</div>
+          <div class="flag-desc">The technician must complete the checklist before punching out.</div>
         </div>
       </label>
 
@@ -450,7 +448,35 @@
     </div>
   </div>
 
-  {{-- SECTION 4 — Batch & depot --}}
+  {{-- SECTION 4 — Checklist and batch --}}
+  <div class="section">
+    <div class="section-title">Checklist and batch</div>
+    <div class="section-sub">The form technicians fill in, and whether one request may cover many assets of a site.</div>
+    @if ($formsOn)
+    <div class="field">
+      <label for="active_form_template_id">Checklist template</label>
+      <select id="active_form_template_id" name="active_form_template_id" class="input">
+        <option value="">None</option>
+        @foreach ($templates as $tpl)
+          <option value="{{ $tpl->id }}" @selected(old('active_form_template_id', $category->active_form_template_id) == $tpl->id)>{{ $tpl->name }}</option>
+        @endforeach
+      </select>
+      <span class="hint">A new request takes the published version of this template.</span>
+    </div>
+    @endif
+    <div class="flag-grid">
+      <label class="flag-card">
+        <input type="hidden" name="allow_multi_asset_batch" value="0">
+        <input type="checkbox" name="allow_multi_asset_batch" value="1" @checked(old('allow_multi_asset_batch', $category->allow_multi_asset_batch))>
+        <div class="flag-body"><div class="flag-title">Allow batch requests</div><div class="flag-desc">One request may cover 2 to 200 assets of one site.</div></div>
+      </label>
+      <label class="flag-card" @unless ($formsOn) style="opacity:.55;cursor:not-allowed" @endunless>
+        <input type="hidden" name="require_per_asset_checklist" value="0">
+        <input type="checkbox" name="require_per_asset_checklist" value="1" @checked(old('require_per_asset_checklist', $category->require_per_asset_checklist)) @disabled(! $formsOn)>
+        <div class="flag-body"><div class="flag-title">Checklist for each asset of a batch</div><div class="flag-desc">Every asset in a batch needs its own checklist result.</div></div>
+      </label>
+    </div>
+  </div>
 
 
   {{-- SECTION 5 — Status --}}

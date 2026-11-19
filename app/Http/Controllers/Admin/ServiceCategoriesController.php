@@ -39,9 +39,37 @@ class ServiceCategoriesController extends Controller
         ]);
     }
 
+    /** What the form needs for the checklist and approval controls (FRM-04, FRM-07). */
+    private function formExtras(): array
+    {
+        $tenant = \App\Models\Tenant::find(auth()->user()->tenant_id);
+        $modes  = app(\App\Services\Approval\ApprovalModes::class);
+
+        return [
+            'formsOn'        => app(\App\Services\Forms\FormTemplates::class)->enabled($tenant),
+            'templates'      => \App\Models\FormTemplate::withoutGlobalScopes()->where('tenant_id', $tenant->id)->where('status', 'active')->orderBy('name')->get(),
+            'allowedModes'   => collect(ServiceCategory::APPROVAL_MODES)->mapWithKeys(fn ($l, $m) => [$m => $modes->allowed($tenant, $m)])->all(),
+            'mayEditApproval' => \App\Services\Permissions\PermissionLevel::canChange(auth()->user(), 'workflow.manage'),
+        ];
+    }
+
+    /** A mode the plan lacks is refused; a checklist template needs the forms plan. */
+    private function checkPlan(array $data, ?ServiceCategory $existing): array
+    {
+        $tenant = \App\Models\Tenant::find(auth()->user()->tenant_id);
+        if (($data['approval_mode'] ?? 'manual') !== ($existing?->approval_mode ?? 'manual')) {
+            app(\App\Services\Approval\ApprovalModes::class)->assertAllowed($tenant, $data['approval_mode']);
+        }
+        if (! app(\App\Services\Forms\FormTemplates::class)->enabled($tenant)) {
+            unset($data['active_form_template_id']);
+        }
+
+        return $data;
+    }
+
     public function create()
     {
-        return view('admin.service-categories.form', [
+        return view('admin.service-categories.form', $this->formExtras() + [
             'category'      => new ServiceCategory([
                 'approval_mode'           => 'manual',
                 'require_before_photo'    => true,
@@ -57,7 +85,7 @@ class ServiceCategoriesController extends Controller
 
     public function store(ServiceCategoryRequest $request)
 {
-    $data = $request->validated();
+    $data = $this->checkPlan($request->validated(), null);
     unset($data['code']); // always system-generated, never user input
 
     $category = $this->createWithUniqueCode($data);
@@ -111,7 +139,7 @@ protected function nextCategoryCode(): string
 
     public function edit(ServiceCategory $category)
     {
-        return view('admin.service-categories.form', [
+        return view('admin.service-categories.form', $this->formExtras() + [
             'category'      => $category,
             'approvalModes' => ServiceCategory::APPROVAL_MODES,
             'mode'          => 'edit',
@@ -120,7 +148,7 @@ protected function nextCategoryCode(): string
 
 public function update(ServiceCategoryRequest $request, ServiceCategory $category)
 {
-    $data = $request->validated();
+    $data = $this->checkPlan($request->validated(), $category);
     unset($data['code']); // immutable after creation — never changes on edit
 
     $category->update($data);

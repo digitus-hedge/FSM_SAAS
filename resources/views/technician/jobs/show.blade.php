@@ -144,6 +144,18 @@
         <span class="tile-ic">@include('technician._icon', ['name'=>'pen','size'=>21])</span>
         <span class="tile-lb">Signature</span>
     </a>
+    @if ($hasChecklist)
+    <a href="{{ route('technician.jobs.checklist', $serviceRequest) }}" class="card tap tile">
+        <span class="tile-ic">@include('technician._icon', ['name'=>'doc','size'=>21])</span>
+        <span class="tile-lb">Checklist{{ $serviceRequest->checklist_result ? ' ✓' : '' }}</span>
+    </a>
+    @endif
+    @if ($batchRows->isNotEmpty())
+    <a href="{{ route('technician.jobs.batch', $serviceRequest) }}" class="card tap tile">
+        <span class="tile-ic">@include('technician._icon', ['name'=>'doc','size'=>21])</span>
+        <span class="tile-lb">Assets {{ $batchRows->where('inspection_status', '!=', 'pending')->count() }}/{{ $batchRows->count() }}</span>
+    </a>
+    @endif
 </div>
 
 @if ($isActive && \App\Models\Tenant::current()?->hasFeature('assets_full'))
@@ -202,10 +214,11 @@
     @elseif ($isActive)
         <div style="display:flex;gap:8px">
             <label for="hold-toggle" class="btn" style="cursor:pointer">Put on hold</label>
-            @if (!empty($missingProof))
+            @if (!empty($missingProof) || !empty($blockers))
                 <div style="flex:1">
                     <button type="button" class="btn danger block" disabled style="opacity:.5;cursor:not-allowed">Punch out</button>
-                    <div style="margin-top:6px;font-size:12px;color:var(--red)">Add {{ implode(' and ', $missingProof) }} to punch out.</div>
+                    @foreach ($blockers as $b)<div style="margin-top:6px;font-size:12px;color:var(--red)">{{ $b }}</div>@endforeach
+                    @if (!empty($missingProof))<div style="margin-top:6px;font-size:12px;color:var(--red)">Add {{ implode(' and ', $missingProof) }} to punch out.</div>@endif
                 </div>
             @else
                 <form method="POST" action="{{ route('technician.jobs.punch-out', $serviceRequest) }}" style="flex:1">

@@ -23,6 +23,12 @@ class ServiceRequestAccess
         return PermissionLevel::isFull($user, 'sr.approve');
     }
 
+    /** The Finance side of the two approvals of "Finance and manager" (expense.approve full). */
+    public static function mayApproveAsFinance(?User $user): bool
+    {
+        return PermissionLevel::isFull($user, 'expense.approve');
+    }
+
     /** Send for quote is the "needs a quote" branch of approving: the same decision, the same people (sr.approve full). */
     public static function maySendForQuote(?User $user): bool
     {

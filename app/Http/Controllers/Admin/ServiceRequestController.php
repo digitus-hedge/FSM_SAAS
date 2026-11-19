@@ -14,6 +14,10 @@ use App\Models\User;
 use App\Models\Tenant;
 use App\Services\Audit\AuditLogger;
 use App\Services\Contracts\ContractCoverage;
+use App\Services\Approval\ApprovalModes;
+use App\Services\Approval\RequestApprover;
+use App\Services\Forms\BatchService;
+use App\Services\Forms\Checklists;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -270,6 +274,7 @@ class ServiceRequestController extends Controller
             'require_after_photo'  => (bool) $cat->require_after_photo,
             'require_signature'    => (bool) $cat->require_signature,
             'require_checklist'    => (bool) $cat->require_checklist,
+            'require_per_asset_checklist' => (bool) $cat->require_per_asset_checklist,
             'snapshot_at'          => now()->toIso8601String(),
             'category_code'        => $cat->code ?? null,
         ];
@@ -277,14 +282,21 @@ class ServiceRequestController extends Controller
         // A request raised from an asset's QR page is tagged as such.
         $source = ($request->boolean('from_qr') && ! empty($data['primary_asset_id'])) ? 'qr_scan' : 'front_desk';
 
-        $sr = DB::transaction(function () use ($data, $tenantId, $cat, $proofSnapshot, $teamLeadId, $source) {
+        // BAT-01/02: a batch is a request with 2 to 200 assets of this site. The checks throw FormException (422).
+        $batchAssets = null;
+        $assetIds    = array_values(array_filter((array) $request->input('asset_ids', [])));
+        if (count($assetIds) > 0) {
+            $batchAssets = app(BatchService::class)->validate($cat, (int) $data['project_site_id'], $assetIds, $request->boolean('confirm_open'));
+        }
+
+        $sr = DB::transaction(function () use ($data, $tenantId, $cat, $proofSnapshot, $teamLeadId, $source, $batchAssets) {
             $sr = ServiceRequest::create([
                 'tenant_id'              => $tenantId,
                 'sr_number'              => ServiceRequest::nextSrNumber($tenantId),
                 'client_id'              => $data['client_id'],
                 'project_site_id'        => $data['project_site_id'],
                 'service_category_id'    => $data['service_category_id'],
-                'primary_asset_id'       => $data['primary_asset_id'] ?? null,
+                'primary_asset_id'       => $batchAssets ? null : ($data['primary_asset_id'] ?? null),
                 'priority'               => $data['priority'],
                 'title'                  => $data['title'],
                 'description'            => $data['description'] ?? null,
@@ -311,9 +323,20 @@ class ServiceRequestController extends Controller
                 'sla_resolution_due_at' => $policy ? $started->copy()->addMinutes((int) $policy->resolution_minutes) : null,
             ]);
             \App\Models\SrStatusHistory::log($sr, null, 'pending', 'user', auth()->id());
+            // FRM-04 / D4: the request takes the published version of its template now.
+            $checklists = app(Checklists::class);
+            if ($batchAssets) {
+                $checklists->bind($sr, $cat, null);
+                app(BatchService::class)->attach($sr, $batchAssets, $cat);
+            } else {
+                $checklists->bind($sr, $cat, ! empty($data['primary_asset_id']) ? Asset::find($data['primary_asset_id']) : null);
+            }
             app(ContractCoverage::class)->onCreated($sr);   // D3: flag when several contracts match
             return $sr;
         });
+
+        // FRM-07: automatic modes approve at once, "Finance and manager" opens its two approvals.
+        app(ApprovalModes::class)->onCreated($sr->fresh(), $cat);
 
         $this->storeAttachments($request, $sr);
 
@@ -380,6 +403,11 @@ class ServiceRequestController extends Controller
         'canSeeContract'  => \App\Services\Permissions\PermissionLevel::canView($user, 'contract.view'),
         'canChoose'       => \App\Services\Permissions\PermissionLevel::canChange($user, 'contract.choose'),
         'suggestions'     => $suggestions,
+        'batchRows'       => \App\Models\ServiceRequestAsset::where('service_request_id', $service_request->id)->with('asset:id,name,asset_code')->get(),
+        'batchLine'       => app(BatchService::class)->summaryLine($service_request),
+        'checklistVersion' => $service_request->form_template_version_id ? \App\Models\FormTemplateVersion::withoutGlobalScopes()->find($service_request->form_template_version_id) : null,
+        'approvalMode'    => app(ApprovalModes::class)->effective($service_request->category, Tenant::find($service_request->tenant_id)),
+        'mayApproveFinance' => \App\Services\Permissions\ServiceRequestAccess::mayApproveAsFinance($user),
     ]);
 }
 
@@ -554,6 +582,11 @@ class ServiceRequestController extends Controller
         return back()->with('success', "{$service_request->sr_number} sent for quoting.");
     }
 
+    // FRM-07 / D21: "Finance and manager" needs two people. This is the Operations Manager's side.
+    if ($service_request->status === 'pending' && app(ApprovalModes::class)->effective($service_request->category, Tenant::find($service_request->tenant_id)) === 'finance_and_manager') {
+        return $this->approveTwoStep($service_request, 'ops', $data['coverage'], $data['note'] ?? null);
+    }
+
     $cov = app(ContractCoverage::class);
 
     // Without the contracts feature (or on a downgrade) the Release A manual choice stays.
@@ -616,38 +649,7 @@ class ServiceRequestController extends Controller
      */
     private function completeApproval(ServiceRequest $sr, string $coverage, ?Contract $contract, ?string $note, bool $override): void
     {
-        $fromStatus = $sr->status;
-        $started    = now();
-
-        $sr->fill([
-            'status'                       => 'approved',
-            'approved_by_user_id'          => auth()->id(),
-            'coverage_type'                => $coverage,
-            'billing_status'               => 'not_applicable',
-            'coverage_override_reason'     => $note,
-            'coverage_override_by_user_id' => $override ? auth()->id() : null,
-            'contract_id'                  => $contract?->id,
-            'contract_choice_pending'      => false,
-            'contract_choice_reason'       => null,
-            'sla_clock_started_at'         => $started,
-        ]);
-
-        // D10: a contract's response and resolution times replace the policy's.
-        $sr->unsetRelation('contract');
-        [$resp, $reso] = $sr->slaMinutes();
-        $sr->fill([
-            'sla_response_due_at'   => $resp !== null ? $started->copy()->addMinutes($resp) : null,
-            'sla_resolution_due_at' => $reso !== null ? $started->copy()->addMinutes($reso) : null,
-        ])->save();
-
-        \App\Models\SrStatusHistory::log($sr, $fromStatus, 'approved', 'user', auth()->id(), $note, ['coverage' => $coverage]);
-
-        if ($override) {
-            app(AuditLogger::class)->log('request.coverage_overridden', [
-                'item_type' => ServiceRequest::class, 'item_id' => $sr->id,
-                'new' => ['sr_number' => $sr->sr_number, 'coverage' => $coverage, 'reason' => $note],
-            ]);
-        }
+        app(RequestApprover::class)->complete($sr, $coverage, $contract, $note, $override, auth()->id());
     }
 
     /** CNT-04: the manager picks one of several matching contracts. Counts nothing. */
@@ -765,6 +767,13 @@ class ServiceRequestController extends Controller
             'reason' => ['required', 'string', 'max:500'],
         ]);
 
+        // D21: in "Finance and manager" a rejection resets the approval and the request goes back to the requester.
+        if ($service_request->approval_state && $service_request->status === 'pending') {
+            app(ApprovalModes::class)->reject($service_request, auth()->user(), $data['reason']);
+
+            return redirect()->route('service-requests.show', $service_request)->with('success', "{$service_request->sr_number} was sent back to the requester.");
+        }
+
         $fromStatus = $service_request->status;
 
         $service_request->update([
@@ -775,6 +784,66 @@ class ServiceRequestController extends Controller
          \App\Models\SrStatusHistory::log($service_request, $fromStatus, 'cancelled', 'user', auth()->id(), 'Rejected: ' . $data['reason']);
         return redirect()->route('service-requests.show', $service_request)
             ->with('success', "{$service_request->sr_number} rejected.");
+    }
+
+    /** FRM-07 / D21: the Finance side of the two approvals. */
+    public function approveFinance(ServiceRequest $service_request)
+    {
+        abort_unless(\App\Services\Permissions\ServiceRequestAccess::mayApproveAsFinance(auth()->user()), 403);
+        abort_unless($service_request->status === 'pending' && $service_request->approval_state && $service_request->approval_state !== 'done', 422, 'This request is not waiting for a Finance approval.');
+
+        return $this->approveTwoStep($service_request, 'finance', null, null);
+    }
+
+    public function rejectFinance(Request $request, ServiceRequest $service_request)
+    {
+        abort_unless(\App\Services\Permissions\ServiceRequestAccess::mayApproveAsFinance(auth()->user()), 403);
+        abort_unless($service_request->status === 'pending' && $service_request->approval_state && $service_request->approval_state !== 'done', 422, 'This request is not waiting for a Finance approval.');
+        $data = $request->validate(['reason' => ['required', 'string', 'max:500']]);
+
+        app(ApprovalModes::class)->reject($service_request, auth()->user(), $data['reason']);
+
+        return back()->with('success', "{$service_request->sr_number} was sent back to the requester.");
+    }
+
+    /** Records one of the two approvals; the second one completes the request with the coverage the Operations Manager chose. */
+    private function approveTwoStep(ServiceRequest $sr, string $side, ?string $coverage, ?string $note)
+    {
+        $modes = app(ApprovalModes::class);
+        $both  = $modes->approveSide($sr, $side, auth()->user(), $coverage ?? $sr->coverage_type, $note ?? $sr->coverage_override_reason);
+        if (! $both) {
+            return back()->with('success', "{$sr->sr_number}: your approval is recorded. Waiting for the other approval.");
+        }
+
+        $sr->refresh();
+        $coverage = $sr->coverage_type;
+        $note     = $sr->coverage_override_reason;
+        $cov      = app(ContractCoverage::class);
+
+        if ($cov->enabled() && $coverage === 'in_contract') {
+            $result = $cov->resolve($sr);
+            if (! $result['contract'] || $result['needs_choice']) {
+                $sr->forceFill(['approval_state' => 'awaiting_ops', 'approved_by_ops_user_id' => null])->save();
+                return back()->with('error', 'No contract covers this request. The Operations Manager must approve again.');
+            }
+            $outcome = DB::transaction(function () use ($sr, $result, $cov, $note) {
+                $locked = Contract::lockForUpdate()->find($result['contract']->id);
+                if (! $locked || $locked->capReached()) {
+                    return null;
+                }
+                $cov->countCall($sr, $locked, false);
+                $this->completeApproval($sr, 'in_contract', $locked, $note, false);
+                return $locked;
+            });
+            if (! $outcome) {
+                $sr->forceFill(['approval_state' => 'awaiting_ops', 'approved_by_ops_user_id' => null])->save();
+                return back()->with('error', 'The contract has no calls left. The Operations Manager must approve again.');
+            }
+        } else {
+            $this->completeApproval($sr, $coverage, null, $note, false);
+        }
+
+        return back()->with('success', "{$sr->sr_number} approved by both approvers.");
     }
 
     public function sendForQuote(ServiceRequest $service_request)
@@ -900,10 +969,21 @@ class ServiceRequestController extends Controller
             ->orderBy('asset_code')
             ->get(['id', 'asset_code', 'name', 'service_category_id']);
 
+        // D16: open requests that already cover each asset (as its asset, or as a batch row)
+        $ids  = $assets->pluck('id');
+        $open = ServiceRequest::where('tenant_id', $tenantId)->whereNotIn('status', ['completed', 'cancelled'])
+            ->where(fn ($q) => $q->whereIn('primary_asset_id', $ids)
+                ->orWhereIn('id', \App\Models\ServiceRequestAsset::withoutGlobalScopes()->whereIn('asset_id', $ids)->select('service_request_id')))
+            ->get(['id', 'sr_number', 'service_category_id', 'primary_asset_id']);
+        $rows = \App\Models\ServiceRequestAsset::withoutGlobalScopes()->whereIn('asset_id', $ids)->get(['asset_id', 'service_request_id']);
+
         return response()->json($assets->map(fn ($a) => [
             'id'                  => $a->id,
             'label'               => $a->asset_code . ' — ' . $a->name,
             'service_category_id' => $a->service_category_id,
+            'open'                => $open->filter(fn ($sr) => (int) $sr->primary_asset_id === (int) $a->id
+                                        || $rows->contains(fn ($r) => (int) $r->asset_id === (int) $a->id && (int) $r->service_request_id === (int) $sr->id))
+                                        ->map(fn ($sr) => ['sr_number' => $sr->sr_number, 'service_category_id' => $sr->service_category_id])->values(),
         ]));
     }
 

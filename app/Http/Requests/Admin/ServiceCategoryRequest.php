@@ -24,9 +24,13 @@ class ServiceCategoryRequest extends FormRequest
         ],
             'name'           => 'required|string|min:2|max:120',
             'service_domain' => 'nullable|string|max:80',
-            // 'approval_mode'  => ['required', Rule::in(array_keys(ServiceCategory::APPROVAL_MODES))],
-
-            'approval_mode'  => ['required', Rule::in(['manual'])],   // ← only manual accepted
+            // FRM-07: the mode is checked against the plan in the controller (APPROVAL_MODE_NOT_IN_PLAN).
+            'approval_mode'  => ['required', Rule::in(array_keys(ServiceCategory::APPROVAL_MODES))],
+            // FRM-04: the category's checklist template (an active one of this company)
+            'active_form_template_id' => [
+                'nullable', 'integer',
+                Rule::exists('form_templates', 'id')->where('tenant_id', $tenantId ?? auth()->user()?->tenant_id)->where('status', 'active'),
+            ],
 
 
             // Proof rules
@@ -84,7 +88,11 @@ class ServiceCategoryRequest extends FormRequest
         $this->merge([
             // 'code' => strtoupper(trim((string) $this->code)),
              'code'          => $code === '' ? null : strtoupper($code),
-                     'approval_mode' => 'manual',   // ← force Manual regardless of posted value
+            // Only a holder of workflow.manage (full) changes the mode; everyone else keeps the saved one (manual for a new category).
+            'approval_mode' => \App\Services\Permissions\PermissionLevel::canChange($this->user(), 'workflow.manage') && $this->filled('approval_mode')
+                ? $this->input('approval_mode')
+                : ($this->route('category')?->approval_mode ?? 'manual'),
+            'active_form_template_id' => $this->filled('active_form_template_id') ? $this->input('active_form_template_id') : null,
 
             'is_active' => $this->has('is_active') ? $this->boolean('is_active') : true,
             // Normalise all booleans

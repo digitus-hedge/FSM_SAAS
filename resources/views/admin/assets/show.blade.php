@@ -281,7 +281,27 @@
 </div>
 
 {{-- COMING WITH LATER SLICES --}}
-<div class="pane" id="p-checklists"><div class="card soon">Checklist history will appear here when forms and checklists are added.</div></div>
+<div class="pane" id="p-checklists">
+  <div class="card" style="padding:0;overflow:auto">
+    @if ($checklists->isEmpty())
+      <div style="padding:28px;text-align:center;color:var(--muted)">No checklists have been filled in for this asset yet.</div>
+    @else
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr><th style="text-align:left;padding:10px 14px">Date</th><th style="text-align:left;padding:10px 14px">Checklist</th><th style="text-align:left;padding:10px 14px">Result</th><th style="text-align:left;padding:10px 14px">Request</th></tr></thead>
+        <tbody>
+        @foreach ($checklists as $c)
+          <tr style="border-top:1px solid var(--line)">
+            <td style="padding:10px 14px">{{ $c['at']?->format('j M Y') }}</td>
+            <td style="padding:10px 14px">{{ $c['version']?->template?->name }}{{ $c['version'] ? ', version ' . $c['version']->version_no : '' }}</td>
+            <td style="padding:10px 14px">{{ $c['result'] === 'ok' ? 'All good' : 'Issues found' }}</td>
+            <td style="padding:10px 14px"><a href="{{ route('service-requests.show', $c['sr']) }}">{{ $c['sr']?->sr_number }}</a></td>
+          </tr>
+        @endforeach
+        </tbody>
+      </table>
+    @endif
+  </div>
+</div>
 <div class="pane" id="p-maintenance"><div class="card soon">Upcoming maintenance will appear here when preventive maintenance is added.</div></div>
 
 <script>

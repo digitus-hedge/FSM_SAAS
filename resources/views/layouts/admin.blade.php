@@ -145,7 +145,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
     $showContracts = ! $isPlatform
                   && $u?->canDo('contract.view')
                   && \App\Models\Tenant::current()?->hasFeature('contracts');   // Contracts and AMCs: Professional and above
-    $hasOps     = $u?->canDo('client.manage') || $u?->canDo('site.manage') || $u?->canDo('category.manage') || $u?->canDo('asset.view') || $showContracts;
+    $hasOps     = $u?->canDo('client.manage') || $u?->canDo('form.manage') || $u?->canDo('workflow.manage') || $u?->canDo('site.manage') || $u?->canDo('category.manage') || $u?->canDo('asset.view') || $showContracts;
     $hasSetup   = $u?->canDo('settings.manage');
     $hasPeople  = $u?->canDo('user.manage') || $u?->canDo('role.manage') || $u?->canDo('audit.view');
 
@@ -154,6 +154,8 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
                || request()->routeIs('admin.assets.*')
                || request()->routeIs('admin.contracts.*')
                || request()->routeIs('admin.service-categories.*')
+               || request()->routeIs('admin.checklists.*')
+               || request()->routeIs('admin.approval-rules.*')
                || request()->routeIs('admin.team-lead-categories.*');
     $setupOpen  = request()->routeIs('admin.sla-policies.*')
                || request()->routeIs('admin.tax-rates.*')
@@ -369,6 +371,12 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
                     @endif
                     @if ($u->canDo('category.manage'))
                         <a href="{{ route('admin.service-categories.index') }}" class="nav-item {{ request()->routeIs('admin.service-categories.*') ? 'active' : '' }}">Service Categories</a>
+                    @endif
+                    @if ($u->canDo('form.manage') && \App\Models\Tenant::current()?->hasFeature('forms'))
+                        <a href="{{ route('admin.checklists.index') }}" class="nav-item {{ request()->routeIs('admin.checklists.*') ? 'active' : '' }}">Checklists</a>
+                    @endif
+                    @if ($u->canDo('workflow.manage'))
+                        <a href="{{ route('admin.approval-rules.index') }}" class="nav-item {{ request()->routeIs('admin.approval-rules.*') ? 'active' : '' }}">Approval rules</a>
                     @endif
                     @if ($u->canDo('category.manage'))
                         <a href="{{ route('admin.team-lead-categories.index') }}" class="nav-item {{ request()->routeIs('admin.team-lead-categories.*') ? 'active' : '' }}">Team Lead categories</a>

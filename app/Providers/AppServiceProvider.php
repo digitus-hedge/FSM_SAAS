@@ -47,6 +47,13 @@ class AppServiceProvider extends ServiceProvider
         // current company, so the model scope is not yet active here: take the company from the signed-in user (or the host).
         // Another company's id behaves as not found (404). User and Role are bound here without a global scope on purpose:
         // authentication, the central sign-in and the invitation flow look users up across companies.
+        // BAT / D17: a completed batch gives each finished asset its service date, whichever screen completes the request.
+        \App\Models\ServiceRequest::updated(function (\App\Models\ServiceRequest $sr) {
+            if ($sr->wasChanged('status') && $sr->status === 'completed') {
+                app(\App\Services\Forms\BatchService::class)->onCompleted($sr);
+            }
+        });
+
         foreach ([
             'invoice'  => \App\Models\Invoice::class,
             'quote'    => \App\Models\Quote::class,
@@ -56,6 +63,9 @@ class AppServiceProvider extends ServiceProvider
             'log'      => \App\Models\FieldEventLog::class,
             'user'     => \App\Models\User::class,
             'role'     => \App\Models\Role::class,
+            'template' => \App\Models\FormTemplate::class,
+            'version'  => \App\Models\FormTemplateVersion::class,
+            'sra'      => \App\Models\ServiceRequestAsset::class,
         ] as $name => $model) {
             \Illuminate\Support\Facades\Route::bind($name, function ($value) use ($model) {
                 $tenantId = auth()->user()?->tenant_id ?? \App\Models\Tenant::current()?->id;
