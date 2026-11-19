@@ -54,6 +54,19 @@ class AppServiceProvider extends ServiceProvider
             }
         });
 
+        // sr.assigned (blueprint 9.2): the technician is told whichever screen or job assigned the request.
+        \App\Models\ServiceRequest::updated(function (\App\Models\ServiceRequest $sr) {
+            if ($sr->wasChanged('assigned_tech_user_id') && $sr->assigned_tech_user_id) {
+                $tech = \App\Models\User::withoutGlobalScopes()->find($sr->assigned_tech_user_id);
+                if ($tech) {
+                    app(\App\Services\Notifications\NotificationService::class)->notify('sr.assigned', [$tech], [
+                        'sr_number' => $sr->sr_number, 'site' => $sr->site?->name,
+                        'when' => $sr->scheduled_eta_at ? 'Due ' . $sr->scheduled_eta_at->format('j M Y H:i') . '.' : '',
+                    ], route('technician.jobs.show', $sr, false));
+                }
+            }
+        });
+
         // MTR-02: a trade changed, so the master's status is worked out again; a trade is created with its master.
         \App\Models\ServiceRequest::updated(function (\App\Models\ServiceRequest $sr) {
             if ($sr->parent_sr_id && $sr->wasChanged('status')) {

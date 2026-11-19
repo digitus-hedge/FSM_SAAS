@@ -20,6 +20,10 @@ Labels such as "service request", "client" and "quote" can be renamed per compan
   approval modes and the rules page, batch requests. The API (spec section 8) is not built.
 - B4 built (docs/specs/Preventive-Maintenance.md, calendar only): schedules, the 06:00 job, calendar, client list. The API is not built.
 - B6 built (docs/specs/Multi-Trade-Vendors-Depot.md): multi-trade masters, vendor technicians, workshops and depot stages. The API and the depot screens of the Field View are not built.
+- B8 built (docs/specs/Reports-Summaries-Preferences.md, no WhatsApp): reports with PDF and Excel, dashboard figures, daily summaries, notification preferences and digests.
+  The reports API is not built.
+- Follow-ups from B8: real Web Push (VAPID, blueprint section 3; today push is a browser notification while the app is open) and firing `sla.breached` (defined and critical,
+  but no code detects an SLA breach).
 - B9 checkout and billing: payment gateway on hold until last.
 
 ## Tenancy
@@ -111,6 +115,17 @@ Labels such as "service request", "client" and "quote" can be renamed per compan
   (default true, set from the vendor's default on first assignment) is checked in `JobsController`. A master or another technician's trade is a 404 in the field app.
 - A depot request keeps `service_mode = depot`, the workshop as its site and the client's site in `home_site_id`; the client portal shows the home site and the stage only.
 - Plan keys `multi_trade`, `vendors`, `depot` (Professional and Enterprise). `/admin/vendors` and the vendor spend report are behind `vendors`.
+
+## Reports, summaries, preferences (B8)
+- `Services/Reports`: `Figures` (dashboard figures, `null` = "No data yet"), `ReportData` (the four reports as arrays), `ReportAccess` (Team Lead and client narrowing),
+  `ReportPdf` (dompdf; branded header only with `brand_pdf`, colour from `tenants.primary_color`). Plan keys `reports_full` and `brand_pdf`.
+- `NotificationService::notify()` writes the in-app row always, then follows `Services/Notifications/Preferences` for email: `instant` sends, `hourly_digest` and `daily_digest`
+  hold a `notification_digest_items` row (sent by `digest:send`, hourly, daily at the user's own time), `off` skips. Critical events (`sr.assigned`, `sla.breached` only) are never
+  delayed and the last instant channel cannot be turned off. No WhatsApp channel exists in any table.
+- `summary:daily` (hourly) acts at each role's configured local time (`daily_summary_configs`, defaults 07:00 Monday to Friday), one summary for each user and day (`daily_summary_runs`),
+  nothing when every block is empty.
+- A route parameter named `{role}` is bound to the Role model (AppServiceProvider): use another name for a plain string.
+- Memory: the full suite needs more than the 128M of the CLI php.ini. Run it with `php -d memory_limit=1024M vendor/phpunit/phpunit/phpunit` (`php artisan test` does not pass `-d` on).
 
 ## Conventions
 - Every company table has `tenant_id`. Many models have the global scope (trait `App\Models\Concerns\BelongsToTenant`: Client,

@@ -217,6 +217,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/quotes/{quote}/reject', [ClientPortalController::class, 'quoteReject'])->name('quotes.reject');
 
         Route::get('/maintenance',            [ClientPortalController::class, 'maintenance'])->name('maintenance');
+        Route::get('/requests/{serviceRequest}/certificate', [ClientPortalController::class, 'certificate'])->name('requests.certificate');
         Route::get('/invoices',               [ClientPortalController::class, 'invoices'])->name('invoices.index');
         Route::get('/invoices/{invoice}',     [ClientPortalController::class, 'invoiceShow'])->name('invoices.show');
         Route::get('/invoices/{invoice}/pdf', [ClientPortalController::class, 'invoicePdf'])->name('invoices.pdf');
@@ -557,6 +558,30 @@ Route::prefix('admin/vendor-spend')->middleware(['auth', DenyClientRole::class, 
         Route::get('/export', [\App\Http\Controllers\Admin\VendorSpendController::class, 'export'])->middleware('level:report.export')->name('export');
     });
 
+// Reports (Reports-Summaries-Preferences spec RPT-01, RPT-02): the page needs report.view, the files report.export, then the reports_full plan gate
+Route::prefix('admin/reports')->middleware(['auth', DenyClientRole::class, 'level:report.view', EnsurePlanFeature::class . ':reports_full'])
+    ->name('admin.reports.')->group(function () {
+        $c = \App\Http\Controllers\Admin\ReportsController::class;
+        Route::get('/', [$c, 'index'])->name('index');
+        Route::get('/{report}', [$c, 'show'])->name('show');
+        Route::get('/{report}/pdf', [$c, 'pdf'])->middleware('level:report.export')->name('pdf');
+        Route::get('/{report}/excel', [$c, 'excel'])->middleware('level:report.export')->name('excel');
+    });
+
+// Daily summary settings (SUM-01): the Company Admin changes, the Operations Manager looks
+Route::prefix('admin/summary-settings')->middleware(['auth', DenyClientRole::class, 'level:notification.manage'])
+    ->name('admin.summary-settings.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\SummarySettingsController::class, 'index'])->name('index');
+        Route::post('/{baseRole}', [\App\Http\Controllers\Admin\SummarySettingsController::class, 'update'])->name('update');
+    });
+
+// Personal notification settings (PRF-01): staff and field users, never client users
+Route::middleware(['auth', DenyClientRole::class])->group(function () {
+    Route::get('/notifications/latest', [\App\Http\Controllers\NotificationController::class, 'latest'])->name('notifications.latest');
+    Route::get('/profile/notifications', [\App\Http\Controllers\NotificationPreferencesController::class, 'index'])->name('notifications.preferences');
+    Route::post('/profile/notifications', [\App\Http\Controllers\NotificationPreferencesController::class, 'update'])->name('notifications.preferences.update');
+});
+
 // Approval rules (FRM-08): Company Admin changes, Operations Manager looks (workflow.manage)
 Route::prefix('admin/approval-rules')->middleware(['auth', DenyClientRole::class, 'level:workflow.manage'])
     ->name('admin.approval-rules.')->group(function () {
@@ -608,6 +633,7 @@ Route::prefix('admin/approval-rules')->middleware(['auth', DenyClientRole::class
     Route::post('/{service_request}/change-priority', [ServiceRequestController::class, 'changePriority'])->name('change-priority');
     // Route::delete('/{service_request}/attachments/{filename}', [ServiceRequestController::class, 'deleteAttachment'])
     //     ->name('attachments.delete');
+    Route::get('/{service_request}/certificate',        [\App\Http\Controllers\Admin\ReportsController::class, 'certificate'])->name('certificate');
     Route::post('/{service_request}/depot/stage',       [\App\Http\Controllers\Admin\DepotController::class, 'stage'])->name('depot.stage');
     Route::get('/{service_request}/depot/{slot}',       [\App\Http\Controllers\Admin\DepotController::class, 'checklist'])->name('depot.checklist');
     Route::post('/{service_request}/depot/{slot}',      [\App\Http\Controllers\Admin\DepotController::class, 'saveChecklist'])->name('depot.checklist.save');

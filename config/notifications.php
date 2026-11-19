@@ -86,6 +86,23 @@ return [
             'body'  => 'The work is done and the equipment can go back.',
             'email' => true,
         ],
+        // Reports-Summaries-Preferences spec D9, D13. sr.assigned and sla.breached are the two events a user cannot turn off.
+        'summary.daily' => [
+            'title' => 'Your daily summary for {date}',
+            'body'  => '{summary}',
+            'email' => true,
+        ],
+        'sr.assigned' => [
+            'title' => 'You were assigned {sr_number}',
+            'body'  => '{site}. {when}',
+            'email' => true,
+        ],
+        // defined for preferences and the catalogue; nothing in the code detects an SLA breach yet (a follow-up)
+        'sla.breached' => [
+            'title' => '{sr_number} missed its SLA',
+            'body'  => '{client}. The {kind} time was missed.',
+            'email' => true,
+        ],
         'batch.unsafe_asset' => [
             'title' => '{sr_number}: {count} asset(s) failed as unsafe',
             'body'  => 'The technician marked assets as failed (unsafe) in this batch.',

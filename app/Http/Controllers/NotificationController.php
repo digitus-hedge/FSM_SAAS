@@ -6,6 +6,18 @@ use App\Models\UserNotification;
 
 class NotificationController extends Controller
 {
+    /** D12: new messages for the browser notification script. Only what the user left at "at once" for the browser. */
+    public function latest(\Illuminate\Http\Request $request)
+    {
+        $prefs = app(\App\Services\Notifications\Preferences::class);
+        $user  = auth()->user();
+        $items = UserNotification::where('user_id', $user->id)->where('id', '>', (int) $request->input('after'))->orderBy('id')->limit(20)->get()
+            ->filter(fn ($n) => $prefs->frequency($user, $n->event_key, 'push') === 'instant')
+            ->map(fn ($n) => ['id' => $n->id, 'title' => $n->title, 'body' => $n->body, 'url' => $n->url])->values();
+
+        return response()->json(['items' => $items, 'last' => (int) (UserNotification::where('user_id', $user->id)->max('id') ?? 0)]);
+    }
+
     public function index()
     {
         $items = UserNotification::where('user_id', auth()->id())

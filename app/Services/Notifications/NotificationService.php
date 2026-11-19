@@ -3,6 +3,7 @@
 namespace App\Services\Notifications;
 
 use App\Mail\NotificationMail;
+use App\Models\NotificationDigestItem;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\UserNotification;
@@ -50,7 +51,14 @@ class NotificationService
                     'data'      => $data ?: null,
                 ]);
 
-                if (($def['email'] ?? false) && filled($user->email)) {
+                $freq = ($def['email'] ?? false) ? app(Preferences::class)->frequency($user, $event, 'email') : 'off';
+                if (in_array($freq, ['hourly_digest', 'daily_digest'], true)) {
+                    // held for the digest (PRF-02): the in-app message above is already written
+                    NotificationDigestItem::create([
+                        'tenant_id' => $user->tenant_id, 'user_id' => $user->id, 'event_key' => $event, 'channel' => 'email',
+                        'frequency' => $freq, 'title' => $title, 'body' => $body ?: null, 'link' => $url, 'created_at' => now(),
+                    ]);
+                } elseif ($freq === 'instant' && filled($user->email)) {
                     try {
                         Mail::to($user->email)->send(new NotificationMail($n));
                         $n->forceFill(['emailed_at' => now()])->save();

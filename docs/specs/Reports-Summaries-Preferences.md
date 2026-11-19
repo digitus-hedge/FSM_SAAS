@@ -110,6 +110,16 @@ No new key is added. Narrowing for the Team Lead (own team) and the client (own 
 - `users.daily_summary_on` (boolean, default true) and `users.digest_daily_time` (time, default 08:00) (SCH-B8-05).
 - Plan keys `reports_full` and `brand_pdf` in `plans.features` (SCH-B8-06). `reports_pdf`, an unused key of `PlanSeeder`, is left alone.
 
+**Added while building (November 2026)**
+
+- `sr.assigned` is sent by a listener on `ServiceRequest` (any screen or job that assigns a technician). `sla.breached` is defined in `config/notifications.php` and is critical, but nothing fires it: no SLA breach job exists. That is a follow-up.
+- In-app messages are always written. A preference decides email (`instant`, digests, `off`) and push. A digest is only for email. Push means a browser notification while the app is open: the page polls `/notifications/latest` once a minute and only for users who allowed notifications. Real Web Push (VAPID, blueprint section 3) is a follow-up.
+- The reports page lists Monthly SLA, Technician scorecard and Contract performance. The Completion certificate is opened from a completed request (office) or from the client's own request page (portal).
+- Callbacks (D7) are completed requests reopened inside the reopen window over completed requests (blueprint 7.9). First-time fix (D8) is completed requests with no rework, no QC rework and no reopen over completed requests.
+- Dompdf is added (D3). A PDF is made while the user waits; the queued path for reports over 100 pages (D19) and `report.ready` are not built.
+- Left out of this build: the reports API (section 8), the "recent downloads" list reads the audit rows, the client's contract report page link in the portal, per-event role filtering on the preferences page (every event of the catalogue is listed), and push digests.
+- Route parameter for the summary settings is `{baseRole}` because `{role}` is bound to the Role model.
+
 **Error codes**
 
 `REPORT_PERIOD_INVALID`, `REPORT_NOT_COMPLETED`, `REPORT_NOT_ALLOWED`, `PREFERENCE_CRITICAL`, `SUMMARY_BLOCK_INVALID`.

@@ -282,6 +282,10 @@
       </div>
     </div>
 
+    @if ($sr->status === 'completed' && \App\Models\Tenant::current()?->hasFeature('reports_full') && \App\Services\Reports\ReportAccess::mayExport(auth()->user()))
+    <div class="card"><div class="card-body"><a href="{{ route('service-requests.certificate', $sr) }}">Completion certificate (PDF)</a></div></div>
+    @endif
+
     {{-- MULTI-TRADE (MTR-02, MTR-03) --}}
     @if ($sr->is_master_sr)
     <div class="card">

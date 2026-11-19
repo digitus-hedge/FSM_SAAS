@@ -145,7 +145,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
     $showContracts = ! $isPlatform
                   && $u?->canDo('contract.view')
                   && \App\Models\Tenant::current()?->hasFeature('contracts');   // Contracts and AMCs: Professional and above
-    $hasOps     = $u?->canDo('client.manage') || $u?->canDo('form.manage') || $u?->canDo('workflow.manage') || $u?->canDo('pm.view') || $u?->canDo('vendor.manage') || $u?->canDo('site.manage') || $u?->canDo('category.manage') || $u?->canDo('asset.view') || $showContracts;
+    $hasOps     = $u?->canDo('client.manage') || $u?->canDo('form.manage') || $u?->canDo('workflow.manage') || $u?->canDo('pm.view') || $u?->canDo('vendor.manage') || $u?->canDo('report.view') || $u?->canDo('notification.manage') || $u?->canDo('site.manage') || $u?->canDo('category.manage') || $u?->canDo('asset.view') || $showContracts;
     $hasSetup   = $u?->canDo('settings.manage');
     $hasPeople  = $u?->canDo('user.manage') || $u?->canDo('role.manage') || $u?->canDo('audit.view');
 
@@ -157,6 +157,8 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
                || request()->routeIs('admin.checklists.*')
                || request()->routeIs('admin.maintenance.*')
                || request()->routeIs('admin.vendors.*')
+               || request()->routeIs('admin.reports.*')
+               || request()->routeIs('admin.summary-settings.*')
                || request()->routeIs('admin.vendor-spend.*')
                || request()->routeIs('admin.approval-rules.*')
                || request()->routeIs('admin.team-lead-categories.*');
@@ -166,6 +168,8 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
                || request()->routeIs('admin.expense-categories.*')
                || request()->routeIs('admin.tenant-holidays.*')
                || request()->routeIs('admin.vendors.*')
+               || request()->routeIs('admin.reports.*')
+               || request()->routeIs('admin.summary-settings.*')
                || request()->routeIs('admin.terminology.*')
                || request()->routeIs('admin.tenant-business-hours.*')
                || request()->routeIs('admin.company-settings.*')
@@ -387,6 +391,12 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
                     @if ($u->canDo('report.view') && \App\Models\Tenant::current()?->hasFeature('vendors'))
                         <a href="{{ route('admin.vendor-spend.index') }}" class="nav-item {{ request()->routeIs('admin.vendor-spend.*') ? 'active' : '' }}">Vendor spend</a>
                     @endif
+                    @if ($u->canDo('report.view') && \App\Models\Tenant::current()?->hasFeature('reports_full') && \App\Services\Reports\ReportAccess::mayView($u))
+                        <a href="{{ route('admin.reports.index') }}" class="nav-item {{ request()->routeIs('admin.reports.*') ? 'active' : '' }}">Reports</a>
+                    @endif
+                    @if ($u->canDo('notification.manage'))
+                        <a href="{{ route('admin.summary-settings.index') }}" class="nav-item {{ request()->routeIs('admin.summary-settings.*') ? 'active' : '' }}">Daily summaries</a>
+                    @endif
                     @if ($u->canDo('workflow.manage'))
                         <a href="{{ route('admin.approval-rules.index') }}" class="nav-item {{ request()->routeIs('admin.approval-rules.*') ? 'active' : '' }}">Approval rules</a>
                     @endif
@@ -500,6 +510,24 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.all.min.js"></script>
+@if (auth()->check() && ! (\Illuminate\Support\Facades\Auth::guard('platform')->check() && ! \App\Models\Tenant::current()))
+<script>
+// Browser notifications while the app is open (spec D12). Only after the user allowed them; nothing leaves the browser except the poll to this app.
+(function () {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  var key = 'aw-last-notif', last = parseInt(sessionStorage.getItem(key) || '-1', 10);
+  function poll() {
+    fetch(@json(route('notifications.latest')) + '?after=' + Math.max(last, 0), {headers: {'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'}})
+      .then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+        if (!d) return;
+        if (last >= 0) d.items.forEach(function (n) { try { var x = new Notification(n.title, {body: n.body || ''}); if (n.url) x.onclick = function () { window.open(n.url); }; } catch (e) {} });
+        last = d.last; try { sessionStorage.setItem(key, String(last)); } catch (e) {}
+      }).catch(function () {});
+  }
+  poll(); setInterval(poll, 60000);
+})();
+</script>
+@endif
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 

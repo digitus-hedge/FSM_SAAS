@@ -51,6 +51,10 @@ h1{font-family:'Figtree',sans-serif;font-size:22px;font-weight:800;margin-bottom
         <div class="meta">Raised: {{ $sr->created_at->format('d M Y, H:i') }}</div>
     </div>
 
+    @if ($sr->status === 'completed' && \App\Models\Tenant::current()?->hasFeature('reports_full'))
+    <div class="card"><a href="{{ route('portal.requests.certificate', $sr) }}">Download the completion certificate (PDF)</a></div>
+    @endif
+
     @if ($sr->service_mode === 'depot' && $sr->depot_stage)
     <div class="card"><h3>Workshop</h3><p>{{ \App\Services\Trades\Depot::LABELS[$sr->depot_stage] }}</p></div>
     @endif

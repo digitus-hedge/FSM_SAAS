@@ -54,6 +54,20 @@ class ClientPortalController extends Controller
         return view('client.requests.index', compact('items', 'tab'));
     }
 
+    /** RPT / D5: the completion certificate of the client's own completed request, as a PDF without a price. */
+    public function certificate(ServiceRequest $serviceRequest)
+    {
+        $tenant = $this->guardPlan();
+        abort_unless($tenant->hasFeature('reports_full'), 403);
+        abort_unless($this->scopedRequests()->whereKey($serviceRequest->id)->exists(), 404);
+        if ($serviceRequest->status !== 'completed') {
+            throw new \App\Services\Forms\FormException('REPORT_NOT_COMPLETED', 'A completion certificate is only for a completed request.');
+        }
+        $pdf = app(\App\Services\Reports\ReportPdf::class)->render('reports.pdf.certificate', app(\App\Services\Reports\ReportData::class)->certificate($serviceRequest), $tenant, 'Completion certificate');
+
+        return response($pdf, 200, ['Content-Type' => 'application/pdf', 'Content-Disposition' => 'attachment; filename="certificate-' . $serviceRequest->sr_number . '.pdf"']);
+    }
+
     /** PMC / D3: upcoming maintenance at the client's own sites, read only. */
     public function maintenance()
     {

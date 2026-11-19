@@ -206,8 +206,13 @@ class DashboardController extends Controller
             ? app(\App\Services\Billing\BaseCurrencyFigures::class)->forPeriod($tenant, $from, $to)
             : null;
 
+        // RPT-03 to RPT-07: the new figures, for Professional and above and for whoever sees the company dashboard
+        $figures = ($tenant->hasFeature('reports_full') && \App\Services\Permissions\PermissionLevel::canView($user, 'dashboard.company'))
+            ? app(\App\Services\Reports\Figures::class)->all($tenant, Carbon::parse($from->toDateString()), Carbon::parse($to->toDateString()))
+            : null;
+
         return view('tenant.dashboard', compact(
-            'tenant', 'range', 'days', 'from', 'to',
+            'figures', 'tenant', 'range', 'days', 'from', 'to',
             'openRequests', 'createdInPeriod', 'completed',
             'slaPct', 'slaMet', 'slaCompleted',
             'responseMin', 'resolutionMin', 'reviewMin', 'firstFixPct',
