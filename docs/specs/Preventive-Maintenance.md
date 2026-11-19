@@ -101,6 +101,8 @@ The Team Lead's record level is narrowed in the controller in one place (a `PmSc
 
 `PM_ASSET_SITE_MISMATCH`, `PM_ASSET_CATEGORY_MISMATCH`, `PM_FREQUENCY_INVALID`, `PM_SCHEDULE_ENDED`, `PM_HAS_REQUESTS` (a delete attempt).
 
+Added while building (November 2026): `PM_ASSET_COUNT` (no asset, or more than 200). One job instead of two: D6 and 6.5 disagree (06:00 and 09:00), so `pm:daily` does the generation and the overdue messages in one run at 06:00 company time. The `service_requests` columns `pm_overdue_first_at` and `pm_overdue_second_at` hold the once-only record of the two overdue messages (SCH-B4-03). A request waits for a contract choice with the B2 flag `contract_choice_pending` and the event `sr.contract_choice_needed`. A default technician is assigned only when the request is Approved (a Pending request is not assigned). The Team Lead is a field user and is sent to the field app, so the narrowing in `PmScheduleAccess` is tested on the class, not on an office page.
+
 ## 5. Screens
 
 ### 5.1 Schedules (PMC-01)

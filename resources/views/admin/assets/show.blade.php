@@ -302,7 +302,25 @@
     @endif
   </div>
 </div>
-<div class="pane" id="p-maintenance"><div class="card soon">Upcoming maintenance will appear here when preventive maintenance is added.</div></div>
+<div class="pane" id="p-maintenance">
+  <div class="card" style="padding:0;overflow:auto">
+    @if ($pmSchedules->isEmpty())
+      <div style="padding:28px;text-align:center;color:var(--muted)">This asset is not on a maintenance schedule.</div>
+    @else
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr><th style="text-align:left;padding:10px 14px">Schedule</th><th style="text-align:left;padding:10px 14px">Frequency</th><th style="text-align:left;padding:10px 14px">Next due</th><th style="text-align:left;padding:10px 14px">Status</th></tr></thead>
+        <tbody>
+        @foreach ($pmSchedules as $p)
+          <tr style="border-top:1px solid var(--line)">
+            <td style="padding:10px 14px">{{ $p->name }}</td><td style="padding:10px 14px">{{ $p->frequency_label }}</td>
+            <td style="padding:10px 14px">{{ $p->next_due_date?->format('j M Y') }}</td><td style="padding:10px 14px">{{ ucfirst($p->status) }}</td>
+          </tr>
+        @endforeach
+        </tbody>
+      </table>
+    @endif
+  </div>
+</div>
 
 <script>
 (function () {

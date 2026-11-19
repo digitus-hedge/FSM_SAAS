@@ -66,6 +66,7 @@ class AppServiceProvider extends ServiceProvider
             'template' => \App\Models\FormTemplate::class,
             'version'  => \App\Models\FormTemplateVersion::class,
             'sra'      => \App\Models\ServiceRequestAsset::class,
+            'schedule' => \App\Models\PmSchedule::class,
         ] as $name => $model) {
             \Illuminate\Support\Facades\Route::bind($name, function ($value) use ($model) {
                 $tenantId = auth()->user()?->tenant_id ?? \App\Models\Tenant::current()?->id;

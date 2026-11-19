@@ -49,6 +49,17 @@ return [
             'body'  => 'Reason: {reason}',
             'email' => true,
         ],
+        // Preventive-Maintenance spec, section 7.
+        'pm.generated' => [
+            'title' => 'Maintenance request {sr_number} was created',
+            'body'  => '{what} at {site}. Due {date}. {note}',
+            'email' => true,
+        ],
+        'pm.overdue' => [
+            'title' => 'Maintenance request {sr_number} is overdue',
+            'body'  => '{site}. It was due on {date} and is not done.',
+            'email' => true,
+        ],
         'batch.unsafe_asset' => [
             'title' => '{sr_number}: {count} asset(s) failed as unsafe',
             'body'  => 'The technician marked assets as failed (unsafe) in this batch.',

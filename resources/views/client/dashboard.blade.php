@@ -99,6 +99,9 @@ body{background:#FBFAF6;color:#1B1A24;font-family:var(--font-body),system-ui,san
                 @endif
                 <a href="{{ route('portal.quotes.index') }}" class="btn ghost">View quotes</a>
                 <a href="{{ route('portal.invoices.index') }}" class="btn ghost">View invoices</a>
+                @if (\App\Models\Tenant::current()?->hasFeature('pm_time'))
+                    <a href="{{ route('portal.maintenance') }}" class="btn ghost">Upcoming maintenance</a>
+                @endif
             </div>
             @if ($user->role?->code !== 'client_admin')
                 <div style="color:#8B89A0;font-size:12px;margin-top:12px">Raising a request is available to Client Admins only.</div>

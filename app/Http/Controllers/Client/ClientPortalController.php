@@ -54,6 +54,38 @@ class ClientPortalController extends Controller
         return view('client.requests.index', compact('items', 'tab'));
     }
 
+    /** PMC / D3: upcoming maintenance at the client's own sites, read only. */
+    public function maintenance()
+    {
+        $tenant = $this->guardPlan();
+        abort_unless($tenant->hasFeature('pm_time'), 403);
+        $user = auth()->user();
+        $days = 90;
+        $today = \Carbon\Carbon::parse(now($tenant->timezone ?: config('app.timezone'))->toDateString());
+
+        $siteQuery = ProjectSite::where('client_id', $user->client_id ?? 0);
+        if ($user->role?->code === 'client_viewer') {
+            $siteQuery->whereIn('id', $user->site_scope_json ?: [0]);
+        }
+        $siteIds = $siteQuery->pluck('id');
+
+        $visits = [];
+        foreach (\App\Models\PmSchedule::withoutGlobalScopes()->where('tenant_id', $tenant->id)->where('status', 'active')
+            ->whereIn('project_site_id', $siteIds)->with(['site:id,name', 'category:id,name', 'assetRows.asset:id,name'])->get() as $s) {
+            $assets = $s->assetRows->map(fn ($r) => $r->asset?->name)->filter();
+            foreach (\App\Services\Maintenance\Frequency::between($s->first_due_date, $s->frequency, $s->interval_value, \Carbon\Carbon::parse(max($today, $s->next_due_date)->toDateString()), $today->copy()->addDays($days)) as $d) {
+                if ($s->end_date && $d->gt($s->end_date)) {
+                    break;
+                }
+                $visits[] = ['date' => $d, 'what' => $assets->count() > 1 ? $assets->count() . ' assets' : ($assets->first() ?? 'Maintenance'),
+                    'site' => $s->site?->name, 'category' => $s->category?->name];
+            }
+        }
+        usort($visits, fn ($a, $b) => $a['date'] <=> $b['date']);
+
+        return view('client.maintenance', ['visits' => $visits, 'days' => $days]);
+    }
+
     public function show(ServiceRequest $serviceRequest)
     {
         $this->guardPlan();

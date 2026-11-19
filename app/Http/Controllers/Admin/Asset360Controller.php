@@ -105,7 +105,12 @@ class Asset360Controller extends Controller
                 'version' => $row->version?->load('template')]);
         }
 
+        // PMC: the schedules this asset is on, with their next due dates
+        $schedules = \App\Models\PmSchedule::withoutGlobalScopes()->where('tenant_id', $asset->tenant_id)->whereIn('status', ['active', 'paused'])
+            ->whereIn('id', \App\Models\PmScheduleAsset::withoutGlobalScopes()->where('asset_id', $asset->id)->select('pm_schedule_id'))->orderBy('next_due_date')->get();
+
         return view('admin.assets.show', [
+            'pmSchedules'   => $schedules,
             'checklists'    => $checklists->sortByDesc('at')->values(),
             'asset'         => $asset,
             'requests'      => $requests,

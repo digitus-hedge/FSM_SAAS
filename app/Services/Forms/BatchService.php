@@ -70,14 +70,14 @@ class BatchService
     }
 
     /** Creates the rows of the request, each bound to its own published checklist version. */
-    public function attach(ServiceRequest $sr, Collection $assets, ServiceCategory $category): void
+    public function attach(ServiceRequest $sr, Collection $assets, ServiceCategory $category, ?int $scheduleTemplateId = null): void
     {
         $checklists = app(Checklists::class);
         foreach ($assets as $asset) {
             ServiceRequestAsset::withoutGlobalScopes()->create([
                 'tenant_id' => $sr->tenant_id, 'service_request_id' => $sr->id, 'asset_id' => $asset->id,
                 'inspection_status' => 'pending',
-                'form_template_version_id' => $checklists->versionFor($category, $asset)?->id,
+                'form_template_version_id' => $checklists->versionFor($category, $asset, $scheduleTemplateId)?->id,
             ]);
         }
     }

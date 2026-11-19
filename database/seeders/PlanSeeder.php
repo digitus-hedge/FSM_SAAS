@@ -27,6 +27,7 @@ class PlanSeeder extends Seeder
                 'multi_currency' => false,  // Multi-currency quotes and invoices (Pro+)
                 'billing_full'   => false,  // Payments ledger, aging, overdue reminders (Pro+)
                 'forms' => false, 'approval_auto' => false, 'approval_finance' => false, 'form_templates_limit' => null, // B3
+                'pm_time' => false, // B4
             ],
         ]);
 
@@ -46,6 +47,7 @@ class PlanSeeder extends Seeder
                 'multi_currency' => true,
                 'billing_full'   => true,
                 'forms' => true, 'approval_auto' => true, 'approval_finance' => false, 'form_templates_limit' => 10, // B3
+                'pm_time' => true, // B4
             ],
         ]);
 
@@ -65,6 +67,7 @@ class PlanSeeder extends Seeder
                 'multi_currency' => true,
                 'billing_full'   => true,
                 'forms' => true, 'approval_auto' => true, 'approval_finance' => true, 'form_templates_limit' => null, // B3
+                'pm_time' => true, // B4
             ],
         ]);
     }

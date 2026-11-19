@@ -18,6 +18,7 @@ Labels such as "service request", "client" and "quote" can be renamed per compan
   narrowed to their own records (users, service request actions, dispatch), the full suite passes.
 - B3 built (docs/specs/Forms-Approvals-Batch.md): checklist templates and versions, the builder, the checklist in the Field View with the proof lock,
   approval modes and the rules page, batch requests. The API (spec section 8) is not built.
+- B4 built (docs/specs/Preventive-Maintenance.md, calendar only): schedules, the 06:00 job, calendar, client list. The API is not built.
 - B9 checkout and billing: payment gateway on hold until last.
 
 ## Tenancy
@@ -90,6 +91,15 @@ Labels such as "service request", "client" and "quote" can be renamed per compan
   A request counts for an asset as primary asset or as a batch row (Asset 360 reads both). `ServiceRequest::updated` (AppServiceProvider) gives
   finished rows their `completed_at` when the request becomes Completed.
 - Route binders `{template}`, `{version}`, `{sra}` are scoped by the signed-in user's company like the others.
+
+## Preventive maintenance (B4)
+- `Services/Maintenance`: `Frequency` (every date counted from the first due date, so 31 Jan, 28 Feb, 31 Mar), `PmSchedules` (create, edit, pause, resume, end,
+  delete; throws `FormException` with the spec's code), `PmGenerator` (the job), `PmScheduleAccess` (Team Lead narrowing).
+- `pm:daily` (hourly, acts at 06:00 company time; `--force`, `--tenant`, `--hour`) creates the due requests and sends `pm.overdue`. Plan key `pm_time`, no cap on schedules.
+  The job sets `Tenant::current()` for its steps (contract coverage needs it) and always restores it. Dates are compared as plain dates, not instants.
+- No duplicates: `pm_schedule_runs` (unique schedule + due date) and the unique key `(pm_schedule_id, pm_due_date)` on `service_requests`.
+- A request from a schedule has source `pm_auto`, `created_by_user_id` null, the schedule's template (wins over asset and category), the pinned contract in
+  `contract_id` (`ContractCoverage::onCreated` treats it as a pin), geofence only if the site always enforces it, signature waiver allowed.
 
 ## Conventions
 - Every company table has `tenant_id`. Many models have the global scope (trait `App\Models\Concerns\BelongsToTenant`: Client,

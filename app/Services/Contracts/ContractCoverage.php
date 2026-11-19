@@ -120,7 +120,8 @@ class ContractCoverage
 
         $cands   = $this->candidates($sr);
         $pinId   = $sr->is_master_sr ? null : $sr->primaryAsset?->default_contract_id;
-        $pinned  = $pinId && $cands->contains('id', $pinId);
+        $pinned  = ($pinId && $cands->contains('id', $pinId))
+                 || ($sr->contract_id && $cands->contains('id', $sr->contract_id));   // pinned on a maintenance schedule
         $several = $cands->count() > 1 && ! $pinned;
         if ($pinned && ! $sr->contract_id) $sr->contract_id = $pinId;
         $sr->forceFill([

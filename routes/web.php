@@ -216,6 +216,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/quotes/{quote}/accept', [ClientPortalController::class, 'quoteAccept'])->name('quotes.accept');
         Route::post('/quotes/{quote}/reject', [ClientPortalController::class, 'quoteReject'])->name('quotes.reject');
 
+        Route::get('/maintenance',            [ClientPortalController::class, 'maintenance'])->name('maintenance');
         Route::get('/invoices',               [ClientPortalController::class, 'invoices'])->name('invoices.index');
         Route::get('/invoices/{invoice}',     [ClientPortalController::class, 'invoiceShow'])->name('invoices.show');
         Route::get('/invoices/{invoice}/pdf', [ClientPortalController::class, 'invoicePdf'])->name('invoices.pdf');
@@ -523,6 +524,30 @@ Route::prefix('admin/checklists')->middleware(['auth', DenyClientRole::class, 'l
         Route::post('/{template}/archive',       [\App\Http\Controllers\Admin\FormTemplatesController::class, 'archive'])->name('archive');
         Route::post('/{template}/duplicate',     [\App\Http\Controllers\Admin\FormTemplatesController::class, 'duplicate'])->name('duplicate');
         Route::delete('/{template}',             [\App\Http\Controllers\Admin\FormTemplatesController::class, 'destroy'])->name('destroy');
+    });
+
+// Maintenance schedules (Preventive-Maintenance spec): reading needs pm.view, changing needs pm.manage, then the pm_time plan gate
+Route::prefix('admin/maintenance')->middleware(['auth', DenyClientRole::class, EnsurePlanFeature::class . ':pm_time'])
+    ->name('admin.maintenance.')->group(function () {
+        $c = \App\Http\Controllers\Admin\PmSchedulesController::class;
+        Route::middleware('level:pm.view')->group(function () use ($c) {
+            Route::get('/',         [$c, 'index'])->name('index');
+            Route::get('/calendar', [$c, 'calendar'])->name('calendar');
+        });
+        Route::middleware('level:pm.manage')->group(function () use ($c) {
+            Route::get('/create',   [$c, 'create'])->name('create');
+            Route::get('/assets',   [$c, 'assets'])->name('assets');
+            Route::post('/',        [$c, 'store'])->name('store');
+        });
+        Route::middleware('level:pm.view')->get('/{schedule}', [$c, 'show'])->name('show');
+        Route::middleware('level:pm.manage')->group(function () use ($c) {
+            Route::get('/{schedule}/edit',    [$c, 'edit'])->name('edit');
+            Route::put('/{schedule}',         [$c, 'update'])->name('update');
+            Route::post('/{schedule}/pause',  [$c, 'pause'])->name('pause');
+            Route::post('/{schedule}/resume', [$c, 'resume'])->name('resume');
+            Route::post('/{schedule}/end',    [$c, 'end'])->name('end');
+            Route::delete('/{schedule}',      [$c, 'destroy'])->name('destroy');
+        });
     });
 
 // Approval rules (FRM-08): Company Admin changes, Operations Manager looks (workflow.manage)

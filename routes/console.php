@@ -11,6 +11,9 @@ Artisan::command('inspire', function () {
 Schedule::command('usage:refresh')->daily();
 Schedule::command('contracts:daily')->hourly()->withoutOverlapping();
 
+// PMC-02: maintenance requests. Runs hourly and acts only at 06:00 in each company's time zone.
+Schedule::command('pm:daily')->hourly()->withoutOverlapping();
+
 // CUR-01: daily exchange rates. The first run stores the day's rates; the three later runs are the retries of
 // spec 6.1 and only fetch pairs that are still missing, so a provider outage is retried 3 times during the day.
 Schedule::command('rates:fetch')->dailyAt('00:30')->withoutOverlapping();
