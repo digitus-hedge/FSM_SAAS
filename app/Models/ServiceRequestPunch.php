@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class ServiceRequestPunch extends Model
 {
+    use \App\Models\Concerns\AppTimezoneDates;
+
     public $timestamps = false;
 
     protected $fillable = [

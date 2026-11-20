@@ -68,11 +68,11 @@ Eight roles cover every service company. Platform Admin works above all tenants 
 | Finance / Accounts | Quotes, invoices, payments, expense reconciliation. | Accountant, Billing Clerk |
 | Client User | External customer: views and raises requests, answers quotes, rates service. Client Admin sees the whole client, Client Viewer sees assigned sites only. Client sign-in is on Professional and above only. On Starter, clients have no sign-in and use secure links. | Building Manager, Hospital Admin |
 
-### Permission keys (42)
+### Permission keys (43)
 
 | Group | Keys |
 |---|---|
-| Service requests | sr.view, sr.create, sr.approve, sr.assign, sr.qc, sr.cancel, sr.reopen, sr.override_geofence |
+| Service requests | sr.view, sr.create, sr.approve, sr.assign, sr.qc, sr.cancel, sr.reopen, sr.override_geofence, sr.export |
 | Field work | field.punch, expense.log, expense.approve |
 | Commercial | quote.manage, quote.respond, invoice.manage, invoice.approve, payment.record |
 | Assets and contracts | asset.view, asset.manage, asset.import, contract.view, contract.manage, contract.choose, pm.view, pm.manage |
@@ -1773,7 +1773,7 @@ These are proposals so management has something concrete to approve or change. T
 - Rate cards and additional languages.
 - IoT and telemetry triggers, AI scheduling.
 
-## Appendix B. Default Permission Matrix (draft 2, signed off)
+## Appendix B. Default Permission Matrix (draft 2, signed off; version 3 of 2026-11-20 adds sr.export)
 
 The same matrix is in the workbook `Aiywah-FSM-Permission-Matrix-Draft-2.xlsx`, signed off on October 17, 2026 by Kiran E (BA - PM) with no changes. If the two ever differ, the signed workbook wins. Platform Admin works above all companies and is not listed. Draft 2 applies Operations' answers to draft 1.
 
@@ -1801,6 +1801,7 @@ Roles: CA is Company Admin, OM is Operations Manager, TL is Team Lead, FT is Fie
 | sr.cancel | Cancel a request with a reason | F | F | - | - | R | - | R |
 | sr.reopen | Reopen a completed job inside the company's window | F | F | - | - | - | - | - |
 | sr.override_geofence | Approve a technician's geofence override | F | F | R | - | - | - | - |
+| sr.export | Download the request list as an Excel file | F | F | - | - | - | - | - |
 
 #### Field work
 
@@ -1880,6 +1881,7 @@ Roles: CA is Company Admin, OM is Operations Manager, TL is Team Lead, FT is Fie
 - **sr.qc:** Team lead: off by default. The admin can switch it on for a person, for their own team.
 - **sr.cancel:** Front desk and client: only requests they raised, and only while Pending.
 - **sr.override_geofence:** Team lead: own team.
+- **sr.export:** Added in version 3 (2026-11-20, approved by the owner). Only the Company Admin and the Operations Manager export the request list (section 7.9a): up to 5,000 rows, narrowed like the list.
 - **field.punch:** Only on jobs assigned to the person.
 - **expense.log:** Vendor technicians: off by default. The admin can switch it on for a person. Reports show vendor expenses separately.
 - **expense.approve:** Team lead: off by default. The admin can switch it on for a person, for their own team.

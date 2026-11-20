@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class SrStatusHistory extends Model
 {
+    use \App\Models\Concerns\AppTimezoneDates;
+
     protected $table = 'sr_status_history';
 
     protected $fillable = [

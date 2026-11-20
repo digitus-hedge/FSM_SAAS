@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Role extends Model
 {
+    use \App\Models\Concerns\AppTimezoneDates;
+
     use SoftDeletes;
 
     protected $fillable = ['tenant_id', 'code', 'name', 'is_standard', 'based_on_code'];

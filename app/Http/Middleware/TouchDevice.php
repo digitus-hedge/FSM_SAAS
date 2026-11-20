@@ -13,7 +13,7 @@ class TouchDevice
     public function handle(Request $request, Closure $next)
     {
         $user = Auth::guard('web')->user() ?? Auth::guard('platform')->user();
-        if ($user) {
+        if ($user && ! ($request->hasSession() && $request->session()->has('impersonation_session_id'))) {
             $this->devices->touch($user, $request);
         }
         return $next($request);

@@ -103,6 +103,18 @@ return [
             'body'  => '{site}. {when}',
             'email' => true,
         ],
+        // Blueprint 9.2 (feedback.received): the Operations Manager, in-app; Urgent for 1 or 2 stars or a score of 0 to 6 (Services/Feedback/FeedbackLinks)
+        'feedback.received' => [
+            'title' => '{urgent}Feedback on {sr_number}: {stars} stars, score {score}',
+            'body'  => '{client}. Open the request to read the comment.',
+            'email' => false,
+        ],
+        // Blueprint 9.2 (impersonation.started): every Company Admin, in-app and by email, Urgent (Services/Platform/Impersonation)
+        'impersonation.started' => [
+            'title' => 'Urgent: Aiywah support signed in to your company',
+            'body'  => '{who} started a support session as {as_user} for {minutes} minutes. Reason: {reason}',
+            'email' => true,
+        ],
         // Blueprint 9.2 and decision 42: the Company Admin, in-app and by email, once at 80 and once at 100 percent of a plan limit for each month
         // (Services/Usage/PlanLimitWarnings, called by usage:refresh)
         'plan.limit_warning' => [

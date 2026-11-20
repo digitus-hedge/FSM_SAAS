@@ -5,6 +5,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class QuoteItem extends Model
 {
+    use \App\Models\Concerns\AppTimezoneDates;
+
     protected $table = 'quote_items';
     protected $primaryKey = null;
     public $incrementing = false;

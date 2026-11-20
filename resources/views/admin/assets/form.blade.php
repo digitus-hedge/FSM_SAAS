@@ -212,10 +212,15 @@
 
       @php
         $contractsOn = (bool) \App\Models\Tenant::current()?->hasFeature('contracts');
+        // Spec 5.6: Active and Expiring soon contracts in date. The browser narrows the list to the chosen client and site (data-client, data-sites).
         $pinOptions  = $contractsOn
-          ? \App\Models\Contract::query()->whereIn('status', ['draft', 'active', 'expiring_soon'])
-              ->orderBy('contract_number')->get(['id', 'client_id', 'contract_number', 'contract_type', 'end_date'])
+          ? \App\Models\Contract::pinnable(null, null)->with('sites:id')->orderBy('contract_number')->get()
           : collect();
+        // A pin the asset already has but that no longer qualifies stays in the list, with a warning (CC-059), so saving does not drop it by accident.
+        $pinNow   = $asset->default_contract_id;
+        $pinStale = $contractsOn && $pinNow && ! \App\Models\Contract::pinnable($asset->client_id, $asset->project_site_id)->whereKey($pinNow)->exists();
+        $stale    = $pinStale ? \App\Models\Contract::withTrashed()->with('sites:id')->find($pinNow) : null;
+        if ($stale && ! $pinOptions->contains('id', $stale->id)) { $pinOptions = $pinOptions->push($stale); }
       @endphp
       @if ($contractsOn)
         <div class="fld">
@@ -223,14 +228,17 @@
           <select id="default_contract_id" name="default_contract_id" class="sel @error('default_contract_id') err @enderror">
             <option value="">None</option>
             @foreach ($pinOptions as $ct)
-              <option value="{{ $ct->id }}" data-client="{{ $ct->client_id }}"
+              <option value="{{ $ct->id }}" data-client="{{ $ct->client_id }}" data-sites="{{ $ct->sites->pluck('id')->join(',') }}"@if ($stale && $ct->id === $stale->id) data-stale="1"@endif
                       @selected((string) old('default_contract_id', $asset->default_contract_id) === (string) $ct->id)>
                 {{ $ct->contract_number }} · {{ $ct->type_label }} · ends {{ $ct->end_date->format('d M Y') }}
               </option>
             @endforeach
           </select>
           @error('default_contract_id')<div class="errtxt">{{ $message }}</div>@else
-            <div class="hint">Used first when several contracts match a request for this {{ strtolower($label) }}. The manager can still change it.</div>
+            @if ($pinStale)
+              <div class="errtxt">The pinned contract is no longer valid.</div>
+            @endif
+            <div class="hint">Used without asking while it is valid and covers the request. The manager can still change it.</div>
           @enderror
         </div>
       @endif
@@ -405,14 +413,16 @@
     if (!pin) return;
     Array.from(pin.options).forEach(o => {
       if (!o.value) return;
-      const ok = !client.value || o.dataset.client === client.value;
+      const sites = (o.dataset.sites || '').split(',').filter(Boolean);
+      const ok = o.dataset.stale === '1'
+        || ((!client.value || o.dataset.client === client.value) && (!site.value || sites.length === 0 || sites.includes(site.value)));
       o.hidden = !ok; o.disabled = !ok;
     });
     if (pin.selectedOptions[0] && pin.selectedOptions[0].disabled) pin.value = '';
   }
 
   client.addEventListener('change', () => { filterSites(); filterPin(); keep = ''; rebuildParents(); });
-  site.addEventListener('change', () => { keep = ''; rebuildParents(); });
+  site.addEventListener('change', () => { keep = ''; rebuildParents(); filterPin(); });
 
   filterSites();
   filterPin();

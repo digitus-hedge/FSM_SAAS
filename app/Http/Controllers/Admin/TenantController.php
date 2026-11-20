@@ -149,7 +149,7 @@ class TenantController extends Controller
 
         // Send the email via configured mailer (Mailtrap in dev).
         try {
-            Mail::to($admin->email)->send(new InvitationMail($admin, $tenant, $url));
+            app(\App\Services\Messaging\MessageLogger::class)->send($admin->email, new InvitationMail($admin, $tenant, $url), 'user.invitation', ['tenant_id' => $tenant->id, 'user_id' => $admin->id]);
             $flashKey = 'success';
             $msg = "Invitation re-sent to {$admin->email}.";
         } catch (\Throwable $e) {

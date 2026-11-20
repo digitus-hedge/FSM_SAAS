@@ -5,6 +5,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class SrNote extends Model
 {
+    use \App\Models\Concerns\AppTimezoneDates;
+
     protected $table = 'sr_notes';
 
     protected $fillable = [

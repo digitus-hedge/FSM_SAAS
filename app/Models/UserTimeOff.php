@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class UserTimeOff extends Model
 {
+    use \App\Models\Concerns\AppTimezoneDates;
+
     protected $table = 'user_time_off';
 
     protected $fillable = ['tenant_id', 'user_id', 'starts_at', 'ends_at', 'type', 'note', 'created_by_user_id'];

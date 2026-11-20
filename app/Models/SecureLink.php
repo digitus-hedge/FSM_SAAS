@@ -6,8 +6,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SecureLink extends Model
 {
+    use \App\Models\Concerns\AppTimezoneDates;
+
     protected $fillable = [
-        'tenant_id', 'user_id', 'purpose',
+        'tenant_id', 'user_id', 'client_contact_id', 'purpose', 'entity_type', 'entity_id',
         'token_hash', 'expires_at', 'used_at', 'request_ip',
     ];
 

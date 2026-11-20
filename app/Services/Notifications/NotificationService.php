@@ -59,11 +59,12 @@ class NotificationService
                         'frequency' => $freq, 'title' => $title, 'body' => $body ?: null, 'link' => $url, 'created_at' => now(),
                     ]);
                 } elseif ($freq === 'instant' && filled($user->email)) {
-                    try {
-                        Mail::to($user->email)->send(new NotificationMail($n));
+                    // logged in the message log whether it works or not; a failure never breaks the action that raised the event
+                    $log = app(\App\Services\Messaging\MessageLogger::class)->send($user->email, new NotificationMail($n), $event, [
+                        'tenant_id' => $user->tenant_id, 'user_id' => $user->id, 'related' => $n, 'payload' => ['notification_id' => $n->id],
+                    ], throw: false);
+                    if ($log->status === 'sent') {
                         $n->forceFill(['emailed_at' => now()])->save();
-                    } catch (\Throwable $e) {
-                        Log::warning('Notification email failed', ['event' => $event, 'user' => $user->id, 'error' => $e->getMessage()]);
                     }
                 }
             }

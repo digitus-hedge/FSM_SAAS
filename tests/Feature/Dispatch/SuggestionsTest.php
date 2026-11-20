@@ -228,7 +228,7 @@ class SuggestionsTest extends DispatchTestCase
         $first = $this->assigned($t, '2026-11-20 05:00:00');
         for ($i = 1; $i < $n; $i++) {
             $copy = $first->replicate();
-            $copy->forceFill(['sr_number' => 'COPY-' . $i . '-' . $n, 'scheduled_eta_at' => \Carbon\Carbon::parse('2026-11-20 05:00:00', 'UTC')->addHours(3 * $i)->setTimezone(config('app.timezone'))])->save();
+            $copy->forceFill(['sr_number' => 'COPY-' . $i . '-' . $n, 'scheduled_eta_at' => \Carbon\Carbon::parse('2026-11-20 05:00:00', 'UTC')->addHours(3 * $i)])->save();
         }
 
         return $t;

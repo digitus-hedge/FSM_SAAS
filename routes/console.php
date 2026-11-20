@@ -17,6 +17,9 @@ Schedule::command('pm:daily')->hourly()->withoutOverlapping();
 // Blueprint 7.1: sla.warning at 80 percent of a target and sla.breached when it is missed, once for each request and target.
 Schedule::command('sla:check')->everyMinute()->withoutOverlapping();
 
+// Blueprint 7.9a: a support session that ran out of time is closed and audited even when nobody opens another page.
+Schedule::command('impersonation:expire')->everyMinute()->withoutOverlapping();
+
 // SUM-02 and PRF-02: the daily summaries (at each company's configured time) and the held digests.
 Schedule::command('summary:daily')->hourly()->withoutOverlapping();
 Schedule::command('digest:send')->hourly()->withoutOverlapping();

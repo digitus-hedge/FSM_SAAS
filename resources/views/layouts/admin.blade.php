@@ -135,6 +135,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
 @endif
 </head>
 <body>
+@include('layouts._impersonation_banner')
 
 @php
     $isPlatform = \Illuminate\Support\Facades\Auth::guard('platform')->check()
@@ -147,7 +148,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
                   && \App\Models\Tenant::current()?->hasFeature('contracts');   // Contracts and AMCs: Professional and above
     $hasOps     = $u?->canDo('client.manage') || $u?->canDo('form.manage') || $u?->canDo('workflow.manage') || $u?->canDo('pm.view') || $u?->canDo('vendor.manage') || $u?->canDo('report.view') || $u?->canDo('notification.manage') || $u?->canDo('site.manage') || $u?->canDo('category.manage') || $u?->canDo('asset.view') || $showContracts;
     $hasSetup   = $u?->canDo('settings.manage');
-    $hasPeople  = $u?->canDo('user.manage') || $u?->canDo('role.manage') || $u?->canDo('audit.view');
+    $hasPeople  = $u?->canDo('user.manage') || $u?->canDo('role.manage') || $u?->canDo('audit.view') || $u?->canDo('notification.manage');
 
     $opsOpen    = request()->routeIs('admin.clients.*')
                || request()->routeIs('admin.sites.*')
@@ -420,6 +421,12 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
                 <a href="{{ route('tenant.roles.index') }}" class="nav-item {{ request()->routeIs('tenant.roles.*') ? 'active' : '' }}">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
                     Roles &amp; permissions
+                </a>
+            @endif
+            @if (\App\Services\Permissions\PermissionLevel::canView($u, 'notification.manage'))
+                <a href="{{ route('admin.message-log.index') }}" class="nav-item {{ request()->routeIs('admin.message-log.*') ? 'active' : '' }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v12H5.2L4 17.2z"/><polyline points="4 6 12 12 20 6"/></svg>
+                    Message log
                 </a>
             @endif
             @if ($u->canDo('audit.view'))

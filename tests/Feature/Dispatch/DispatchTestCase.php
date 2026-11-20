@@ -43,7 +43,7 @@ abstract class DispatchTestCase extends FormsTestCase
         $sr = $this->raise($cat, ['priority' => $priority]);
         $sr->forceFill([
             'status' => 'assigned', 'assigned_tech_user_id' => ($tech ?? $this->u['field_technician'])->id,
-            'scheduled_eta_at' => Carbon::parse($eta ?? '2026-11-20 06:00:00', 'UTC')->setTimezone(config('app.timezone')),
+            'scheduled_eta_at' => Carbon::parse($eta ?? '2026-11-20 06:00:00', 'UTC'),
         ])->save();
 
         return $sr->fresh();
@@ -58,7 +58,7 @@ abstract class DispatchTestCase extends FormsTestCase
 
     protected function suggestions(ServiceRequest $sr, ?string $arrival = null): array
     {
-        return app(\App\Services\Dispatch\TechnicianSuggester::class)->suggest($sr->fresh()->load(['site', 'category']), $arrival ? Carbon::parse($arrival, 'UTC')->setTimezone(config('app.timezone')) : null);
+        return app(\App\Services\Dispatch\TechnicianSuggester::class)->suggest($sr->fresh()->load(['site', 'category']), $arrival ? Carbon::parse($arrival, 'UTC') : null);
     }
 
     protected function audits(string $action): int

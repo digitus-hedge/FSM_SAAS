@@ -5,6 +5,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class UserPermissionOverride extends Model
 {
+    use \App\Models\Concerns\AppTimezoneDates;
+
     protected $fillable = ['tenant_id', 'user_id', 'permission_id', 'level', 'reason', 'ends_at'];
 
     protected $casts = [

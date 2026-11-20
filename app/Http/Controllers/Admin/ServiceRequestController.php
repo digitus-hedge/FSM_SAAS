@@ -253,7 +253,7 @@ class ServiceRequestController extends Controller
 
     /**
      * The request list as an Excel file: exactly the rows the list shows for the same tab and filters (applyListFilters) and the same
-     * narrowing (visibleRequests), plus the contract column. Route gate level:sr.view.
+     * narrowing (visibleRequests), plus the contract column. Route gate level:sr.export (Company Admin and Operations Manager, blueprint 7.9a).
      */
     public function export(Request $request, \App\Services\Export\XlsxExporter $xlsx)
     {

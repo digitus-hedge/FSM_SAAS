@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class DispatchSetting extends Model
 {
+    use \App\Models\Concerns\AppTimezoneDates;
+
     protected $fillable = [
         'tenant_id', 'w_skill', 'w_availability', 'w_workload', 'w_proximity', 'w_first_fix', 'job_minutes',
         'workload_green_below', 'workload_amber_up_to',

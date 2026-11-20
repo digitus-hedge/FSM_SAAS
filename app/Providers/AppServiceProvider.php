@@ -17,6 +17,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // Dates given to a query are converted to the application time zone first (see Models\Concerns\AppTimezoneDates).
+        \Illuminate\Database\Connection::resolverFor('mysql', fn ($connection, $database, $prefix, $config) => new \App\Support\AppTimezoneMySqlConnection($connection, $database, $prefix, $config));
+
         // The daily rates provider is chosen in config/rates.php (CUR-01).
         $this->app->bind(\App\Services\Currency\RateProvider::class, function ($app) {
             $class = config('rates.providers.' . config('rates.provider'));
@@ -51,6 +54,17 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\ServiceRequest::updated(function (\App\Models\ServiceRequest $sr) {
             if ($sr->wasChanged('status') && $sr->status === 'completed') {
                 app(\App\Services\Forms\BatchService::class)->onCompleted($sr);
+            }
+        });
+
+        // Blueprint 7.1 and 9.2: a completed request sends the client contact the feedback link (event sr.completed), whichever screen completes it.
+        \App\Models\ServiceRequest::updated(function (\App\Models\ServiceRequest $sr) {
+            if ($sr->wasChanged('status') && $sr->status === 'completed') {
+                try {
+                    app(\App\Services\Feedback\FeedbackLinks::class)->issue($sr);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('Feedback link failed', ['sr' => $sr->id, 'error' => $e->getMessage()]);
+                }
             }
         });
 
@@ -97,6 +111,7 @@ class AppServiceProvider extends ServiceProvider
             'sra'      => \App\Models\ServiceRequestAsset::class,
             'schedule' => \App\Models\PmSchedule::class,
             'vendor'   => \App\Models\Vendor::class,
+            'messageLog' => \App\Models\MessageLog::class,
         ] as $name => $model) {
             \Illuminate\Support\Facades\Route::bind($name, function ($value) use ($model) {
                 $tenantId = auth()->user()?->tenant_id ?? \App\Models\Tenant::current()?->id;

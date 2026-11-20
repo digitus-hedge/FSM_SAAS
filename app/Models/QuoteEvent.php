@@ -5,6 +5,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class QuoteEvent extends Model
 {
+    use \App\Models\Concerns\AppTimezoneDates;
+
     protected $fillable = ['tenant_id','quote_id','user_id','type','label','occurred_at'];
     protected $casts    = ['occurred_at' => 'datetime'];
 

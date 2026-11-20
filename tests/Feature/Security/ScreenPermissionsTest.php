@@ -66,7 +66,7 @@ class ScreenPermissionsTest extends BillingTestCase
             ['/admin/business-hours', 'settings.manage', 'page'],
             ['/admin/branding', 'settings.manage', 'page'],
             ['/admin/usage', 'settings.manage', 'page'],
-            ['/service-requests', 'sr.view', 'page'], ['/service-requests/export', 'sr.view', 'page'],
+            ['/service-requests', 'sr.view', 'page'], ['/service-requests/export', 'sr.export', 'page'],
             ['/admin/vendors', 'vendor.manage', 'page'], ['/admin/vendors/create', 'vendor.manage', 'form'],
             ['/admin/terminology', 'vocabulary.manage', 'page'],
             ['/manage/users', 'user.manage', 'page'], ['/manage/users/create', 'user.manage', 'form'],

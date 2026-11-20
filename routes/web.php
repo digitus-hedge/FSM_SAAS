@@ -116,6 +116,8 @@ Route::middleware(['platform.host', 'auth:platform', 'platform.2fa'])->prefix('a
     Route::post('/tenants/{tenant}/suspend',     [TenantController::class, 'suspend'])->name('tenants.suspend');
     Route::post('/tenants/{tenant}/reactivate',  [TenantController::class, 'reactivate'])->name('tenants.reactivate');
     Route::post('/tenants/{tenant}/resend-invitation', [TenantController::class, 'resendInvitation'])->name('tenants.resend-invitation');
+    // Support impersonation: owner and support roles only (checked in the service), reason required, handoff to the company address
+    Route::post('/tenants/{tenant}/impersonate', [\App\Http\Controllers\ImpersonationController::class, 'start'])->name('tenants.impersonate');
 });
 
 /*
@@ -123,12 +125,17 @@ Route::middleware(['platform.host', 'auth:platform', 'platform.2fa'])->prefix('a
 | Tenant workspace  (authenticated company users)
 |--------------------------------------------------------------------------
 */
+// The banner's "End session" of a support session (company address, signed in)
+Route::post('/impersonation/end', [\App\Http\Controllers\ImpersonationController::class, 'end'])->middleware('auth')->name('impersonation.end');
+
 // Invitation accept — public, token-gated.
 Route::get('/invitation/{token}',  [AuthController::class, 'showAcceptInvitation'])->name('invitation.accept');
 Route::post('/invitation/{token}', [AuthController::class, 'acceptInvitation'])->name('invitation.accept.submit');
 
 
 
+Route::get('/feedback/{token}',   [\App\Http\Controllers\PublicFeedbackController::class, 'show'])->middleware('throttle:20,1')->name('public.feedback.show');
+Route::post('/feedback/{token}',  [\App\Http\Controllers\PublicFeedbackController::class, 'store'])->middleware('throttle:20,1')->name('public.feedback.store');
 Route::get('/q/{token}',          [QrController::class, 'resolve'])->name('public.quote.show');
 Route::get('/q/{token}/pdf',      [PublicQuoteController::class, 'pdf'])->name('public.quote.pdf');
 Route::post('/q/{token}/accept',   [PublicQuoteController::class, 'accept'])->name('public.quote.accept');
@@ -594,7 +601,7 @@ Route::prefix('admin/approval-rules')->middleware(['auth', DenyClientRole::class
 // Service Requests
     Route::prefix('service-requests')->middleware(['auth', DenyClientRole::class])->name('service-requests.')->group(function () {
     Route::get('/',                       [ServiceRequestController::class, 'index'])->middleware('level:sr.view')->name('index');
-    Route::get('/export',                 [ServiceRequestController::class, 'export'])->middleware('level:sr.view')->name('export');
+    Route::get('/export',                 [ServiceRequestController::class, 'export'])->middleware('level:sr.export')->name('export');
     Route::get('/create',                 [ServiceRequestController::class, 'create'])->name('create');
     Route::post('/',                      [ServiceRequestController::class, 'store'])->name('store');
 
@@ -757,6 +764,12 @@ Route::prefix('admin/approval-rules')->middleware(['auth', DenyClientRole::class
 
             Route::get('/{asset}', [Asset360Controller::class, 'show'])->whereNumber('asset')->name('show');
         });
+    });
+
+    // Message log (Release A: the message log with retry). Company Admin full, Operations Manager view only.
+    Route::prefix('manage/message-log')->middleware(['auth', DenyClientRole::class, 'level:notification.manage'])->name('admin.message-log.')->group(function () {
+        Route::get('/',                    [\App\Http\Controllers\Admin\MessageLogController::class, 'index'])->name('index');
+        Route::post('/{messageLog}/retry', [\App\Http\Controllers\Admin\MessageLogController::class, 'retry'])->whereNumber('messageLog')->name('retry');
     });
 
     Route::prefix('admin/contracts')

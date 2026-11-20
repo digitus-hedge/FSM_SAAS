@@ -5,6 +5,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class InvoiceItem extends Model
 {
+    use \App\Models\Concerns\AppTimezoneDates;
+
     protected $table = 'invoice_items';
 
     protected $fillable = [

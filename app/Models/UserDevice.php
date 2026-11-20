@@ -5,6 +5,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class UserDevice extends Model
 {
+    use \App\Models\Concerns\AppTimezoneDates;
+
     protected $fillable = [
         'tenant_id', 'user_type', 'user_id',
         'label', 'ip', 'user_agent', 'session_id',

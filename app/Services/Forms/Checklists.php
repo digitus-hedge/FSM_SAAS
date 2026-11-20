@@ -92,8 +92,7 @@ class Checklists
             throw new FormException('CHECKLIST_VERSION_MISMATCH', 'This checklist changed. Reload the job to continue.', 409);
         }
 
-        // Device times are compared in one time zone, the one the column is read back in.
-        $deviceAt = ($deviceAt ?? now())->copy()->setTimezone(config('app.timezone'));
+        $deviceAt = $deviceAt ?? now();
         $assetId  = $row?->asset_id;
 
         // The same event twice changes nothing.

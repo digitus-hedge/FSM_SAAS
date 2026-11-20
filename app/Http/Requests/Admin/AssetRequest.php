@@ -107,6 +107,13 @@ class AssetRequest extends FormRequest
                     $v->errors()->add('default_contract_id', 'Choose a contract that belongs to the selected client.');
                     return;
                 }
+                // CNT-05 / spec 5.6: it must also be valid today and cover the site. A pin the asset already has is left as it is
+                // (saving other changes must not fail because the old pin has since expired; the form warns about it instead).
+                $unchanged = $self && (int) $self->default_contract_id === (int) $ct->id;
+                if (! $unchanged && ! \App\Models\Contract::pinnable((int) $this->input('client_id'), (int) $this->input('project_site_id'))->whereKey($ct->id)->exists()) {
+                    $v->errors()->add('default_contract_id', 'Choose an Active or Expiring soon contract of this client that covers the site.');
+                    return;
+                }
             }
 
             $parentId = $this->input('parent_asset_id');

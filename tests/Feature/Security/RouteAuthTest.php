@@ -25,6 +25,7 @@ class RouteAuthTest extends TestCase
         'login/technician', 'login/team-lead', 'field/login', 'field/login/team-lead',
         'invitation/{token}',              // accept an invitation
         'q/{token}', 'q/{token}/pdf', 'q/{token}/accept', 'q/{token}/reject',   // client quote link
+        'feedback/{token}',                // client feedback link (GET and POST, rate limited)
         'i/{token}', 'i/{token}/pdf',      // client invoice link
         'client/sign-in', 'client/sign-in/sent', 'client/sign-in/{token}',      // client sign-in by link
         'two-factor/challenge',            // second step of a sign-in that is already under way

@@ -10,7 +10,7 @@ class ForcePasswordChange
     {
         $user = auth('web')->user();
 
-        if ($user && $user->must_change_password) {
+        if ($user && $user->must_change_password && ! ($request->hasSession() && $request->session()->has('impersonation_session_id'))) {
             // Allow the password-change pages and logout; block everything else.
             if ($request->routeIs('password.change', 'password.change.submit', 'logout')) {
                 return $next($request);

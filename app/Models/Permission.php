@@ -5,6 +5,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Permission extends Model
 {
+    use \App\Models\Concerns\AppTimezoneDates;
+
     protected $fillable = ['key', 'group', 'description', 'feature_required'];
 
     public function rolePermissions()

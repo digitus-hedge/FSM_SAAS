@@ -115,6 +115,7 @@ h1,h2,h3,.fig{font-family:var(--font-display),var(--font-body),system-ui,sans-se
 @include('layouts._brand_font')
 </head>
 <body>
+@include('layouts._impersonation_banner')
 @php
     $navNeeds = ($needsAction ?? collect())->count();
     $navOverrides = ($overrides ?? collect())->count();

@@ -34,6 +34,7 @@
 @include('layouts._tablet')
 </head>
 <body>
+@include('layouts._impersonation_banner')
 @php
     $u = auth()->user();
     $tenantObj = $u?->tenant;

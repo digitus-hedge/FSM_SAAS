@@ -114,6 +114,19 @@ class Contract extends Model
     }
 
     public function client()     { return $this->belongsTo(Client::class); }
+    /**
+     * Contracts an asset may pin (spec 5.6): the client's Active and Expiring soon contracts that are in date and cover the site
+     * (a contract with no site rows covers every site). A null client or site leaves that test out.
+     */
+    public function scopePinnable($q, ?int $clientId, ?int $siteId)
+    {
+        return $q->when($clientId, fn ($x) => $x->where('client_id', $clientId))
+            ->whereIn('status', ['active', 'expiring_soon'])
+            ->whereDate('start_date', '<=', today())->whereDate('end_date', '>=', today())
+            ->when($siteId, fn ($x) => $x->where(fn ($y) => $y->whereDoesntHave('sites')
+                ->orWhereHas('sites', fn ($s) => $s->where('project_sites.id', $siteId))));
+    }
+
     public function sites()      { return $this->belongsToMany(ProjectSite::class, 'contract_sites', 'contract_id', 'project_site_id'); }
     public function categories() { return $this->belongsToMany(ServiceCategory::class, 'contract_categories', 'contract_id', 'service_category_id'); }
 

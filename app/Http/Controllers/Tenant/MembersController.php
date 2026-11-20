@@ -146,9 +146,9 @@ class MembersController extends Controller
 
         $url = url("/invitation/{$token}");
 
-        \Illuminate\Support\Facades\Mail::to($user->email)->send(
-            (new \App\Mail\InvitationMail($user, $tenant, $url))->afterCommit()
-        );
+        app(\App\Services\Messaging\MessageLogger::class)->send($user->email, (new \App\Mail\InvitationMail($user, $tenant, $url))->afterCommit(), 'user.invitation', [
+            'tenant_id' => $tenant->id, 'user_id' => $user->id,
+        ]);
 
         return redirect()->route('tenant.users.index')
             ->with('success', "{$user->name} was created.")

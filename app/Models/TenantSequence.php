@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\DB;
 
 class TenantSequence extends Model
 {
+    use \App\Models\Concerns\AppTimezoneDates;
+
     protected $fillable = ['tenant_id', 'prefix', 'pattern', 'reset_yearly', 'current_year', 'next_number'];
     protected $casts = ['reset_yearly' => 'boolean'];
 

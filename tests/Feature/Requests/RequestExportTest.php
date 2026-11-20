@@ -14,7 +14,8 @@ use Tests\Feature\Forms\FormsTestCase;
 
 /**
  * The request list as an Excel file (service-requests.export): exactly the rows the list shows for the same tab and filters and the same
- * narrowing of the signed-in user (sr.view), plus a contract column. Behind level:sr.view, at most 5,000 rows, every export audited.
+ * narrowing of the signed-in user (sr.view), plus a contract column. Only the Company Admin and the Operations Manager export (sr.export, blueprint 7.9a),
+ * at most 5,000 rows, every export audited.
  */
 class RequestExportTest extends FormsTestCase
 {
@@ -53,10 +54,10 @@ class RequestExportTest extends FormsTestCase
         return $m[1];
     }
 
-    /** A personal override of sr.view for one user. */
-    protected function override(string $role, string $level): User
+    /** A personal override of one permission (sr.view unless told otherwise) for one user. */
+    protected function override(string $role, string $level, string $key = 'sr.view'): User
     {
-        $perm = Permission::where('key', 'sr.view')->firstOrFail();
+        $perm = Permission::where('key', $key)->firstOrFail();
         UserPermissionOverride::create(['tenant_id' => $this->t->id, 'user_id' => $this->u[$role]->id, 'permission_id' => $perm->id, 'level' => $level, 'reason' => 'test']);
 
         return $this->u[$role]->fresh();
@@ -212,6 +213,7 @@ class RequestExportTest extends FormsTestCase
         $theirs = $this->raise($this->makeCategory(), ['title' => 'Theirs']);               // raised by the Front Desk too, then given to someone else
         $theirs->forceFill(['created_by_user_id' => $this->u['company_admin']->id])->save();
         $this->override('front_desk', 'record_level');
+        $this->override('front_desk', 'full', 'sr.export');
 
         $this->assertSame([$mine->sr_number], $this->exported([], 'front_desk'));
         $this->assertSame($this->listed([], 'front_desk'), $this->exported([], 'front_desk'));
@@ -227,18 +229,23 @@ class RequestExportTest extends FormsTestCase
         $theirs = $this->raise($this->makeCategory(), ['priority' => 'high']);
         $theirs->forceFill(['created_by_user_id' => $this->u['company_admin']->id])->save();
         $this->override('front_desk', 'record_level');
+        $this->override('front_desk', 'full', 'sr.export');
 
         $this->assertEqualsCanonicalizing([$mine->sr_number, $minor->sr_number], $this->exported([], 'front_desk'));
         $this->assertSame([$mine->sr_number], $this->exported(['priority' => 'high'], 'front_desk'));      // never the other high one
         $this->assertSame([$mine->sr_number], $this->exported(['q' => $theirs->sr_number . ' ' . $mine->sr_number, 'priority' => 'high'], 'front_desk') ?: [$mine->sr_number]);
     }
 
-    public function test_view_own_is_refused_by_the_level_gate_like_every_office_screen(): void
+    public function test_a_view_own_user_with_the_export_right_exports_only_their_own_rows(): void
     {
-        $this->raise($this->makeCategory());
+        $mine = $this->raise($this->makeCategory());
+        $mine->forceFill(['created_by_user_id' => $this->u['front_desk']->id])->save();
+        $this->raise($this->makeCategory())->forceFill(['created_by_user_id' => $this->u['company_admin']->id])->save();
         $this->override('front_desk', 'view_own');
+        $this->override('front_desk', 'full', 'sr.export');
 
-        $this->export([], 'front_desk')->assertForbidden();                                    // view_own belongs to client and field users (CLAUDE.md)
+        $this->assertSame([$mine->sr_number], $this->exported([], 'front_desk'));
+        // the list screen itself still refuses view_own (a level: gate never lets it through, CLAUDE.md)
         $this->as('front_desk')->get($this->onHost($this->t, '/service-requests'))->assertForbidden();
     }
 
@@ -285,12 +292,12 @@ class RequestExportTest extends FormsTestCase
         $this->assertSame([$mine->sr_number], $got);
     }
 
-    public function test_view_only_and_full_users_get_every_row(): void
+    public function test_the_two_exporting_roles_get_every_row(): void
     {
         $a = $this->raise($this->makeCategory());
         $b = $this->raise($this->makeCategory());
 
-        foreach (['finance', 'company_admin', 'operations_manager'] as $role) {
+        foreach (['company_admin', 'operations_manager'] as $role) {
             $this->assertEqualsCanonicalizing([$a->sr_number, $b->sr_number], $this->exported([], $role), $role);
         }
     }
@@ -367,5 +374,91 @@ class RequestExportTest extends FormsTestCase
         $theirs->forceFill(['tenant_id' => $other->id, 'sr_number' => 'OTHER-1'])->save();
 
         $this->assertSame([$mine->sr_number], $this->exported());
+    }
+
+    /* ---------- who may export (blueprint 7.9a) ---------- */
+
+    public function test_only_the_company_admin_and_the_operations_manager_may_export(): void
+    {
+        $this->raise($this->makeCategory());
+
+        $this->export([], 'company_admin')->assertOk();
+        $this->export([], 'operations_manager')->assertOk();
+        $this->export([], 'finance')->assertForbidden();                    // can see the list (view only) but not export it
+        $this->export([], 'front_desk')->assertForbidden();                 // sees every request, still cannot export
+        $this->assertNotSame(200, $this->export([], 'team_lead')->getStatusCode());          // field roles are sent to the Field View or refused
+        $this->assertNotSame(200, $this->export([], 'field_technician')->getStatusCode());
+    }
+
+    public function test_a_refused_user_gets_no_file_and_no_audit_row(): void
+    {
+        $this->raise($this->makeCategory());
+
+        $this->export([], 'finance')->assertForbidden();
+
+        $this->assertSame(0, DB::table('activity_logs')->where('tenant_id', $this->t->id)->where('action', 'service_requests.exported')->count());
+    }
+
+    public function test_the_button_shows_for_the_two_roles_and_for_nobody_else(): void
+    {
+        $this->raise($this->makeCategory());
+        $button = fn (string $who) => str_contains($this->as($who)->get($this->onHost($this->t, '/service-requests'))->assertOk()->getContent(), 'id="sr-export"');
+
+        $this->assertTrue($button('company_admin'));
+        $this->assertTrue($button('operations_manager'));
+        $this->assertFalse($button('finance'));
+        $this->assertFalse($button('front_desk'));
+    }
+
+    public function test_the_button_keeps_the_filters_of_the_list(): void
+    {
+        $this->raise($this->makeCategory(), ['priority' => 'high']);
+
+        $html = $this->as('operations_manager')->get($this->onHost($this->t, '/service-requests?priority=high&page=2&per_page=25'))->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('#href="[^"]*/service-requests/export\?priority=high"[^>]*id="sr-export"#', $html);
+    }
+
+    public function test_a_personal_override_can_give_the_right_and_the_button_follows(): void
+    {
+        $this->override('finance', 'full', 'sr.export');
+        $this->raise($this->makeCategory());
+
+        $this->export([], 'finance')->assertOk();
+        $this->assertStringContainsString('id="sr-export"', $this->as('finance')->get($this->onHost($this->t, '/service-requests'))->assertOk()->getContent());
+    }
+
+    public function test_the_signed_matrix_has_the_key_full_for_the_two_roles_and_none_for_the_rest(): void
+    {
+        $rows = array_map('str_getcsv', file(database_path('seeders/data/permission_matrix.csv')));
+        $head = array_shift($rows);
+        $row = collect($rows)->filter(fn ($r) => count($r) === count($head))->map(fn ($r) => array_combine($head, $r))->firstWhere('permission_key', 'sr.export');
+
+        $this->assertNotNull($row);
+        $this->assertSame('full', $row['company_admin']);
+        $this->assertSame('full', $row['operations_manager']);
+        foreach (['team_lead', 'field_technician', 'front_desk', 'finance', 'client_user'] as $role) {
+            $this->assertSame('none', $row[$role], $role);
+        }
+    }
+
+    public function test_a_company_made_before_the_key_existed_gets_it_from_the_migration(): void
+    {
+        $perm = Permission::where('key', 'sr.export')->firstOrFail();
+        \App\Models\RolePermission::where('permission_id', $perm->id)->delete();                 // as a company created earlier
+        $custom = \App\Models\Role::create(['tenant_id' => $this->t->id, 'code' => 'custom_role', 'name' => 'Custom', 'is_standard' => false]);
+
+        $migration = require database_path('migrations/2026_11_27_100001_add_sr_export_permission.php');
+        $migration->up();
+        $migration->up();                                                                         // safe to run twice
+
+        $level = fn (string $code) => \App\Models\RolePermission::where('permission_id', $perm->id)
+            ->where('role_id', \App\Models\Role::where('tenant_id', $this->t->id)->where('code', $code)->value('id'))->value('level');
+        $this->assertSame('full', $level('company_admin'));
+        $this->assertSame('full', $level('operations_manager'));
+        foreach (['team_lead', 'field_technician', 'front_desk', 'finance', 'client_user', 'custom_role'] as $code) {
+            $this->assertSame('none', $level($code), $code);
+        }
+        $this->assertSame(1, \App\Models\RolePermission::where('permission_id', $perm->id)->where('role_id', $custom->id)->count());
     }
 }

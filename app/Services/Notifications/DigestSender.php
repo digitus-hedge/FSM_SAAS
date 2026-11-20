@@ -47,7 +47,7 @@ class DigestSender
 
             $send = $send->sortByDesc('created_at')->values();
             try {
-                Mail::to($user->email)->send(new DigestMail($tenant?->name ?? 'your company', $send->take(self::MAX_LINES), max(0, $send->count() - self::MAX_LINES)));
+                app(\App\Services\Messaging\MessageLogger::class)->send($user->email, new DigestMail($tenant?->name ?? 'your company', $send->take(self::MAX_LINES), max(0, $send->count() - self::MAX_LINES)), 'digest', ['tenant_id' => $tenant?->id, 'user_id' => $user->id]);
                 NotificationDigestItem::withoutGlobalScopes()->whereIn('id', $send->pluck('id'))->update(['sent_at' => now()]);
                 $out['sent']++;
             } catch (\Throwable $e) {

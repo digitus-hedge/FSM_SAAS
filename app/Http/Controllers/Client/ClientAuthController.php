@@ -72,9 +72,9 @@ class ClientAuthController extends Controller
                 $token = $this->links->create($user, 'client_sign_in', 24 * 60);
                 $url   = $this->buildPortalUrl($tenant, "/client/sign-in/{$token}");
 
-                Mail::to($user->email)->send(
-                    (new ClientSignInLinkMail($user, $tenant, $url))->afterCommit()
-                );
+                app(\App\Services\Messaging\MessageLogger::class)->send($user->email, (new ClientSignInLinkMail($user, $tenant, $url))->afterCommit(), 'client.sign_in_link', [
+                    'tenant_id' => $tenant->id, 'user_id' => $user->id,
+                ]);
 
                 $this->audit->log('auth.sign_in_link_requested', [
                     'tenant_id' => $tenant->id,

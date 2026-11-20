@@ -23,19 +23,23 @@ class AuditLogger
     {
         $request = request();
         $actor   = $context['actor'] ?? $this->resolveActor();
+        // 'global' => true writes a row of the platform audit (no company), whichever address the request came in on
+        $tenantId = ($context['global'] ?? false) ? null : ($context['tenant_id'] ?? $this->currentTenantId());
 
-        return DB::transaction(function () use ($action, $context, $actor, $request) {
+        return DB::transaction(function () use ($action, $context, $actor, $request, $tenantId) {
             // Fetch the chain's current tail row-locked, so concurrent writes serialise.
             $last = ActivityLog::query()
-                ->where('tenant_id', $context['tenant_id'] ?? $this->currentTenantId())
+                ->where('tenant_id', $tenantId)
                 ->orderByDesc('id')
                 ->lockForUpdate()
                 ->first();
 
             $createdAt = now();
 
+            $impersonation = $context['impersonation_session_id'] ?? ($request?->hasSession() ? $request->session()->get('impersonation_session_id') : null);
+
             $row = [
-                'tenant_id'   => $context['tenant_id'] ?? $this->currentTenantId(),
+                'tenant_id'   => $tenantId,
                 'actor_type'  => $actor['type'],
                 'actor_id'    => $actor['id'],
                 'actor_name'  => $actor['name'],
@@ -48,6 +52,9 @@ class AuditLogger
                 'user_agent'  => $request ? mb_substr((string) $request->userAgent(), 0, 500) : null,
                 'prev_hash'   => $last?->hash,
                 'created_at'  => $createdAt,
+                'impersonation_session_id'         => $impersonation,
+                'impersonated_by_platform_user_id' => $context['impersonated_by_platform_user_id']
+                    ?? ($impersonation ? \App\Models\ImpersonationSession::whereKey($impersonation)->value('platform_user_id') : null),
             ];
 
             $row['hash'] = $this->computeHash($row);

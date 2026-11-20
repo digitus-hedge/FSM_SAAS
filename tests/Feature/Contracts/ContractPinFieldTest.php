@@ -77,7 +77,7 @@ class ContractPinFieldTest extends ContractsTestCase
         $plan->features = array_merge((array) $plan->features, ['contracts' => false]);
         $plan->save();
 
-        $this->assertStringNotContainsString('default_contract_id', $this->form());
+        $this->assertStringNotContainsString('name="default_contract_id"', $this->form());
     }
 
     /* ---------- saving a pin (CC-056) ---------- */

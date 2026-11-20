@@ -100,6 +100,17 @@ h1{font-family:'Figtree';font-size:32px;font-weight:700;letter-spacing:-.6px}
                     </td>
                     <td style="color:var(--muted)">{{ $tenant->created_at->format('d M Y') }}</td>
                     <td class="actions-cell">
+                        @if ($tenant->status === 'active' && in_array(auth('platform')->user()?->platform_role, ['owner', 'support'], true))
+                            <details style="display:inline-block">
+                                <summary class="linkbtn" style="cursor:pointer;display:inline">Support sign-in</summary>
+                                <form method="POST" action="{{ route('admin.tenants.impersonate', $tenant) }}" style="margin-top:6px">
+                                    @csrf
+                                    <input type="text" name="reason" required minlength="10" maxlength="255" placeholder="Reason (10 to 255 characters)" style="width:230px">
+                                    <select name="minutes"><option value="30">30 minutes</option><option value="60">1 hour</option><option value="120">2 hours</option></select>
+                                    <button type="submit" class="linkbtn">Sign in</button>
+                                </form>
+                            </details>
+                        @endif
                         <form method="POST" action="{{ route('admin.tenants.resend-invitation', $tenant) }}" style="display:inline">
                             @csrf
                             <button type="submit" class="linkbtn">Resend invite</button>

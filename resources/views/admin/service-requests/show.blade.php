@@ -286,6 +286,25 @@
     <div class="card"><div class="card-body"><a href="{{ route('service-requests.certificate', $sr) }}">Completion certificate (PDF)</a></div></div>
     @endif
 
+    {{-- CLIENT FEEDBACK (blueprint 7.7b): the answer given through the secure link --}}
+    @if ($sr->client_star_rating !== null || $sr->client_nps_score !== null)
+    <div class="card" id="client-feedback">
+      <div class="card-head"><h3>Client feedback</h3></div>
+      <div class="card-body" style="font-size:13px">
+        <dl style="display:grid;grid-template-columns:130px 1fr;gap:6px 12px;margin:0">
+          <dt>Rating</dt><dd>{{ $sr->client_star_rating }} of 5 stars</dd>
+          <dt>Score</dt><dd>{{ $sr->client_nps_score }} of 10</dd>
+          @if (filled($sr->client_feedback_comment))
+            <dt>Comment</dt><dd style="white-space:pre-line">{{ $sr->client_feedback_comment }}</dd>
+          @endif
+          @if ($sr->client_feedback_at)
+            <dt>Given</dt><dd>{{ \Carbon\Carbon::parse($sr->client_feedback_at)->format('d M Y, H:i') }}{{ $sr->client_feedback_by ? ' by ' . $sr->client_feedback_by : '' }}{{ $sr->client_feedback_source ? ' (' . ($sr->client_feedback_source === 'link' ? 'secure link' : $sr->client_feedback_source) . ')' : '' }}</dd>
+          @endif
+        </dl>
+      </div>
+    </div>
+    @endif
+
     {{-- MULTI-TRADE (MTR-02, MTR-03) --}}
     @if ($sr->is_master_sr)
     <div class="card">

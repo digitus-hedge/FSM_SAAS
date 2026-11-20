@@ -600,8 +600,9 @@ class InvoicesController extends Controller
             ]);
 
             if ($via === 'email' && $contact?->email) {
-                \Illuminate\Support\Facades\Mail::to($contact->email)
-                    ->send(new \App\Mail\InvoiceSentMail($token));
+                app(\App\Services\Messaging\MessageLogger::class)->send($contact->email, new \App\Mail\InvoiceSentMail($token), 'invoice.sent', [
+                    'tenant_id' => $invoice->tenant_id, 'contact_id' => $contact->id, 'related' => $invoice, 'payload' => ['token_id' => $token->id],
+                ]);
             }
         }
 

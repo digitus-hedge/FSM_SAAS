@@ -7,6 +7,7 @@ sr.qc,Service requests,Pass or fail the quality check,full,full,none,none,none,n
 sr.cancel,Service requests,Cancel a request with a reason,full,full,none,none,record_level,none,record_level,"Front desk and client: only requests they raised, and only while Pending."
 sr.reopen,Service requests,Reopen a completed job inside the company's window,full,full,none,none,none,none,none,
 sr.override_geofence,Service requests,Approve a technician's geofence override,full,full,record_level,none,none,none,none,Team lead: own team.
+sr.export,Service requests,Download the request list as an Excel file,full,full,none,none,none,none,none,"Blueprint 7.9a: Company Admin and Operations Manager only. Up to 5,000 rows, narrowed like the list."
 field.punch,Field work,"Punch in and out, hold, resume, capture proof",none,none,edit_own,edit_own,none,none,none,Only on jobs assigned to the person.
 expense.log,Field work,Log expenses on a job,none,none,edit_own,edit_own,none,none,none,Vendor technicians: off by default. The admin can switch it on for a person. Reports show vendor expenses separately.
 expense.approve,Field work,Approve or reject logged expenses,full,full,none,none,none,full,none,"Team lead: off by default. The admin can switch it on for a person, for their own team."

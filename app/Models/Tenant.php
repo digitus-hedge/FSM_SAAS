@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Tenant extends Model
 {
+    use \App\Models\Concerns\AppTimezoneDates;
+
     use HasFactory, SoftDeletes;
 
     protected $guarded = [];

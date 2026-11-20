@@ -63,7 +63,7 @@ class DispatchController extends Controller
         $arrival = null;
         if ($request->filled('arrival')) {
             try {
-                $arrival = Carbon::parse($request->query('arrival'))->setTimezone(config('app.timezone'));
+                $arrival = Carbon::parse($request->query('arrival'));
             } catch (\Throwable $e) {
                 $arrival = null;
             }
@@ -163,7 +163,7 @@ class DispatchController extends Controller
 
         $tenantId = (int) $user->tenant_id;
         $techId   = (int) $service_request->assigned_tech_user_id;
-        $new      = Carbon::parse($data['new_eta'])->setTimezone(config('app.timezone'));
+        $new      = Carbon::parse($data['new_eta']);
         $jobMin   = max(1, (int) DispatchSetting::forTenant($tenantId)->job_minutes);
 
         // Time off blocks the move.
@@ -247,9 +247,12 @@ class DispatchController extends Controller
 
         try {
             $tz = \App\Models\Tenant::query()->whereKey($sr->tenant_id)->value('timezone') ?: config('app.timezone');
-            \Illuminate\Support\Facades\Mail::to($contact->email)->send(new \App\Mail\JobRescheduledMail(
-                $sr, $contact->name, $previous?->copy()->setTimezone($tz), $new->copy()->setTimezone($tz), $reason,
-            ));
+            $before = $previous?->copy()->setTimezone($tz);
+            $after  = $new->copy()->setTimezone($tz);
+            app(\App\Services\Messaging\MessageLogger::class)->send($contact->email, new \App\Mail\JobRescheduledMail($sr, $contact->name, $before, $after, $reason), 'visit.rescheduled', [
+                'tenant_id' => $sr->tenant_id, 'contact_id' => $contact->id, 'related' => $sr,
+                'payload'   => ['sr_id' => $sr->id, 'contact_name' => $contact->name, 'previous' => $before?->toIso8601String(), 'new' => $after->toIso8601String(), 'reason' => $reason],
+            ]);
 
             return true;
         } catch (\Throwable $e) {

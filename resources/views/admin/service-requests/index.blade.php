@@ -264,10 +264,12 @@
     </select>
   @endif
 
-  <a href="{{ route('service-requests.export', request()->except('page', 'per_page')) }}" id="sr-export"
-     style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--muted);text-decoration:none;padding:9px 14px;border-radius:999px;border:1px solid var(--line)">
-    Export to Excel
-  </a>
+  @if (\App\Services\Permissions\PermissionLevel::canView(auth()->user(), 'sr.export'))
+    <a href="{{ route('service-requests.export', request()->except('page', 'per_page')) }}" id="sr-export"
+       style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--muted);text-decoration:none;padding:9px 14px;border-radius:999px;border:1px solid var(--line)">
+      Export to Excel
+    </a>
+  @endif
 
   <input type="hidden" name="per_page" value="{{ $perPage }}" />
   @if (request()->boolean('choice'))<input type="hidden" name="choice" value="1" />@endif

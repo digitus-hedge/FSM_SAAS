@@ -18,6 +18,8 @@ use Illuminate\Database\Eloquent\Scope;
  */
 trait BelongsToTenant
 {
+    use AppTimezoneDates;   // a Carbon in any zone is saved as the same instant
+
     public static function bootBelongsToTenant(): void
     {
         static::addGlobalScope(new TenantScope);

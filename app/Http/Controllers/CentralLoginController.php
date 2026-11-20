@@ -170,15 +170,16 @@ class CentralLoginController extends Controller
     }
 
     /** Called here, and by TwoFactorController after a correct code. */
-    public function handoff(User $user, bool $remember): RedirectResponse
+    public function handoff(User $user, bool $remember, array $extra = []): RedirectResponse
     {
         $token = Str::random(48);
 
+        // $extra carries impersonation_session_id for a support session (Services/Platform/Impersonation)
         Cache::put('central_login:' . hash('sha256', $token), [
             'user_id'   => $user->id,
             'tenant_id' => $user->tenant_id,
             'remember'  => $remember,
-        ], now()->addSeconds(self::TOKEN_TTL_SEC));
+        ] + $extra, now()->addSeconds(self::TOKEN_TTL_SEC));
 
         $user->loadMissing('tenant');
 
@@ -203,23 +204,34 @@ class CentralLoginController extends Controller
             return redirect()->route('login')->withErrors(['identifier' => 'Your sign-in expired. Please sign in again.']);
         }
 
-        Auth::guard('web')->login($user, (bool) $payload['remember']);
+        // A support session: the handoff names the session, which must still be open and be for this user and company.
+        $impId = $payload['impersonation_session_id'] ?? null;
+        $imp   = $impId ? \App\Models\ImpersonationSession::find($impId) : null;
+        if ($impId && (! $imp || ! $imp->isActive() || (int) $imp->target_user_id !== (int) $user->id || (int) $imp->tenant_id !== (int) $tenant->id)) {
+            return redirect()->route('login')->withErrors(['identifier' => 'The support session has ended.']);
+        }
+
+        Auth::guard('web')->login($user, $imp ? false : (bool) $payload['remember']);
         $request->session()->regenerate();
 
-        $user->update([
-            'last_sign_in_at'    => now(),
-            'failed_login_count' => 0,
-        ]);
+        if ($imp) {
+            $request->session()->put('impersonation_session_id', $imp->id);   // the audit rows of this request and later ones carry the session
+        } else {
+            $user->update([
+                'last_sign_in_at'    => now(),
+                'failed_login_count' => 0,
+            ]);
 
-        app(DeviceService::class)->register($user, $request);
+            app(DeviceService::class)->register($user, $request);
+        }
 
         $this->audit->log('auth.sign_in', [
             'item_type' => User::class,
             'item_id'   => $user->id,
-            'new'       => ['channel' => 'central_login'],
+            'new'       => ['channel' => $imp ? 'support_session' : 'central_login'],
         ]);
 
-        if ($user->must_change_password) {
+        if ($user->must_change_password && ! $imp) {
             return redirect()->route('password.change');
         }
 

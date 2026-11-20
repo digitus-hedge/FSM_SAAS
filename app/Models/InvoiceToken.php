@@ -6,6 +6,8 @@ use Illuminate\Support\Str;
 
 class InvoiceToken extends Model
 {
+    use \App\Models\Concerns\AppTimezoneDates;
+
     protected $fillable = [
         'tenant_id', 'invoice_id', 'client_contact_id', 'recipient_name',
         'token', 'sent_via', 'sent_at', 'viewed_first_at', 'viewed_count',

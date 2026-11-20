@@ -146,7 +146,9 @@ class OverdueReminderService
                 continue;
             }
             try {
-                Mail::to($email)->send(new InvoiceOverdueMail($inv, $token));
+                app(\App\Services\Messaging\MessageLogger::class)->send($email, new InvoiceOverdueMail($inv, $token), 'invoice.overdue', [
+                    'tenant_id' => $inv->tenant_id, 'contact_id' => $token->client_contact_id, 'related' => $inv, 'payload' => ['invoice_id' => $inv->id, 'token_id' => $token->id],
+                ]);
                 $sent[strtolower($email)] = $email;
             } catch (\Throwable $e) {
                 Log::warning('Overdue reminder email failed', ['invoice' => $inv->id, 'error' => $e->getMessage()]);

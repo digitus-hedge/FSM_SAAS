@@ -156,7 +156,7 @@ class UserCsvImporter
                     $url   = "{$scheme}://{$tenant->slug}.{$host}{$portPart}/invitation/{$token}";
 
                     try {
-                        Mail::to($user->email)->send((new InvitationMail($user, $tenant, $url))->afterCommit());
+                        app(\App\Services\Messaging\MessageLogger::class)->send($user->email, (new InvitationMail($user, $tenant, $url))->afterCommit(), 'user.invitation', ['tenant_id' => $tenant->id, 'user_id' => $user->id]);
                         $invited++;
                     } catch (\Throwable $e) {
                         Log::warning("CSV import: invitation email failed for {$user->email}: {$e->getMessage()}");

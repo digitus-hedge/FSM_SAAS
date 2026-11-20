@@ -5,6 +5,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class TenantSetting extends Model
 {
+    use \App\Models\Concerns\AppTimezoneDates;
+
     protected $fillable = [
         'tenant_id', 'reopen_window_days', 'feedback_link_days',
         'client_sign_in_link_hours', 'require_two_factor',

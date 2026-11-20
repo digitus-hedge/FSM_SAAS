@@ -154,9 +154,20 @@ Labels such as "service request", "client" and "quote" can be renamed per compan
 - Usage: `usage:refresh` also recomputes `requests_count` (created in the month, children included, not those cancelled while Pending) and `storage_bytes`, then `Services/Usage/PlanLimitWarnings` sends `plan.limit_warning`
   to the Company Admin once at 80 and once at 100 percent for each limit and month (`warnings_json` on the counter).
 - Request list and export: `ServiceRequestAccess::narrowVisible()` is the one place that narrows the list, its counts and `service-requests.export` (sr.view `record_level` and `view_own`: Team Lead = their team, Field Technician = assigned
-  to them, anyone else = raised by them). Both routes are behind `level:sr.view`, which never lets `view_own` through (as everywhere); the export holds at most 5,000 rows and writes the audit row `service_requests.exported`.
-- Gotchas found on the way: Eloquent writes a Carbon in ITS OWN zone, so convert to `config('app.timezone')` before saving or binding (the SLA clock, the reschedule time and the usage month all needed it);
+  to them, anyone else = raised by them). The list is behind `level:sr.view` (never `view_own`, as everywhere); the export is behind `level:sr.export` (blueprint 7.9a: Company Admin and Operations Manager only, matrix key `sr.export`, a personal override can grant it), holds at most 5,000 rows and writes the audit row `service_requests.exported`. The button shows only with `sr.export`.
+- Time zones: every model converts a Carbon to the application zone before Eloquent formats it (`Concerns\AppTimezoneDates`, brought in by `BelongsToTenant` and added to the other models) and `App\Support\AppTimezoneMySqlConnection` does the same for query values, so a Carbon in any zone is safe to save or bind.
+  `times:fix-pm-eta` (needs `--confirm`, writes a backup, `--revert=`) corrects maintenance arrival times saved before that rule.
+- Gotchas found on the way: (the Carbon zone rule above replaced the old per-place conversions);
   public properties of a Mailable override the view data of the same name; a Blade `@php(...)` line pairs with the next `@endphp`, so use `@php ... @endphp` blocks.
+
+## Feedback, message log and support sessions
+- Feedback: completing a top-level request sends the client contact `FeedbackRequestMail` (event `sr.completed`) with a one-use secure link (`FeedbackLinks`, `SecureLinkService::createFor`, `secure_links` entity columns, valid `tenant_settings.feedback_link_days`, default 7).
+  Public `/feedback/{token}` (throttle 20 a minute, 410 page when used or expired, 404 on another company's address) takes stars 1 to 5, a 0 to 10 score and a comment; the answer is on `service_requests.client_*` and the request page; `feedback.received` goes to the Operations Manager (Urgent for 1 or 2 stars or a score of 0 to 6).
+- Message log: every email goes through `Services/Messaging/MessageLogger` (table `message_logs`, ids only, errors cleaned, never a token or code). `/manage/message-log` is behind `level:notification.manage` (Company Admin retries, Operations Manager reads).
+  A failed row is retried only when it can be built again from ids (notification, reschedule, feedback with a NEW link, quote, invoice, overdue); invitations and sign-in links are not retryable. Each retry writes `message.retried`.
+- Support sessions (`Services/Platform/Impersonation`, `impersonation_sessions`): owner and support, reason 10 to 255, 30 minutes (2 hours at most), one open session for each platform user, handoff through `CentralLoginController::handoff($user, false, ['impersonation_session_id' => ..])`,
+  `EnforceImpersonation` (web middleware) ends it at expiry and blocks passwords, two-factor, user and role changes, invoice approve, void, send, payments, write-offs and exports. Start and end go to the platform audit (`'global' => true`, no company) and the company audit; every company audit row during the session carries `impersonation_session_id`.
+  `impersonation:expire` runs every minute. Known: `AuditLogger::verifyChain()` never passes (it hashes `created_at` in another format than the write); nothing calls it.
 
 ## Conventions
 - Every company table has `tenant_id`. Many models have the global scope (trait `App\Models\Concerns\BelongsToTenant`: Client,

@@ -5,6 +5,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class AuthCode extends Model
 {
+    use \App\Models\Concerns\AppTimezoneDates;
+
     public $timestamps = false;
 
     protected $fillable = [

@@ -34,8 +34,8 @@ class PaymentLedgerQuery
     public function query(Tenant $tenant, array $f): Builder
     {
         $tz    = $tenant->timezone ?: config('app.timezone');
-        $start = Carbon::parse($f['from'], $tz)->startOfDay()->setTimezone(config('app.timezone'));
-        $end   = Carbon::parse($f['to'], $tz)->endOfDay()->setTimezone(config('app.timezone'));
+        $start = Carbon::parse($f['from'], $tz)->startOfDay();
+        $end   = Carbon::parse($f['to'], $tz)->endOfDay();
 
         return Payment::query()
             ->where('payments.tenant_id', $tenant->id)

@@ -154,6 +154,11 @@ class AuthController extends Controller
                 'item_id'   => auth()->id(),
             ]);
         }
+        if ($impId = $request->session()->get('impersonation_session_id')) {
+            if ($imp = \App\Models\ImpersonationSession::find($impId)) {
+                app(\App\Services\Platform\Impersonation::class)->end($imp, 'signed_out');
+            }
+        }
         app(\App\Services\Auth\DeviceService::class)->markCurrentRevoked($request);
         auth()->logout();
         $request->session()->invalidate();

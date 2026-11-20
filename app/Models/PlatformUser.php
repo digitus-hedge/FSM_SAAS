@@ -9,6 +9,8 @@ use Laravel\Sanctum\HasApiTokens;
 
 class PlatformUser extends Authenticatable
 {
+    use \App\Models\Concerns\AppTimezoneDates;
+
     use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
     protected $fillable = [

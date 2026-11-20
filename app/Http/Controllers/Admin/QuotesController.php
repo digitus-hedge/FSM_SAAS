@@ -405,8 +405,9 @@ class QuotesController extends Controller
             ]);
 
             if ($via === 'email' && $contact?->email) {
-                \Illuminate\Support\Facades\Mail::to($contact->email)
-                    ->send(new \App\Mail\QuoteSentMail($token));
+                app(\App\Services\Messaging\MessageLogger::class)->send($contact->email, new \App\Mail\QuoteSentMail($token), 'quote.sent', [
+                    'tenant_id' => $quote->tenant_id, 'contact_id' => $contact->id, 'related' => $quote, 'payload' => ['token_id' => $token->id],
+                ]);
             }
         }
 

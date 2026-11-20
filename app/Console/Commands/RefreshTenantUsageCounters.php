@@ -49,7 +49,7 @@ class RefreshTenantUsageCounters extends Command
             ? DB::table('message_logs')
                 ->where('tenant_id', $tenant->id)
                 ->where('channel', $channel)
-                ->where('direction', 'outbound')
+                ->where('direction', 'outbound')->where('status', 'sent')
                 ->whereBetween('created_at', [$monthStart, $monthEnd])
                 ->count()
             : 0;
@@ -57,7 +57,7 @@ class RefreshTenantUsageCounters extends Command
         // Blueprint 6 "At a plan limit": every request created in the month counts, including maintenance jobs and child requests;
         // a request cancelled while still Pending does not. Storage is the size of the company's files.
         $requests = ServiceRequest::withoutGlobalScopes()->where('tenant_id', $tenant->id)
-            ->whereBetween('created_at', [$monthStart->copy()->setTimezone(config('app.timezone')), $monthEnd->copy()->setTimezone(config('app.timezone'))])
+            ->whereBetween('created_at', [$monthStart, $monthEnd])
             ->whereNotExists(fn ($q) => $q->select(DB::raw(1))->from('sr_status_history as h')
                 ->whereColumn('h.service_request_id', 'service_requests.id')->where('h.from_status', 'pending')->where('h.to_status', 'cancelled'))
             ->count();

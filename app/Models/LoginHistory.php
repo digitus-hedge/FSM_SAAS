@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class LoginHistory extends Model
 {
+    use \App\Models\Concerns\AppTimezoneDates;
+
     protected $table = 'login_history';
 
     protected $guarded = [];

@@ -143,9 +143,9 @@ class ProvisionCompany implements ShouldQueue
                 ];
 
                 // Send the invitation email (afterCommit so a later rollback does not queue a stale mail).
-                Mail::to($admin->email)->send(
-                    (new InvitationMail($admin, $tenant, $invitationUrl))->afterCommit()
-                );
+                app(\App\Services\Messaging\MessageLogger::class)->send($admin->email, (new InvitationMail($admin, $tenant, $invitationUrl))->afterCommit(), 'user.invitation', [
+                    'tenant_id' => $tenant->id, 'user_id' => $admin->id,
+                ]);
 
                         // Step 8 — starter master data (hold reasons).
             (new \Database\Seeders\HoldReasonSeeder())->run($tenant->id);

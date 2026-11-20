@@ -84,16 +84,16 @@ class SlaClock
 
     /* ---------- arithmetic ---------- */
 
-    // Results are in the application's time zone: Eloquent writes a Carbon with its own zone's wall-clock time, and reads it back in the application's zone.
+    // The results keep the zone they were worked out in: a Carbon is converted to the application zone when it is saved (Models\Concerns\AppTimezoneDates).
 
-    /** $from plus $minutes of the clock's own time (open minutes when $business, else every minute). Returns an instant in the application time zone (what the columns are read back in). */
+    /** $from plus $minutes of the clock's own time (open minutes when $business, else every minute). Returns the instant. */
     public function add(Carbon $from, float|int $minutes, bool $business, int $tenantId): Carbon
     {
         $seconds = (int) round($minutes * 60);
         $cal = $this->calendar($tenantId);
 
         if (! $business || ! $cal['has_open_day'] || $seconds <= 0) {
-            return $from->copy()->addSeconds(max(0, $seconds))->setTimezone(config('app.timezone'));
+            return $from->copy()->addSeconds(max(0, $seconds));
         }
 
         $t = $from->copy()->setTimezone($cal['tz']);
@@ -103,7 +103,7 @@ class SlaClock
                 if ($start->lessThan($w[1])) {
                     $avail = $w[1]->timestamp - $start->timestamp;
                     if ($seconds <= $avail) {
-                        return $start->copy()->addSeconds($seconds)->setTimezone(config('app.timezone'));
+                        return $start->copy()->addSeconds($seconds);
                     }
                     $seconds -= $avail;
                 }
@@ -111,7 +111,7 @@ class SlaClock
             $t = $t->copy()->startOfDay()->addDay();
         }
 
-        return $from->copy()->addSeconds($seconds)->setTimezone(config('app.timezone'));
+        return $from->copy()->addSeconds($seconds);
     }
 
     /** $to minus $minutes of the clock's own time. The mirror of add(). */
@@ -121,7 +121,7 @@ class SlaClock
         $cal = $this->calendar($tenantId);
 
         if (! $business || ! $cal['has_open_day'] || $seconds <= 0) {
-            return $to->copy()->subSeconds(max(0, $seconds))->setTimezone(config('app.timezone'));
+            return $to->copy()->subSeconds(max(0, $seconds));
         }
 
         $t = $to->copy()->setTimezone($cal['tz']);
@@ -131,7 +131,7 @@ class SlaClock
                 if ($end->greaterThan($w[0])) {
                     $avail = $end->timestamp - $w[0]->timestamp;
                     if ($seconds <= $avail) {
-                        return $end->copy()->subSeconds($seconds)->setTimezone(config('app.timezone'));
+                        return $end->copy()->subSeconds($seconds);
                     }
                     $seconds -= $avail;
                 }
@@ -139,7 +139,7 @@ class SlaClock
             $t = $t->copy()->startOfDay()->subSecond();
         }
 
-        return $to->copy()->subSeconds($seconds)->setTimezone(config('app.timezone'));
+        return $to->copy()->subSeconds($seconds);
     }
 
     /** Minutes of the clock's own time between two instants (0 when $to is not after $from). */

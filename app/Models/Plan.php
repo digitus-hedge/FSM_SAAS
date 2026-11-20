@@ -5,6 +5,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Plan extends Model
 {
+    use \App\Models\Concerns\AppTimezoneDates;
+
     protected $fillable = [
         'code', 'name', 'is_active',
         'user_limit', 'requests_per_month_limit', 'storage_gb_limit',
