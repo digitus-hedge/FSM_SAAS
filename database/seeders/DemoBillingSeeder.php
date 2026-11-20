@@ -37,6 +37,11 @@ class DemoBillingSeeder extends Seeder
 
     public function run(): void
     {
+        \App\Services\Notifications\EventMessages::mute(fn () => $this->seed());
+    }
+
+    private function seed(): void
+    {
         if (app()->environment('production')) {
             throw new \RuntimeException('DemoBillingSeeder refuses to run when APP_ENV is production.');
         }

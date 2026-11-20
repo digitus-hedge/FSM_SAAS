@@ -26,12 +26,25 @@ class InvoiceSentMail extends Mailable
 
     public function content(): Content
     {
-        return new Content(
-            view: 'emails.invoice-sent',
-            with: [
-                'invoice' => $this->token->invoice,
-                'link'    => route('public.invoice.show', $this->token->token),
+        $invoice = $this->token->invoice;
+        $sr      = $invoice->serviceRequest;
+        $company = \App\Services\Notifications\EmailContent::company((int) $invoice->tenant_id);
+        $labels  = \App\Services\Notifications\EmailContent::labels((int) $invoice->tenant_id);
+
+        $m = \App\Services\Notifications\EmailContent::frame(
+            $company, "Invoice {$invoice->invoice_number} from {$company['name']}",
+            'Hello, your invoice is ready.',
+            [
+                'Invoice number'               => $invoice->invoice_number,
+                $labels['request'] . ' number' => $sr?->sr_number,
+                $labels['client']              => $invoice->client?->name,
+                $labels['site']                => $sr?->site?->name,
+                'Total'                        => $invoice->currency_code . ' ' . \App\Services\Currency\Money::format($invoice->total, $invoice->currency_code),
+                'Due date'                     => $invoice->due_date?->format('j M Y'),
             ],
+            ['label' => 'View invoice', 'url' => route('public.invoice.show', $this->token->token)],
         );
+
+        return new Content(view: 'emails.base', text: 'emails.base-text', with: ['m' => $m]);
     }
 }

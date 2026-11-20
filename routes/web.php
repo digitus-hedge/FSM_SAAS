@@ -788,3 +788,13 @@ Route::prefix('admin/approval-rules')->middleware(['auth', DenyClientRole::class
           Route::get('/{contract}/documents/{document}',    [ContractsController::class, 'documentDownload'])->whereNumber('document')->name('documents.download');
           Route::delete('/{contract}/documents/{document}', [ContractsController::class, 'documentDestroy'])->whereNumber('document')->name('documents.destroy');
       });
+
+// Local-only email preview: every email that replaces a WhatsApp message, with sample data. Registered only in the local environment,
+// and the controller refuses to run anywhere else as well (Dev\EmailPreviewController::guard).
+if (app()->environment('local')) {
+    Route::prefix('dev/emails')->name('dev.emails.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Dev\EmailPreviewController::class, 'index'])->name('index');
+        Route::get('/{key}', [\App\Http\Controllers\Dev\EmailPreviewController::class, 'show'])->name('show');
+        Route::get('/{key}/html', [\App\Http\Controllers\Dev\EmailPreviewController::class, 'html'])->name('html');
+    });
+}

@@ -43,6 +43,14 @@ class MessageLogger
         QuoteSentMail::class       => 'rebuildQuote',
         InvoiceSentMail::class     => 'rebuildInvoice',
         InvoiceOverdueMail::class  => 'rebuildOverdue',
+        \App\Mail\ClientEventMail::class => 'rebuildClientEvent',
+    ];
+
+    /** Messages sent by the queue worker, not during the web request. Anything else is still sent at once. */
+    private const QUEUED = [
+        \App\Mail\NotificationMail::class, \App\Mail\ClientEventMail::class, \App\Mail\JobRescheduledMail::class,
+        \App\Mail\FeedbackRequestMail::class, \App\Mail\QuoteSentMail::class, \App\Mail\InvoiceSentMail::class,
+        \App\Mail\InvoiceOverdueMail::class, \App\Mail\OneTimeCodeMail::class,
     ];
 
     /**
@@ -68,6 +76,13 @@ class MessageLogger
             'payload_json'         => $ctx['payload'] ?? null,
         ]);
 
+        // queued: the row says "queued" now and the worker sends it and records sent or failed (the job holds the message, the log never does)
+        if (in_array($mailable::class, self::QUEUED, true)) {
+            \App\Jobs\SendLoggedMail::dispatch((int) $log->id, $to, $mailable)->afterCommit();
+
+            return $log;
+        }
+
         try {
             $this->attempt($log, fn () => Mail::to($to)->send($mailable));
         } catch (\Throwable $e) {
@@ -77,6 +92,20 @@ class MessageLogger
         }
 
         return $log->fresh();
+    }
+
+    /** The queue worker's send: the same attempt, status and error rules as a send during the request. Throws on failure so the job retries. */
+    public function deliver(int $logId, string $to, Mailable $mailable): void
+    {
+        $log = MessageLog::withoutGlobalScopes()->find($logId);
+        if (! $log || $log->status === 'sent') {
+            return;
+        }
+        $this->attempt($log, fn () => Mail::to($to)->send($mailable));
+
+        if ($log->related_type === UserNotification::class && $log->related_id) {
+            UserNotification::withoutGlobalScopes()->whereKey($log->related_id)->update(['emailed_at' => now()]);
+        }
     }
 
     /** Sends again a failed row that can be built again. Returns the row; check ->status. Throws \DomainException when it may not be retried. */
@@ -155,6 +184,13 @@ class MessageLogger
         $n = UserNotification::withoutGlobalScopes()->where('tenant_id', $log->tenant_id)->find($p['notification_id'] ?? 0);
 
         return $n ? new NotificationMail($n) : null;
+    }
+
+    private function rebuildClientEvent(MessageLog $log, array $p): ?Mailable
+    {
+        $sr = ServiceRequest::withoutGlobalScopes()->where('tenant_id', $log->tenant_id)->find($p['sr_id'] ?? 0);
+
+        return $sr ? new \App\Mail\ClientEventMail($sr, (string) ($p['event'] ?? $log->event_key), $p['contact_name'] ?? null, (array) ($p['extra'] ?? [])) : null;
     }
 
     private function rebuildRescheduled(MessageLog $log, array $p): ?Mailable

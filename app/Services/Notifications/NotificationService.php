@@ -34,6 +34,16 @@ class NotificationService
             $title = $this->fill($def['title'], $vars);
             $body  = $this->fill($def['body'] ?? '', $vars);
 
+            // the email shows the request's details: remember which request the message is about
+            if (! isset($data['sr_id']) && ! empty($vars['sr_number'])) {
+                $users = $users instanceof Collection || is_array($users) ? $users : iterator_to_array($users, false);   // a generator can be read once
+                $tid = collect($users)->filter()->first()?->tenant_id;
+                $srId = $tid ? \App\Models\ServiceRequest::withoutGlobalScopes()->where('tenant_id', $tid)->where('sr_number', $vars['sr_number'])->value('id') : null;
+                if ($srId) {
+                    $data['sr_id'] = $srId;
+                }
+            }
+
             $seen = [];
             foreach ($users as $user) {
                 if (! $user || isset($seen[$user->id])) {

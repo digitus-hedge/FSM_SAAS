@@ -59,7 +59,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Blueprint 7.1 and 9.2: a completed request sends the client contact the feedback link (event sr.completed), whichever screen completes it.
         \App\Models\ServiceRequest::updated(function (\App\Models\ServiceRequest $sr) {
-            if ($sr->wasChanged('status') && $sr->status === 'completed') {
+            if ($sr->wasChanged('status') && $sr->status === 'completed' && ! \App\Services\Notifications\EventMessages::isMuted()) {
                 try {
                     app(\App\Services\Feedback\FeedbackLinks::class)->issue($sr);
                 } catch (\Throwable $e) {
@@ -68,9 +68,27 @@ class AppServiceProvider extends ServiceProvider
             }
         });
 
+        // Bulk commands and seeders send no messages: muted from start to finish (EventMessages::mute for code that needs it).
+        \Illuminate\Support\Facades\Event::listen(\Illuminate\Console\Events\CommandStarting::class, function ($e) {
+            if (in_array($e->command, \App\Services\Notifications\EventMessages::MUTED_COMMANDS, true)) {
+                \App\Services\Notifications\EventMessages::pushMute();
+            }
+        });
+        \Illuminate\Support\Facades\Event::listen(\Illuminate\Console\Events\CommandFinished::class, function ($e) {
+            if (in_array($e->command, \App\Services\Notifications\EventMessages::MUTED_COMMANDS, true)) {
+                \App\Services\Notifications\EventMessages::popMute();
+            }
+        });
+
+        // Blueprint 9.2 events that WhatsApp used to carry, now sent by email (sr.created, approved, cancelled, assigned for the client,
+        // eta_changed, reassigned, tech.arrived, rework): one class decides, whichever screen or job changed the request.
+        \App\Models\ServiceRequest::created(fn (\App\Models\ServiceRequest $sr) => app(\App\Services\Notifications\EventMessages::class)->onCreated($sr));
+        \App\Models\ServiceRequest::updated(fn (\App\Models\ServiceRequest $sr) => app(\App\Services\Notifications\EventMessages::class)->onUpdated($sr));
+
         // sr.assigned (blueprint 9.2): the technician is told whichever screen or job assigned the request.
+        // A request that already had a technician is a reassignment (sr.reassigned, EventMessages), not a new assignment.
         \App\Models\ServiceRequest::updated(function (\App\Models\ServiceRequest $sr) {
-            if ($sr->wasChanged('assigned_tech_user_id') && $sr->assigned_tech_user_id) {
+            if ($sr->wasChanged('assigned_tech_user_id') && $sr->assigned_tech_user_id && ! $sr->getOriginal('assigned_tech_user_id') && ! \App\Services\Notifications\EventMessages::isMuted()) {
                 $tech = \App\Models\User::withoutGlobalScopes()->find($sr->assigned_tech_user_id);
                 if ($tech) {
                     app(\App\Services\Notifications\NotificationService::class)->notify('sr.assigned', [$tech], [
@@ -87,7 +105,7 @@ class AppServiceProvider extends ServiceProvider
                 $master = \App\Models\ServiceRequest::withoutGlobalScopes()->find($sr->parent_sr_id);
                 if ($master) {
                     app(\App\Services\Trades\MasterRequests::class)->recompute($master);
-                    if ($sr->status === 'completed') {
+                    if ($sr->status === 'completed' && ! \App\Services\Notifications\EventMessages::isMuted()) {
                         $svc = app(\App\Services\Notifications\NotificationService::class);
                         $svc->notify('master.child_completed', $svc->usersWithRole('operations_manager', $sr->tenant_id), [
                             'sr_number' => $sr->sr_number, 'trade' => $sr->category?->name, 'master_number' => $master->sr_number,

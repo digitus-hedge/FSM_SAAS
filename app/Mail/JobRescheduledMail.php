@@ -31,20 +31,13 @@ class JobRescheduledMail extends Mailable
 
     public function content(): Content
     {
-        $sr = $this->serviceRequest;
+        $sr  = $this->serviceRequest;
+        $ctx = \App\Services\Notifications\EmailContent::contextFor($sr, [
+            'name' => $this->contactName, 'when' => $this->new->format('D j M Y, H:i'), 'whenLabel' => 'New date and time',
+            'previous' => $this->previous?->format('D j M Y, H:i'), 'reason' => $this->reason, 'technician' => null,
+        ]);
 
-        return new Content(
-            view: 'emails.job-rescheduled',
-            with: [
-                'name'     => $this->contactName,
-                'number'   => $sr->sr_number,
-                'title'    => $sr->title,
-                'site'     => $sr->site?->name,
-                'company'  => \App\Models\Tenant::find($sr->tenant_id)?->name ?? config('app.name'),
-                'beforeText' => $this->previous?->format('D j M Y, H:i'),
-                'afterText'  => $this->new->format('D j M Y, H:i'),
-                'reason'   => $this->reason,
-            ],
-        );
+        // the times are already in the company's zone; the client sees no technician here (blueprint 7.7b)
+        return new Content(view: 'emails.base', text: 'emails.base-text', with: ['m' => \App\Services\Notifications\EmailContent::client('sr.eta_changed', $ctx)]);
     }
 }

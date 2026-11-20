@@ -29,18 +29,19 @@ class FeedbackRequestMail extends Mailable
 
     public function content(): Content
     {
-        $sr = $this->serviceRequest;
+        $sr  = $this->serviceRequest;
+        $ctx = \App\Services\Notifications\EmailContent::contextFor($sr, ['name' => $this->contactName]);
+        $r   = strtolower($ctx['labels']['request']);
+        $until = $this->validUntil->copy()->setTimezone($ctx['company']['timezone'])->format('j M Y');
 
-        return new Content(
-            view: 'emails.feedback-request',
-            with: [
-                'name'    => $this->contactName,
-                'number'  => $sr->sr_number,
-                'title'   => $sr->title,
-                'company' => \App\Models\Tenant::find($sr->tenant_id)?->name ?? config('app.name'),
-                'link'    => $this->feedbackUrl,
-                'until'   => $this->validUntil->copy()->setTimezone(\App\Models\Tenant::find($sr->tenant_id)?->timezone ?: config('app.timezone'))->format('j M Y'),
-            ],
+        $m = \App\Services\Notifications\EmailContent::frame(
+            $ctx['company'], "{$sr->sr_number} is completed. How did we do?",
+            "Hello {$this->contactName}, your {$r} is completed. A rating, a score and, if you like, a comment takes about a minute.",
+            \App\Services\Notifications\EmailContent::rows($ctx, ['number', 'title', 'client', 'site', 'technician']),
+            ['label' => 'Give your feedback', 'url' => $this->feedbackUrl],
+            "This link works once and is valid until {$until}.",
         );
+
+        return new Content(view: 'emails.base', text: 'emails.base-text', with: ['m' => $m]);
     }
 }

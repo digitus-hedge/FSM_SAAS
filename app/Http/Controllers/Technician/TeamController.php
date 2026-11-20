@@ -390,6 +390,7 @@ class TeamController extends Controller
     {
         abort_unless($override->serviceRequest?->team_lead_user_id === auth()->id(), 403);
         $override->update(['status' => 'approved', 'decided_by_user_id' => auth()->id(), 'decided_at' => now(), 'valid_until' => now()->addHours(2)]);
+        $this->tellTechnician($override, 'approved', 'It is valid for 2 hours.');
         return back()->with('success', 'Override approved.');
     }
 
@@ -398,7 +399,20 @@ class TeamController extends Controller
         abort_unless($override->serviceRequest?->team_lead_user_id === auth()->id(), 403);
         $data = $request->validate(['decision_note' => ['nullable', 'string', 'max:255']]);
         $override->update(['status' => 'rejected', 'decided_by_user_id' => auth()->id(), 'decided_at' => now(), 'decision_note' => $data['decision_note'] ?? null]);
+        $this->tellTechnician($override, 'rejected', $data['decision_note'] ?? '');
         return back()->with('success', 'Override rejected.');
+    }
+
+    /** field.geofence_override_decided (blueprint 9.2): the technician who asked hears the decision (email while WhatsApp is paused). */
+    private function tellTechnician(GeofenceOverrideRequest $override, string $decision, string $note): void
+    {
+        $tech = User::withoutGlobalScopes()->where('tenant_id', $override->tenant_id)->find($override->technician_user_id);
+        $sr   = $override->serviceRequest;
+        if ($tech && $sr) {
+            app(\App\Services\Notifications\NotificationService::class)->notify('field.geofence_override_decided', [$tech], [
+                'sr_number' => $sr->sr_number, 'decision' => $decision, 'note' => $note,
+            ], route('technician.jobs.show', $sr, false), ['sr_id' => $sr->id]);
+        }
     }
 
     public function reviewConflict(FieldEventLog $log)

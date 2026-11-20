@@ -217,7 +217,13 @@ class DispatchController extends Controller
             }
             DB::table('sr_reschedules')->insert($row);
 
-            $service_request->update(['scheduled_eta_at' => $new]);
+            // the calendar emails the client itself below (tellClient), so the listener must not send the same message
+            \App\Services\Notifications\EventMessages::$quietClientEta = true;
+            try {
+                $service_request->update(['scheduled_eta_at' => $new]);
+            } finally {
+                \App\Services\Notifications\EventMessages::$quietClientEta = false;
+            }
 
             $this->audit->log('request.rescheduled', [
                 'item_type' => ServiceRequest::class,

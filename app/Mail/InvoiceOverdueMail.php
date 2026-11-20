@@ -23,14 +23,25 @@ class InvoiceOverdueMail extends Mailable
 
     public function content(): Content
     {
-        return new Content(
-            view: 'emails.invoice-overdue',
-            with: [
-                'number' => $this->invoice->invoice_number,
-                'amount' => $this->invoice->currency_code . ' ' . Money::format($this->invoice->balance, $this->invoice->currency_code),
-                'due'    => $this->invoice->due_date?->format('d M Y'),
-                'link'   => route('public.invoice.show', $this->token->token),
+        $inv     = $this->invoice;
+        $sr      = $inv->serviceRequest;
+        $company = \App\Services\Notifications\EmailContent::company((int) $inv->tenant_id);
+        $labels  = \App\Services\Notifications\EmailContent::labels((int) $inv->tenant_id);
+        $amount  = $inv->currency_code . ' ' . Money::format($inv->balance, $inv->currency_code);
+
+        $m = \App\Services\Notifications\EmailContent::frame(
+            $company, "Invoice {$inv->invoice_number} is overdue",
+            "Invoice {$inv->invoice_number} for {$amount} was due on " . $inv->due_date?->format('j M Y') . ' and is still unpaid. Please arrange payment or contact us.',
+            [
+                'Invoice number'               => $inv->invoice_number,
+                $labels['request'] . ' number' => $sr?->sr_number,
+                $labels['client']              => $inv->client?->name,
+                'Amount unpaid'                => $amount,
+                'Due date'                     => $inv->due_date?->format('j M Y'),
             ],
+            ['label' => 'View invoice', 'url' => route('public.invoice.show', $this->token->token)],
         );
+
+        return new Content(view: 'emails.base', text: 'emails.base-text', with: ['m' => $m]);
     }
 }

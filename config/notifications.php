@@ -102,6 +102,38 @@ return [
             'title' => 'You were assigned {sr_number}',
             'body'  => '{site}. {when}',
             'email' => true,
+            'button' => 'Open the job',
+        ],
+        // Blueprint 9.2, sent by email while WhatsApp is paused (Services/Notifications/EventMessages): the technician's side of these events.
+        'sr.cancelled' => [
+            'title' => '{sr_number} was cancelled',
+            'body'  => '{site}. This job is cancelled. {reason}',
+            'email' => true,
+            'button' => 'Open the job',
+        ],
+        'sr.eta_changed' => [
+            'title' => 'New time for {sr_number}',
+            'body'  => '{site}. {when}',
+            'email' => true,
+            'button' => 'Open the job',
+        ],
+        'sr.reassigned' => [
+            'title' => '{headline}',
+            'body'  => '{site}. {detail}',
+            'email' => true,
+            'button' => 'Open the job',
+        ],
+        'sr.rework' => [
+            'title' => '{sr_number} needs rework',
+            'body'  => '{site}. QC sent it back. {reason}',
+            'email' => true,
+            'button' => 'Open the job',
+        ],
+        'field.geofence_override_decided' => [
+            'title' => 'Your location override for {sr_number} was {decision}',
+            'body'  => '{note}',
+            'email' => true,
+            'button' => 'Open the job',
         ],
         // Blueprint 9.2 (feedback.received): the Operations Manager, in-app; Urgent for 1 or 2 stars or a score of 0 to 6 (Services/Feedback/FeedbackLinks)
         'feedback.received' => [
