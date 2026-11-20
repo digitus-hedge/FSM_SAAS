@@ -125,7 +125,7 @@ Labels such as "service request", "client" and "quote" can be renamed per compan
 - `summary:daily` (hourly) acts at each role's configured local time (`daily_summary_configs`, defaults 07:00 Monday to Friday), one summary for each user and day (`daily_summary_runs`),
   nothing when every block is empty.
 - A route parameter named `{role}` is bound to the Role model (AppServiceProvider): use another name for a plain string.
-- Memory: the full suite needs more than the 128M of the CLI php.ini. Run it with `php -d memory_limit=1024M vendor/phpunit/phpunit/phpunit` (`php artisan test` does not pass `-d` on).
+- Memory: the full suite needs more than the 128M of the CLI php.ini. `phpunit.xml` sets `memory_limit` to 1024M, so `php artisan test` works as it is.
 
 ## Conventions
 - Every company table has `tenant_id`. Many models have the global scope (trait `App\Models\Concerns\BelongsToTenant`: Client,
