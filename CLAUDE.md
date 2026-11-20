@@ -24,6 +24,7 @@ Labels such as "service request", "client" and "quote" can be renamed per compan
   The reports API is not built.
 - Follow-up from B8: real Web Push (VAPID, blueprint section 3; today push is a browser notification while the app is open).
 - SLA clock and `sla:check` built (blueprint 7.1 and 9.2, no separate spec): business hours, holidays and holds in the due times, `sla.warning` and `sla.breached` fired.
+- WhatsApp paused: every blueprint 9.2 WhatsApp event goes by email to the same recipients (see "Emails and event messages"). Not built yet: the signature-waiver code flow and the one-time field login (the code mailable is ready).
 - B9 checkout and billing: payment gateway on hold until last.
 
 ## Tenancy
@@ -70,7 +71,7 @@ Labels such as "service request", "client" and "quote" can be renamed per compan
   suggestions = full, or critical and emergency requests for the Front Desk; cancel and change priority = full, or requests the user raised). Time off and CSV user import need `full` / the Company Admin.
 - Route gate: `->middleware('level:key')` (`EnsurePermissionLevel`) on a route group: GET needs canView, POST/PUT/DELETE need canChange,
   and a GET for a create, edit, build, upload or import page needs canChange. Put it after `auth`. Route binding runs before it, so an
-  unknown id is a 404 before the 403. Screens without a `level:` or their own check are a bug: add one.
+  unknown id is a 404 before the 403 (the company is already known then, see Conventions). Screens without a `level:` or their own check are a bug: add one.
 - Matrix examples: invoice approve and send-back = `invoice.approve` (Company Admin, Operations Manager); expense approve =
   `expense.approve` (Company Admin, Operations Manager, Finance); quotes: Company Admin and Finance change, Operations Manager views.
 - Plan gate: `EnsurePlanFeature` middleware (`EnsurePlanFeature::class . ':key'`) shows the 403 "not in your plan" page. In code use
@@ -176,14 +177,18 @@ Labels such as "service request", "client" and "quote" can be renamed per compan
   so always add `where('tenant_id', ...)`. The scope only works while `Tenant::current()` is set: jobs and commands have no company,
   so pass tenant ids explicitly there.
 - Route binding for `{invoice}`, `{quote}`, `{payment}`, `{expense}`, `{override}`, `{log}`, `{user}` and `{role}` is scoped in
-  `AppServiceProvider` by the signed-in user's company (binding runs before `TenantResolver`, so `Tenant::current()` is not set yet).
-  Another company's id is a 404. User and Role are bound this way only, with no global scope, because sign-in looks users up across
+  `AppServiceProvider` by the signed-in user's company (kept for models with no global scope; the company is also known by then, see the next point).
+  Another company's id is a 404. `{teamLead}` (a User) is bound the same way. User and Role are bound this way only, with no global scope, because sign-in looks users up across
   companies. UserDevice is not scoped: its revoke checks that the device is the caller's own. The public `/i/{token}` and `/q/{token}`
   links look up by token: they work on the link's own company address and on the root address, and 404 on another company's.
+- Middleware order: `TenantResolver` runs BEFORE `SubstituteBindings` on every web route (`prependToPriorityList` in `bootstrap/app.php`; order: session, sign-in check, resolver, bindings),
+  so every BelongsToTenant model loaded from the URL is scoped by company. With no company on the host (root address) nothing is narrowed: only platform and central routes live there.
+  Unscoped models loaded from a URL: `{device}` (checked against the caller), `{tenant}` (platform console), `{user}`, `{role}`, `{teamLead}` (explicit tenant binders). Check this after adding a model to a route.
+  Guests who open `/portal/*` are sent to `client.sign-in` (the intended address is kept); everyone else to `login` (`redirectGuestsTo`, `bootstrap/app.php`).
 - Audit: only `AuditLogger::log($action, ['tenant_id' =>, 'item_type' =>, 'item_id' =>, 'old' =>, 'new' =>])`. Append only, hash chained.
   Never write `activity_logs` directly and never log passwords, codes or tokens.
 - Staff messages (in-app and email) go through `NotificationService::notify()`, events defined in `config/notifications.php`.
-  Client-facing email with a secure link uses a Mailable (`InvoiceSentMail`, `QuoteSentMail`, `InvoiceOverdueMail`). WhatsApp is not built.
+  Client-facing email with a secure link uses a Mailable (`InvoiceSentMail`, `QuoteSentMail`, `InvoiceOverdueMail`). WhatsApp is paused (see "Emails and event messages").
 - Excel exports go through `Services/Export/XlsxExporter` (phpspreadsheet; it writes the audit row). Other file features are CSV imports.
 - Money is rounded with `Services/Currency/Money` (half up, the currency's decimals). The quote and invoice builders work totals out with
   `Services/Billing/DocumentTotals` (blueprint 7.7a), and only for DRAFTS: a sent, approved, paid or void document keeps its stored
@@ -195,12 +200,33 @@ Labels such as "service request", "client" and "quote" can be renamed per compan
 - Company users: layouts include `layouts/_theme.blade.php` (colour tokens, white page background, theme dock) and `layouts/_brand_font.blade.php`
   (company font). New pages extend `layouts.admin` (office), `layouts.technician*` (field) and must not hardcode colours or fonts.
 - Page backgrounds are white. Cards and tables are white.
-- Platform owner console, platform sign-in page (`auth/platform-login`) and platform two-factor pages: yellow (#FFC61A), one fixed
-  font (DM Sans and Figtree), no `_theme`, no `_brand_font`, no theme dock.
-  `layouts/admin.blade.php` includes `_theme` and `_brand_font` only inside `@if (Tenant::current())`: keep that condition.
+- Platform owner console: mint (default #4FC9A0; the sign-in and two-factor pages use mint #7FE0B9), no yellow anywhere. `layouts/admin.blade.php` includes `_theme` (with the dock) and `_brand_font`
+  for a company, and for the platform with `brandOverride` = the platform user's colour or mint. The dock's "Theme" button opens a colour and font popup (`brandEdit`), saved on
+  `platform_users` (`brand_color`, `font_key`) by `Platform\BrandingController` (`admin.platform.branding.update`, `PUT /admin/platform/branding`). `_brand_font` takes an optional `fontKey`.
+- Company colour and font everywhere a client sees them: `EmailContent::brand($tenant)` (accent, ink, soft tint, fonts; no colour or an old default yellow/pink/blue = Sage #5E8A3C). Emails use it
+  through the shared layout; stand-alone public and portal pages (`public/quote`, `invoice`, `feedback*`, `client/*`) include `layouts/_public_brand` (CSS variables `--brand`, `--brand-ink`, `--brand-soft`)
+  and never hardcode yellow. New companies and the Branding colour picker start at Sage.
+
+## Emails and event messages (WhatsApp paused)
+- One shared layout `emails/base` and `emails/base-text` (company name and logo, heading, one intro line, details table, one button, footer with company contact and "This is an automated message"). Mailables
+  pass `['m' => EmailContent::frame(...)]`. `EmailContent` (`Services/Notifications`) holds the words for every email, works from plain arrays, and gives the company block (`company()`, `labels()`, `brand()`).
+- Client contact: `ClientEventMail` (`sr.created`, `sr.approved`, `sr.cancelled`, `sr.assigned`, `sr.eta_changed`, `tech.arrived`, `depot.received`, `depot.ready_for_return`), built from request, event and contact id;
+  retryable from the message log. Its button opens the portal request only when the contact has an active client sign-in (same email and client; a viewer needs the site in scope); otherwise a mailto to the company.
+  Already email: `sr.completed` (FeedbackRequestMail), `quote.sent`, `invoice.sent`, `invoice.overdue`, the dispatch visit-moved mail (the client's `sr.eta_changed`). Codes: `OneTimeCodeMail` (login, signature; never kept in the log).
+- Staff and field go through `NotificationService::notify()` (the email is `NotificationMail`; its details table comes from `data['sr_id']`, which `notify()` fills from `sr_number`). New events: `sr.cancelled`,
+  `sr.eta_changed`, `sr.reassigned`, `sr.rework`, `field.geofence_override_decided` (TeamController).
+- `Services/Notifications/EventMessages` is the one place that decides. `ServiceRequest::created` and `::updated` listeners in AppServiceProvider call it, so every screen and job sends once. `sr.assigned` (technician)
+  fires only on a first assignment; a change of technician is `sr.reassigned` to the old and new one. Trades of a master send no client email except `tech.arrived`. The person who did the action is not emailed about it.
+  `EventMessages::$quietClientEta` is set by the dispatch calendar, which emails the client itself.
+- Mute switch: `EventMessages::mute(fn)`, and the commands in `MUTED_COMMANDS` (`db:seed`, `migrate:fresh`, `migrate:refresh`, `sla:recalculate`, `times:fix-pm-eta`, `demo:remove-billing`, `usage:refresh`) are muted from start
+  to finish (CommandStarting and CommandFinished listeners). Muted: the new events, the feedback link on completion, the `sr.assigned` technician message, the master trade-complete notice. Add every new bulk command to the list.
+  `pm:daily` is not muted. `DemoBillingSeeder` mutes itself.
+- Queue: `MessageLogger::send()` queues the classes in its `QUEUED` list through `Jobs/SendLoggedMail`: the log row is written as `queued`, the worker sends and records sent or failed (`MessageLogger::deliver`, 3 tries, retries after
+  1 and 5 minutes). The job holds the message (it may hold a link or code); the log never does. Invitations, sign-in links and the digest are still sent at once. Without a queue worker nothing is delivered.
+- Local preview: `/dev/emails` (`Dev\EmailPreviewController`), registered only when `APP_ENV=local` and returns 404 anywhere else. Sample data, nothing is sent. It shows the mailto version of client emails.
 
 ## Scheduled commands (routes/console.php)
-- The server needs the Laravel scheduler cron (`* * * * * php artisan schedule:run`) and a queue worker (QUEUE_CONNECTION=database).
+- The server needs the Laravel scheduler cron (`* * * * * php artisan schedule:run`) and a queue worker (QUEUE_CONNECTION=database). The queue also carries all emails (`SendLoggedMail`).
 - `usage:refresh` daily: recompute each company's usage counters.
 - `contracts:daily` hourly: acts at 02:00 company time. Expire, expiring soon, alerts, auto-renew, roll call periods.
 - `rates:fetch` at 00:30, 06:00, 12:00, 18:00: stores today's rate for turned-on currencies. Only missing pairs are fetched.
@@ -215,11 +241,13 @@ Labels such as "service request", "client" and "quote" can be renamed per compan
 - The full suite (212 tests, about 9 minutes) passes. `Security/RouteAuthTest` fails when a route is outside sign-in and not on its short
   public list: add to that list only on purpose. `Security/ScreenPermissionsTest` checks every gated screen against the signed matrix;
   `Security/UserAdminScopeTest` and `Security/ServiceRequestActionsTest` check the record_level narrowing.
+- Images: `php artisan storage:link` must exist (on Windows it is a junction). The public disk `url` in `config/filesystems.php` is the relative `/storage`, so images load from the page's own host and port.
+- Addresses: local dev port is 8000 (`APP_URL`, `AIYWAH_ROOT_HOST`, `AIYWAH_PLATFORM_HOST`). Production: `APP_URL=https://<root host>` with companies at `{slug}.{root host}`, wildcard DNS and certificate, no port.
 - On Windows, composer install can fail with a file lock in phpspreadsheet. Exclude the project folder from Windows Defender and run it again.
 
 ## Known issues, not yet fixed
 - Approval rules: the amount limit column is stored and shown but nothing applies it (no amount exists when a mode runs).
-- `service_requests` route binding (`{service_request}`) relies on the model scope only: with no company on the host (root address) it is not narrowed.
+- Route binding of company models relies on the model scope, which does nothing on the root address (no company). Only platform and central routes live there.
 - Undoing a write-off, the dispatch settings and (with UserAdminScope) staff user management are for the Company Admin by role code:
   no permission key exists for them. The client portal checks the client roles (client_admin, client_viewer) by code on purpose.
 - `mark-review` (office "Submit for review", sr.qc full) moves In Progress to Pending Review WITHOUT the proof lock: it does not check the
