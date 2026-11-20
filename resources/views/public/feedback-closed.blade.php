@@ -15,6 +15,7 @@ body{background:#FBFAF6;color:#1B1A24;font-family:'DM Sans',system-ui,sans-serif
 h1{font-family:'Figtree',sans-serif;font-size:22px;font-weight:800;margin-bottom:8px}
 p{color:#5F5D6E}
 </style>
+@include('layouts._public_brand', ['brandTenant' => $company])
 </head>
 <body>
 <div class="wrap">

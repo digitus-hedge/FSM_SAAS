@@ -23,6 +23,7 @@ class ClientEventMail extends Mailable
         public string $event,
         public ?string $contactName = null,
         public array $extra = [],
+        public ?int $contactId = null,
     ) {
     }
 
@@ -33,7 +34,7 @@ class ClientEventMail extends Mailable
         $ctx = EmailContent::contextFor($sr, ['name' => $this->contactName]);
         $tz  = $ctx['company']['timezone'];
 
-        if (! empty($ctx['company']['portal'])) {
+        if (! empty($ctx['company']['portal']) && $this->hasPortalAccount()) {
             $ctx['url'] = TenantUrl::for((int) $sr->tenant_id, '/portal/requests/' . $sr->id);
         }
         if (! empty($this->extra['previous'])) {
@@ -55,6 +56,31 @@ class ClientEventMail extends Mailable
         }
 
         return EmailContent::client($this->event, $ctx);
+    }
+
+    /**
+     * True only when the contact has an active client sign-in on this company's portal (same email, same client) and may see this request
+     * (a viewer only sees the sites they are scoped to). Otherwise the button is the "contact us" mailto, not a link to a page they cannot open.
+     */
+    private function hasPortalAccount(): bool
+    {
+        $sr      = $this->serviceRequest;
+        $contact = $this->contactId ? \App\Models\ClientContact::withoutGlobalScopes()->where('tenant_id', $sr->tenant_id)->find($this->contactId) : null;
+        if (! $contact || ! filled($contact->email)) {
+            return false;
+        }
+
+        $user = \App\Models\User::withoutGlobalScopes()->where('tenant_id', $sr->tenant_id)->where('client_id', $sr->client_id)
+            ->whereRaw('LOWER(email) = ?', [mb_strtolower($contact->email)])->whereNull('deactivated_at')
+            ->whereHas('role', fn ($q) => $q->whereIn('code', ['client_user', 'client_admin', 'client_viewer']))->first();
+        if (! $user) {
+            return false;
+        }
+        if ($user->role?->code === 'client_viewer') {
+            return in_array((int) $sr->project_site_id, array_map('intval', $user->site_scope_json ?? []), true);
+        }
+
+        return true;
     }
 
     public function envelope(): Envelope

@@ -18,8 +18,9 @@ label{display:block;font-weight:700;font-size:13px;margin-bottom:6px}
 select,textarea,input[type=file]{width:100%;padding:10px 12px;border:1px solid #E6E4EE;border-radius:10px;font:inherit;font-size:13.5px}
 textarea{resize:vertical}
 .err{color:#C2381B;font-size:12px;margin-top:4px}
-.btn{display:inline-block;background:#FFC61A;color:#1B1A24;font-weight:700;padding:11px 22px;border-radius:999px;border:0;cursor:pointer;font-size:13.5px;font-family:inherit}
+.btn{display:inline-block;background:var(--brand);color:var(--brand-ink);font-weight:700;padding:11px 22px;border-radius:999px;border:0;cursor:pointer;font-size:13.5px;font-family:inherit}
 </style>
+@include('layouts._public_brand')
 </head>
 <body>
 <div class="wrap">

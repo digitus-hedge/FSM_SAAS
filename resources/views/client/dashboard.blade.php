@@ -6,7 +6,7 @@
     <title>Portal — {{ $tenant->name }}</title>
     @php
     $brandFont   = \App\Models\BrandFont::where('key', $tenant->font_key ?? 'dm_sans')->first();
-    $brandColor  = $tenant->primary_color ?? '#FFC61A';
+    $brandColor  = \App\Services\Notifications\EmailContent::brand($tenant)['accent'];   // the company's own colour, Sage when none is saved
     $googleParam = $brandFont->google_param ?? 'DM+Sans:wght@400;500;700&family=Figtree:wght@600;700;800';
     $fontBody    = $brandFont->body_family ?? 'DM Sans';
     $fontDisplay = $brandFont->display_family ?? 'Figtree';
@@ -41,7 +41,7 @@ body{background:#FBFAF6;color:#1B1A24;font-family:var(--font-body),system-ui,san
         .mid b{display:block;font-size:14px}
         .mid span{color:#5F5D6E;font-size:12.5px}
         .pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
-        .p-pending{background:#FFF4CC;color:#8A5A00}
+        .p-pending{background:var(--brand-soft);color:#8A5A00}
         .p-progress{background:#E3EBF4;color:#2B5A8C}
         .p-completed{background:#DDF7F1;color:#00866F}
         .p-approved{background:#E3EBF4;color:#2B5A8C}
@@ -50,6 +50,7 @@ body{background:#FBFAF6;color:#1B1A24;font-family:var(--font-body),system-ui,san
         .btn.ghost{background:transparent;border:1px solid #E6E4EE;color:#1B1A24;font-weight:600}
         .empty{color:#5F5D6E;text-align:center;padding:24px;font-size:13px}
     </style>
+@include('layouts._public_brand', ['brandTenant' => $tenant])
 </head>
 <body>
     <div class="wrap">

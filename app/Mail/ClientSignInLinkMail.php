@@ -27,13 +27,13 @@ class ClientSignInLinkMail extends Mailable
 
     public function content(): Content
     {
-        return new Content(
-            view: 'emails.client-sign-in',
-            with: [
-                'user'      => $this->user,
-                'tenant'    => $this->tenant,
-                'signInUrl' => $this->signInUrl,
-            ],
+        $m = \App\Services\Notifications\EmailContent::frame(
+            \App\Services\Notifications\EmailContent::company($this->tenant), "Your sign-in link for {$this->tenant->name}",
+            "Hello {$this->user->name}, use the button below to sign in to your {$this->tenant->name} workspace.",
+            [], ['label' => 'Sign in', 'url' => $this->signInUrl],
+            'This link works once and expires in 24 hours. If you did not ask for it, you can safely ignore this email.',
         );
+
+        return new Content(view: 'emails.base', text: 'emails.base-text', with: ['m' => $m]);
     }
 }

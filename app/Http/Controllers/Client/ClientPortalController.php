@@ -24,7 +24,8 @@ class ClientPortalController extends Controller
     private function scopedRequests()
     {
         $user = auth()->user();
-        $query = ServiceRequest::where('client_id', $user->client_id ?? 0)->whereNull('parent_sr_id');   // a client sees one request, not its trades (D25)
+        // the company is checked here too: the route binding runs before the company is known, so another company's request is a 404 on its own
+        $query = ServiceRequest::where('tenant_id', $user->tenant_id)->where('client_id', $user->client_id ?? 0)->whereNull('parent_sr_id');   // a client sees one request, not its trades (D25)
 
         if ($user->role?->code === 'client_viewer') {
             $siteIds = $user->site_scope_json ?? [];

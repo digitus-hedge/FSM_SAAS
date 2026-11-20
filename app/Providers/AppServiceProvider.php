@@ -123,6 +123,7 @@ class AppServiceProvider extends ServiceProvider
             'override' => \App\Models\GeofenceOverrideRequest::class,
             'log'      => \App\Models\FieldEventLog::class,
             'user'     => \App\Models\User::class,
+            'teamLead' => \App\Models\User::class,   // admin/team-lead-categories/{teamLead}: another company's user is a 404
             'role'     => \App\Models\Role::class,
             'template' => \App\Models\FormTemplate::class,
             'version'  => \App\Models\FormTemplateVersion::class,

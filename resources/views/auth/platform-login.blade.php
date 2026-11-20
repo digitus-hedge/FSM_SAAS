@@ -10,7 +10,7 @@
 <style>
     :root {
         --bg:#F5F4FA; --surface:#FFFFFF; --soft:#F5F4FA; --ink:#1B1A24; --muted:#5F5D6E; --line:#E6E4EE;
-        --accent:#FFC61A; --accent-ink:#1B1A24; --danger:#DC3E36;
+        --accent:#7FE0B9; --accent-ink:#1B1A24; --danger:#DC3E36;
         --font-body: "DM Sans", system-ui, sans-serif;
         --font-primary: "Figtree", sans-serif;
         color-scheme: light;

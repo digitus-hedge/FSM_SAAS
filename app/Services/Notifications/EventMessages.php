@@ -123,9 +123,9 @@ class EventMessages
         }
 
         try {
-            app(MessageLogger::class)->send($contact->email, new ClientEventMail($sr, $event, $contact->name, $extra), $event, [
+            app(MessageLogger::class)->send($contact->email, new ClientEventMail($sr, $event, $contact->name, $extra, (int) $contact->id), $event, [
                 'tenant_id' => $sr->tenant_id, 'contact_id' => $contact->id, 'related' => $sr,
-                'payload'   => ['sr_id' => $sr->id, 'event' => $event, 'contact_name' => $contact->name, 'extra' => $extra],   // ids, a name and times: never a link or code
+                'payload'   => ['sr_id' => $sr->id, 'event' => $event, 'contact_id' => $contact->id, 'contact_name' => $contact->name, 'extra' => $extra],   // ids, a name and times: never a link or code
             ], throw: false);
 
             return true;

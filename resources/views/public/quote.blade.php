@@ -10,7 +10,7 @@
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:#F0EFF5;font-family:'DM Sans',sans-serif;color:var(--ink);font-size:14px}
   .wrap{max-width:420px;margin:0 auto;background:#fff;min-height:100vh;overflow:hidden}
-  .hdr{background:var(--accent);color:#fff;padding:18px 20px;display:flex;align-items:center;gap:12px}
+  .hdr{background:var(--accent);color:var(--brand-ink);padding:18px 20px;display:flex;align-items:center;gap:12px}
   .hdr .logo{width:38px;height:38px;background:#fff;color:var(--accent);border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:800;font-family:'Figtree';font-size:14px;flex-shrink:0;overflow:hidden}
   .hdr .logo img{width:100%;height:100%;object-fit:cover}
   .hdr .co{font-family:'Figtree';font-weight:800;font-size:16px;line-height:1.25;min-width:0}
@@ -29,7 +29,7 @@
   .terms{margin-top:18px;color:var(--muted);font-size:13px;line-height:1.5}
   .terms b{color:var(--ink)}
   .btn{display:block;width:100%;padding:14px;border:1px solid var(--line);background:#fff;color:var(--ink);text-align:center;border-radius:10px;font-weight:700;font-family:inherit;font-size:14.5px;cursor:pointer;text-decoration:none;margin-top:10px}
-  .btn-primary{background:var(--accent);color:#fff;border:0}
+  .btn-primary{background:var(--accent);color:var(--brand-ink);border:0}
   .btn-reject{background:#fff;color:var(--ink)}
   .msg-success{background:#DDF7F1;border:1px solid #B9EADD;color:var(--green);padding:12px 14px;border-radius:10px;margin-top:12px;font-size:13.5px;display:flex;gap:8px;align-items:flex-start}
   .msg-error{background:#FDECE7;border:1px solid #F2C2C2;color:var(--red);padding:12px 14px;border-radius:10px;margin-top:12px;font-size:13.5px}
@@ -45,6 +45,7 @@
   .btn-row{display:flex;gap:8px;margin-top:10px}
   .btn-row .btn{flex:1}
 </style>
+@include('layouts._public_brand', ['brandTenant' => $quote->tenant_id])
 </head>
 <body>
 

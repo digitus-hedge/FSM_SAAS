@@ -30,7 +30,7 @@
 
         <div class="field">
             <label>Primary colour <span style="color:#8B89A0;font-weight:400;font-size:12px">optional</span></label>
-            <input type="color" name="primary_color" value="{{ old('primary_color', '#FFC61A') }}" style="height:44px;width:80px;padding:4px">
+            <input type="color" name="primary_color" value="{{ old('primary_color', '#5E8A3C') }}" style="height:44px;width:80px;padding:4px">
             @error('primary_color') <span class="err">{{ $message }}</span> @enderror
         </div>
 

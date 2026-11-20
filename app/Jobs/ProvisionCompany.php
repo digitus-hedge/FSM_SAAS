@@ -54,7 +54,7 @@ class ProvisionCompany implements ShouldQueue
                 'source'             => $this->input['source']             ?? 'platform_admin',
                 'checkout_reference' => $this->input['checkout_reference'] ?? null,
                 'contact_email'      => $this->input['contact_email']      ?? null,
-                'primary_color'      => $this->input['primary_color']      ?? '#FFC61A',
+                'primary_color'      => $this->input['primary_color']      ?? '#5E8A3C',
                 'activated_at'       => now(),
                 'locale'             => 'en',
             ]);

@@ -24,15 +24,16 @@ h1{font-family:'Figtree',sans-serif;font-size:22px;font-weight:800}
 .mid b{display:block;font-size:14px}
 .mid span{color:#5F5D6E;font-size:12.5px}
 .pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:10.5px;font-weight:700;text-transform:uppercase}
-.p-pending{background:#FFF4CC;color:#8A5A00}
+.p-pending{background:var(--brand-soft);color:#8A5A00}
 .p-quoted{background:#EDE9FE;color:#5B3BB8}
 .p-approved,.p-assigned,.p-in-progress{background:#E3EBF4;color:#2B5A8C}
 .p-pending-review,.p-awaiting-invoice{background:#FFF0D1;color:#8A5A00}
 .p-completed{background:#DDF7F1;color:#00866F}
 .p-cancelled{background:#F5F4FA;color:#5F5D6E}
 .empty{color:#5F5D6E;text-align:center;padding:50px 20px}
-.btn{display:inline-block;background:#FFC61A;color:#1B1A24;font-weight:700;padding:9px 16px;border-radius:999px;text-decoration:none;font-size:13px}
+.btn{display:inline-block;background:var(--brand);color:var(--brand-ink);font-weight:700;padding:9px 16px;border-radius:999px;text-decoration:none;font-size:13px}
 </style>
+@include('layouts._public_brand')
 </head>
 <body>
 <div class="wrap">

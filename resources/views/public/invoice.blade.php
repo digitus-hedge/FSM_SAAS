@@ -33,6 +33,7 @@ td{padding:8px 0;border-top:1px solid #F2F1F6}
 .bank div:first-child{border-top:0}
 .btn{display:inline-flex;background:#fff;border:1px solid #E6E4EE;color:#1B1A24;font-weight:700;padding:10px 18px;border-radius:999px;text-decoration:none;font-size:13.5px}
 </style>
+@include('layouts._public_brand', ['brandTenant' => $invoice->tenant_id])
 </head>
 <body>
 <div class="wrap">

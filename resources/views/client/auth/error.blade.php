@@ -12,16 +12,17 @@
         .card{width:100%;max-width:460px;background:#fff;border:1px solid #E6E4EE;border-radius:24px;padding:40px 32px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.06)}
         .ico{width:60px;height:60px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin-bottom:18px}
         .ico svg{width:28px;height:28px}
-        .ico.expired{background:#FFF4CC;color:#8A5A00}
+        .ico.expired{background:var(--brand-soft);color:#8A5A00}
         .ico.used{background:#E3EBF4;color:#2B5A8C}
         .ico.starter{background:#FDECE7;color:#C2381B}
         .ico.invalid{background:#FDECE7;color:#C2381B}
         h1{font-family:'Figtree';font-size:22px;font-weight:800;margin-bottom:10px}
         p{color:#5F5D6E;font-size:14px;line-height:1.6;margin-bottom:22px}
         p b{color:#1B1A24;font-weight:700}
-        .act{display:inline-flex;align-items:center;gap:6px;background:#FFC61A;color:#1B1A24;padding:12px 24px;border-radius:999px;font-weight:700;font-size:14px;text-decoration:none}
+        .act{display:inline-flex;align-items:center;gap:6px;background:var(--brand);color:var(--brand-ink);padding:12px 24px;border-radius:999px;font-weight:700;font-size:14px;text-decoration:none}
         .act:hover{background:#F0B700}
     </style>
+@include('layouts._public_brand', ['brandTenant' => $tenant])
 </head>
 <body>
     <div class="card">

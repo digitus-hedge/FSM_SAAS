@@ -12,7 +12,7 @@
     .lede{color:#5F5D6E;font-size:14px;margin:0 0 24px}
     input{width:100%;height:52px;padding:0 14px;border:1px solid #E6E4EE;border-radius:10px;font:400 24px "JetBrains Mono",Consolas,monospace;letter-spacing:.5em;text-align:center;background:#fff;color:#1B1A24;margin-bottom:14px}
     input:focus{outline:none;border-color:#2F5BEA;box-shadow:0 0 0 3px rgba(47,91,234,.15)}
-    .btn{display:block;width:100%;background:#FFC61A;color:#1B1A24;font:700 15px inherit;padding:13px;border-radius:999px;border:0;cursor:pointer}
+    .btn{display:block;width:100%;background:#7FE0B9;color:#1B1A24;font:700 15px inherit;padding:13px;border-radius:999px;border:0;cursor:pointer}
     .err{color:#C2381B;font-size:12px;display:block;margin-top:-10px;margin-bottom:12px}
 </style>
 </head>

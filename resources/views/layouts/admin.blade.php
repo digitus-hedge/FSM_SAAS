@@ -7,7 +7,7 @@
 @php
     $brandTenant = \App\Models\Tenant::current();
     $brandFont   = \App\Models\BrandFont::where('key', $brandTenant?->font_key ?? 'dm_sans')->first();
-    $brandColor  = $brandTenant?->primary_color ?? '#FFC61A';
+    $brandColor  = $brandTenant?->primary_color ?? '#7FE0B9';   // the platform console (no company) is mint
     $googleParam = $brandFont->google_param ?? 'DM+Sans:wght@400;500;700&family=Figtree:wght@600;700';
     $fontBody    = $brandFont->body_family ?? 'DM Sans';
     $fontDisplay = $brandFont->display_family ?? 'Figtree';
@@ -94,7 +94,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
 
 .side .foot{margin-top:auto;padding-top:14px;border-top:1px solid var(--line)}
 .account{display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;background:var(--soft);margin-bottom:8px}
-.avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(145deg,var(--yellow),#F0B700);color:var(--ink);font-weight:800;font-size:12.5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--font-display);box-shadow:0 2px 5px rgba(255,198,26,.35)}
+.avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(145deg,var(--yellow),color-mix(in srgb,var(--yellow) 80%,#000));color:var(--ink);font-weight:800;font-size:12.5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--font-display);box-shadow:0 2px 5px color-mix(in srgb,var(--yellow) 35%,transparent)}
 .account .meta{min-width:0;flex:1}
 .account .name{color:var(--ink);font-size:13px;font-weight:700;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .account .sub{color:var(--muted);font-size:11px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
@@ -131,6 +131,10 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
 </style>
 @if (\App\Models\Tenant::current())
 @include('layouts._theme', ['ctx' => 'admin', 'dock' => true])
+@include('layouts._brand_font', ['withLink' => false])
+@else
+{{-- platform console: the same theme and dock as a company, with mint as its colour and the default font --}}
+@include('layouts._theme', ['ctx' => 'admin', 'dock' => true, 'brandOverride' => '#4FC9A0'])
 @include('layouts._brand_font', ['withLink' => false])
 @endif
 </head>

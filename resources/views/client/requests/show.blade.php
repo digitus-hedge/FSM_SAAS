@@ -14,7 +14,7 @@ body{background:#FBFAF6;color:#1B1A24;font-family:'DM Sans',system-ui,sans-serif
 .num{font-family:monospace;font-weight:700;font-size:12px;background:#F5F4FA;padding:4px 10px;border-radius:5px;color:#8A5A00;display:inline-block;margin-bottom:8px}
 h1{font-family:'Figtree',sans-serif;font-size:22px;font-weight:800;margin-bottom:10px}
 .pill{display:inline-block;padding:4px 12px;border-radius:999px;font-size:11px;font-weight:700;text-transform:uppercase;margin-bottom:20px}
-.p-pending{background:#FFF4CC;color:#8A5A00}
+.p-pending{background:var(--brand-soft);color:#8A5A00}
 .p-quoted{background:#EDE9FE;color:#5B3BB8}
 .p-approved,.p-assigned,.p-in-progress{background:#E3EBF4;color:#2B5A8C}
 .p-pending-review,.p-awaiting-invoice{background:#FFF0D1;color:#8A5A00}
@@ -27,10 +27,11 @@ h1{font-family:'Figtree',sans-serif;font-size:22px;font-weight:800;margin-bottom
 .photos{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .photos img{width:84px;height:84px;object-fit:cover;border-radius:8px;border:1px solid #E6E4EE}
 .actions{display:flex;gap:10px}
-.btn{display:inline-flex;background:#FFC61A;color:#1B1A24;font-weight:700;padding:10px 18px;border-radius:999px;text-decoration:none;font-size:13.5px;border:0;cursor:pointer;font-family:inherit}
+.btn{display:inline-flex;background:var(--brand);color:var(--brand-ink);font-weight:700;padding:10px 18px;border-radius:999px;text-decoration:none;font-size:13.5px;border:0;cursor:pointer;font-family:inherit}
 .btn.outline{background:#fff;border:1px solid #E6E4EE;color:#1B1A24}
 .btn.red{background:#FDECE7;color:#C2381B}
 </style>
+@include('layouts._public_brand')
 </head>
 <body>
 <div class="wrap">

@@ -5,7 +5,7 @@
 
   $senderName   = $tenant?->name ?? config('app.name');
   $currencyCode = $tenant?->currency_code ?? 'AED';
-  $primaryColor = $tenant?->primary_color ?? '#FFC61A';
+  $primaryColor = \App\Services\Notifications\EmailContent::brand($tenant)['accent'];
 @endphp
 <!doctype html>
 <html>

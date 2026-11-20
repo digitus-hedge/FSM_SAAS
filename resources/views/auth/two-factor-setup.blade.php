@@ -23,7 +23,7 @@
                 @error('code') <span style="color:#C2381B;font-size:12px;display:block;margin-top:4px">{{ $message }}</span> @enderror
             </label>
 
-            <button type="submit" style="width:100%;background:#FFC61A;color:#1B1A24;border:0;padding:13px;border-radius:999px;font-weight:700;font-size:14px;cursor:pointer">
+            <button type="submit" style="width:100%;background:#7FE0B9;color:#1B1A24;border:0;padding:13px;border-radius:999px;font-weight:700;font-size:14px;cursor:pointer">
                 Turn on two-factor
             </button>
         </form>

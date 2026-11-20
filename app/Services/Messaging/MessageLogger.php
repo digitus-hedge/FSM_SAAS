@@ -190,7 +190,7 @@ class MessageLogger
     {
         $sr = ServiceRequest::withoutGlobalScopes()->where('tenant_id', $log->tenant_id)->find($p['sr_id'] ?? 0);
 
-        return $sr ? new \App\Mail\ClientEventMail($sr, (string) ($p['event'] ?? $log->event_key), $p['contact_name'] ?? null, (array) ($p['extra'] ?? [])) : null;
+        return $sr ? new \App\Mail\ClientEventMail($sr, (string) ($p['event'] ?? $log->event_key), $p['contact_name'] ?? null, (array) ($p['extra'] ?? []), isset($p['contact_id']) ? (int) $p['contact_id'] : null) : null;
     }
 
     private function rebuildRescheduled(MessageLog $log, array $p): ?Mailable

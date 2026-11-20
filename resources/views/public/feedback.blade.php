@@ -18,13 +18,14 @@ h1{font-family:'Figtree',sans-serif;font-size:24px;font-weight:800;margin-bottom
 .row{display:flex;flex-wrap:wrap;gap:8px}
 .row label{display:inline-flex;align-items:center;justify-content:center;min-width:44px;height:44px;border:1px solid #D9D7E4;border-radius:10px;cursor:pointer;font-weight:700;background:#fff}
 .row input{position:absolute;opacity:0;width:1px;height:1px}
-.row input:checked + span{background:#FFC61A;border-radius:9px}
+.row input:checked + span{background:var(--brand);color:var(--brand-ink);border-radius:9px}
 .row label span{display:flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:9px}
 .ends{display:flex;justify-content:space-between;color:#8B89A0;font-size:12px;margin-top:6px}
 textarea{width:100%;border:1px solid #D9D7E4;border-radius:10px;padding:10px;font:inherit;min-height:100px}
 .btn{background:#8A5A00;color:#fff;border:0;border-radius:10px;padding:13px 26px;font-weight:700;font-size:15px;cursor:pointer}
 .err{color:#B42318;font-size:13px;margin-top:6px}
 </style>
+@include('layouts._public_brand', ['brandTenant' => $company])
 </head>
 <body>
 <div class="wrap">

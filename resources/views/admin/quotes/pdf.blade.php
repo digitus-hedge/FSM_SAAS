@@ -13,7 +13,7 @@
   $senderTrn     = $tenant?->trn ?? $tenant?->tax_number ?? null;
   $senderLogo    = ($tenant?->logo_path ?? null) ? asset('storage/'.$tenant->logo_path) : null;
   $currencyCode  = $quote->currency_code;
-  $primaryColor  = $tenant?->primary_color ?? '#FFC61A';
+  $primaryColor  = \App\Services\Notifications\EmailContent::brand($tenant)['accent'];
 
   $words  = preg_split('/\s+/', trim((string) $senderName));
   $badge  = strtoupper(substr($words[0] ?? '?', 0, 1) . substr($words[1] ?? '', 0, 1));

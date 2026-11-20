@@ -13,7 +13,7 @@ body{background:#FBFAF6;color:#1B1A24;font-family:'DM Sans',system-ui,sans-serif
 .code{font-family:'Figtree',sans-serif;font-size:13px;font-weight:700;color:#8A5A00;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
 h1{font-family:'Figtree',sans-serif;font-size:24px;font-weight:700;margin-bottom:10px}
 p{color:#5F5D6E;font-size:14px;line-height:1.55;margin-bottom:24px}
-.btn{display:inline-flex;align-items:center;gap:8px;background:#FFC61A;color:#1B1A24;font-weight:700;font-size:14px;padding:11px 22px;border-radius:999px;text-decoration:none}
+.btn{display:inline-flex;align-items:center;gap:8px;background:#7FE0B9;color:#1B1A24;font-weight:700;font-size:14px;padding:11px 22px;border-radius:999px;text-decoration:none}
 </style>
 @if (\App\Models\Tenant::current())
 @include('layouts._theme', ['ctx' => 'auth'])

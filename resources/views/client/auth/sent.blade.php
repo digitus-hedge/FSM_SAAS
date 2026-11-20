@@ -19,6 +19,7 @@
         .link{display:inline-block;margin-top:20px;color:#5F5D6E;font-size:13px;font-weight:600;text-decoration:underline}
         .link:hover{color:#1B1A24}
     </style>
+@include('layouts._public_brand', ['brandTenant' => $tenant])
 </head>
 <body>
     <div class="phone">

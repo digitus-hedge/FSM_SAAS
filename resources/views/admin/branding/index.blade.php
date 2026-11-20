@@ -22,9 +22,9 @@
   <div class="brand-field">
     <label>Primary color</label>
     <div class="color-row">
-      <input type="color" id="colorPicker" value="{{ old('primary_color', $tenant->primary_color ?? '#FFC61A') }}"
+      <input type="color" id="colorPicker" value="{{ old('primary_color', $tenant->primary_color ?? '#5E8A3C') }}"
              oninput="document.getElementById('colorText').value = this.value">
-      <input type="text" name="primary_color" id="colorText" value="{{ old('primary_color', $tenant->primary_color ?? '#FFC61A') }}"
+      <input type="text" name="primary_color" id="colorText" value="{{ old('primary_color', $tenant->primary_color ?? '#5E8A3C') }}"
              oninput="document.getElementById('colorPicker').value = this.value" maxlength="7">
     </div>
     @error('primary_color') <span style="color:var(--red);font-size:12px">{{ $message }}</span> @enderror

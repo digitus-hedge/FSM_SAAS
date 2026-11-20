@@ -13,10 +13,10 @@ p{margin:0 0 24px;color:#5F5D6E;font-size:14px}
 label{display:block;margin-bottom:14px}
 label span{display:block;font-weight:600;font-size:13px;margin-bottom:6px}
 input{width:100%;height:44px;padding:0 14px;border:1px solid #E6E4EE;border-radius:10px;font-size:14px;font-family:inherit}
-input:focus{outline:none;border-color:#FFC61A;box-shadow:0 0 0 3px rgba(255,198,26,.18)}
+input:focus{outline:none;border-color:var(--acc,#5E8A3C);box-shadow:0 0 0 3px var(--btnsh,rgba(187,214,163,.55))}
 .err{color:#C2381B;font-size:12px;display:block;margin-top:4px}
 .hint{color:#5F5D6E;font-size:12px;margin-bottom:16px}
-button{width:100%;background:#FFC61A;color:#1B1A24;border:0;padding:13px;border-radius:999px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit}
+button{width:100%;background:var(--btn,#BBD6A3);color:var(--btntx,#26381A);border:0;padding:13px;border-radius:999px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit}
 button:hover{filter:brightness(.97)}
 </style>
 @if (\App\Models\Tenant::current())

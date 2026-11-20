@@ -13,7 +13,7 @@
     label{display:block;margin-bottom:14px;font-size:13px;font-weight:700}
     input{width:100%;height:44px;padding:0 14px;border:1px solid #E6E4EE;border-radius:10px;font:400 14px inherit;background:#fff;margin-top:6px}
     input:focus{outline:none;border-color:#2F5BEA;box-shadow:0 0 0 3px rgba(47,91,234,.15)}
-    .btn{display:block;width:100%;background:#FFC61A;color:#1B1A24;font:700 15px inherit;padding:13px;border-radius:999px;border:0;cursor:pointer;margin-top:8px}
+    .btn{display:block;width:100%;background:var(--btn,#BBD6A3);color:var(--btntx,#26381A);font:700 15px inherit;padding:13px;border-radius:999px;border:0;cursor:pointer;margin-top:8px}
     .err{color:#C2381B;font-size:12px;display:block;margin-top:4px;font-weight:400}
     .hint{color:#5F5D6E;font-size:12px;margin:10px 0 16px}
 </style>

@@ -32,7 +32,7 @@ class EmailContent
     {
         $t = $tenant instanceof Tenant ? $tenant : ($tenant ? Tenant::find($tenant) : null);
         if (! $t) {
-            return ['name' => config('app.name'), 'logo' => null, 'email' => null, 'phone' => null, 'color' => null, 'timezone' => config('app.timezone')];
+            return ['name' => config('app.name'), 'logo' => null, 'email' => null, 'phone' => null, 'color' => null, 'timezone' => config('app.timezone')] + self::brand(null);
         }
 
         $logo = null;
@@ -48,8 +48,34 @@ class EmailContent
 
         return [
             'name' => $t->name, 'logo' => $logo, 'email' => $t->contact_email, 'phone' => $t->contact_phone,
-            'color' => $t->primary_color, 'timezone' => $t->timezone ?: config('app.timezone'),
+            'color' => $t->primary_color, 'timezone' => $t->timezone ?: config('app.timezone'), ...self::brand($t),
             'id' => $t->id, 'portal' => in_array($t->plan?->code, ['professional', 'enterprise'], true),
+        ];
+    }
+
+    /**
+     * The company's own colour and font, for emails and for the public pages a client opens from an email (the same choice as Branding).
+     * No colour saved, or only an old code default (yellow, pink, blue): the theme's Sage. The ink is dark or white, whichever reads on the colour.
+     * Returns accent, ink, soft (a pale tint), font_body, font_display and font_param (the Google Fonts address part).
+     */
+    public static function brand(Tenant|int|null $tenant): array
+    {
+        $t      = $tenant instanceof Tenant ? $tenant : ($tenant ? Tenant::find($tenant) : null);
+        $color  = (string) ($t?->primary_color ?? '');
+        $legacy = ['#FFC61A', '#E22A6B', '#E11D5C', '#2F5BEA'];
+        $accent = preg_match('/^#[0-9A-Fa-f]{6}$/', $color) && ! in_array(strtoupper($color), $legacy, true) ? $color : '#5E8A3C';
+
+        [$r, $g, $b] = array_map('hexdec', str_split(ltrim($accent, '#'), 2));
+        $lum  = (0.2126 * $r + 0.7152 * $g + 0.0722 * $b) / 255;
+        $soft = sprintf('#%02X%02X%02X', (int) round($r * .12 + 255 * .88), (int) round($g * .12 + 255 * .88), (int) round($b * .12 + 255 * .88));
+
+        $font = \App\Models\BrandFont::where('key', $t?->font_key ?: 'dm_sans')->first();
+        $safe = fn ($f) => preg_replace('/[^A-Za-z0-9 ,\'"\-]/', '', (string) $f);   // only safe characters in a CSS font list
+
+        return [
+            'accent' => $accent, 'ink' => $lum > 0.55 ? '#1B1A24' : '#FFFFFF', 'soft' => $soft,
+            'font_body' => $safe($font->body_family ?? "'DM Sans'"), 'font_display' => $safe($font->display_family ?? "'Figtree'"),
+            'font_param' => $font->google_param ?? 'DM+Sans:wght@400;500;700&family=Figtree:wght@600;700;800',
         ];
     }
 

@@ -10,7 +10,7 @@
   $senderTrn     = $tenant?->trn ?? $tenant?->tax_number ?? null;
   $senderLogo    = ($tenant?->logo_path ?? null) ? asset('storage/'.$tenant->logo_path) : null;
 
-  $primaryColor  = $tenant?->primary_color ?? '#FFC61A';
+  $primaryColor  = \App\Services\Notifications\EmailContent::brand($tenant)['accent'];
   $currencyCode  = $invoice->currency_code;
 
   $words  = preg_split('/\s+/', trim((string) $senderName));

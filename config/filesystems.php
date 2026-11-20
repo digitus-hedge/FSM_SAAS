@@ -41,7 +41,8 @@ return [
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
-            'url' => env('APP_URL').'/storage',
+            // relative, so the image loads from the address the page is on (company subdomains and any dev port)
+            'url' => '/storage',
             'visibility' => 'public',
             'throw' => false,
             'report' => false,

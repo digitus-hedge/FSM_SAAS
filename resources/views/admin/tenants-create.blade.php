@@ -82,7 +82,7 @@
             </label>
             <label>
                 <span style="display:block;font-weight:600;font-size:13px;margin-bottom:6px">Primary color</span>
-                <input type="color" name="primary_color" value="{{ old('primary_color', '#FFC61A') }}"
+                <input type="color" name="primary_color" value="{{ old('primary_color', '#5E8A3C') }}"
                        style="width:60px;height:42px;padding:0;border:1px solid #E6E4EE;border-radius:10px">
             </label>
         </div>
@@ -104,7 +104,7 @@
         </div>
 
         <div style="display:flex;gap:10px;align-items:center;margin-top:24px;padding-top:20px;border-top:1px solid #E6E4EE">
-            <button type="submit" style="background:#FFC61A;color:#1B1A24;border:0;padding:11px 24px;border-radius:999px;font-weight:600;cursor:pointer">Create workspace</button>
+            <button type="submit" style="background:var(--btn,#7FE0B9);color:var(--btntx,#0F3B2C);border:0;padding:11px 24px;border-radius:999px;font-weight:600;cursor:pointer">Create workspace</button>
             <a href="{{ route('admin.dashboard') }}" style="color:#5F5D6E;text-decoration:none;font-weight:600;margin-left:8px">Cancel</a>
         </div>
     </form>
