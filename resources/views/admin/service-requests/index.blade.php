@@ -201,6 +201,7 @@
             || request()->filled('status')
             || request()->filled('priority')
             || request()->filled('client_id')
+            || request()->filled('contract_id')
             || request()->boolean('choice');
   $choiceOn     = request()->boolean('choice');
   $contractsOn  = (bool) \App\Models\Tenant::current()?->hasFeature('contracts');
@@ -253,6 +254,20 @@
       <option value="{{ $c->id }}" @selected((int) request('client_id') === $c->id)>{{ $c->name }}</option>
     @endforeach
   </select>
+
+  @if ($contractsOn)
+    <select name="contract_id" class="input input-select auto-submit" style="width:190px" aria-label="Contract">
+      <option value="">All contracts</option>
+      @foreach ($contracts as $ct)
+        <option value="{{ $ct->id }}" @selected((int) request('contract_id') === $ct->id)>{{ $ct->contract_number }}</option>
+      @endforeach
+    </select>
+  @endif
+
+  <a href="{{ route('service-requests.export', request()->except('page', 'per_page')) }}" id="sr-export"
+     style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--muted);text-decoration:none;padding:9px 14px;border-radius:999px;border:1px solid var(--line)">
+    Export to Excel
+  </a>
 
   <input type="hidden" name="per_page" value="{{ $perPage }}" />
   @if (request()->boolean('choice'))<input type="hidden" name="choice" value="1" />@endif

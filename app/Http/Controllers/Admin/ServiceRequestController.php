@@ -106,63 +106,43 @@ class ServiceRequestController extends Controller
     // }
 
 
-    public function index(Request $request)
+    /** The most rows one Excel export holds (blueprint 7.9a). A property so a test can lower it. */
+    public static int $exportLimit = 5000;
+
+    /** Stage tabs mapped to database statuses. */
+    private const STAGE_STATUSES = [
+        'needs'     => 'pending',
+        'quoted'    => 'quoted',
+        'assign'    => 'approved',
+        'assigned'  => 'assigned',
+        'progress'  => 'in_progress',
+        'review'    => 'pending_review',
+        'invoice'   => 'awaiting_invoice',
+        'rework'    => 'rework',
+        'done'      => 'completed',
+        'cancelled' => 'cancelled',
+    ];
+
+    /** The requests the signed-in user may see (the sr.view narrowing), before any tab or filter. Used by the list and its Excel export. */
+    private function visibleRequests()
     {
-        $perPage = (int) $request->input('per_page', 10);
+        return \App\Services\Permissions\ServiceRequestAccess::narrowVisible(ServiceRequest::query(), auth()->user());
+    }
 
-        if (!in_array($perPage, $this->perPageOptions)) {
-            $perPage = 10;
-        }
-
-        // Stage tabs mapped to database statuses
-        $stageStatuses = [
-            'needs'     => 'pending',
-            'quoted'    => 'quoted',
-            'assign'    => 'approved',
-            'assigned'  => 'assigned',
-            'progress'  => 'in_progress',
-            'review'    => 'pending_review',
-            'invoice'   => 'awaiting_invoice',
-            'rework'    => 'rework',
-            'done'      => 'completed',
-            'cancelled' => 'cancelled',
-        ];
-
-        $activeStage = $request->input('stage', 'all');
+    /**
+     * The tab and the filters of the request list, applied to $query. The list and the Excel export both call this, so they show the same rows.
+     * Returns the active stage.
+     */
+    private function applyListFilters($query, Request $request): string
+    {
+        $stageStatuses = self::STAGE_STATUSES;
+        $activeStage   = $request->input('stage', 'all');
 
         // Allow 'overdue' and 'all' alongside the regular statuses
         $validStages = array_merge(array_keys($stageStatuses), ['quote', 'overdue', 'all']);
         if (! in_array($activeStage, $validStages, true)) {
             $activeStage = 'all';
         }
-
-        // Base query for stage counts
-        $countQuery = ServiceRequest::query();
-        $stageCounts = [];
-
-        foreach ($stageStatuses as $key => $status) {
-            $stageCounts[$key] = (clone $countQuery)
-                ->where('status', $status)
-                ->when($key === 'needs', fn($q) => $q->whereNull('quote_requested_at'))
-                ->count();
-        }
-
-        // "Waiting for quote" is Pending with quote_requested_at set, not its own
-        // status (blueprint §7.6, "Send for quote").
-        $stageCounts['quote'] = (clone $countQuery)
-            ->where('status', 'pending')
-            ->whereNotNull('quote_requested_at')
-            ->count();
-
-        $stageCounts['all'] = (clone $countQuery)->count();
-
-        // Main requests query
-        $query = ServiceRequest::query()
-            ->with([
-                'client:id,name',
-                'site:id,name',
-                'category:id,name',
-            ]);
 
         // Filter by selected tab
         if ($activeStage === 'overdue') {
@@ -190,6 +170,11 @@ class ServiceRequestController extends Controller
             $query->where('status', 'pending')->where('contract_choice_pending', true);
         }
 
+        // Contracts spec D17: the requests of one contract (?contract_id=)
+        if ($request->filled('contract_id') && ctype_digit((string) $request->input('contract_id'))) {
+            $query->where('contract_id', (int) $request->input('contract_id'));
+        }
+
         // Keep existing filters
         $query->status($request->input('status'))
             ->priority($request->input('priority'))
@@ -203,9 +188,54 @@ class ServiceRequestController extends Controller
             $query->orderByDesc('id');
         }
 
+        return $activeStage;
+    }
+
+    public function index(Request $request)
+    {
+        $perPage = (int) $request->input('per_page', 10);
+
+        if (!in_array($perPage, $this->perPageOptions)) {
+            $perPage = 10;
+        }
+
+        $stageStatuses = self::STAGE_STATUSES;
+
+        // Base query for stage counts (only the requests this user may see)
+        $countQuery = $this->visibleRequests();
+        $stageCounts = [];
+
+        foreach ($stageStatuses as $key => $status) {
+            $stageCounts[$key] = (clone $countQuery)
+                ->where('status', $status)
+                ->when($key === 'needs', fn($q) => $q->whereNull('quote_requested_at'))
+                ->count();
+        }
+
+        // "Waiting for quote" is Pending with quote_requested_at set, not its own
+        // status (blueprint §7.6, "Send for quote").
+        $stageCounts['quote'] = (clone $countQuery)
+            ->where('status', 'pending')
+            ->whereNotNull('quote_requested_at')
+            ->count();
+
+        $stageCounts['all'] = (clone $countQuery)->count();
+
+        // Main requests query
+        $query = $this->visibleRequests()
+            ->with([
+                'client:id,name',
+                'site:id,name',
+                'category:id,name',
+            ]);
+
+        $activeStage = $this->applyListFilters($query, $request);
+
         $requests = $query
             ->paginate($perPage)
             ->withQueryString();
+
+        $contractsOn = app(ContractCoverage::class)->enabled();
 
         return view('admin.service-requests.index', [
             'requests'       => $requests,
@@ -214,10 +244,39 @@ class ServiceRequestController extends Controller
             'statuses'       => ServiceRequest::STATUSES,
             'priorities'     => ServiceRequest::PRIORITIES,
             'clients'        => Client::active()->orderBy('name')->get(['id', 'name']),
+            'contracts'      => $contractsOn ? Contract::query()->orderBy('contract_number')->get(['id', 'contract_number']) : collect(),
             'stageCounts'    => $stageCounts,
             'activeStage'    => $activeStage,
             'choiceCount'    => (clone $countQuery)->where('status', 'pending')->where('contract_choice_pending', true)->count(),
         ]);
+    }
+
+    /**
+     * The request list as an Excel file: exactly the rows the list shows for the same tab and filters (applyListFilters) and the same
+     * narrowing (visibleRequests), plus the contract column. Route gate level:sr.view.
+     */
+    public function export(Request $request, \App\Services\Export\XlsxExporter $xlsx)
+    {
+        $query = $this->visibleRequests()->with(['client:id,name', 'site:id,name', 'category:id,name', 'contract:id,contract_number']);
+        $this->applyListFilters($query, $request);
+        $query->limit(static::$exportLimit);                                   // blueprint 7.9a: up to 5,000 rows
+
+        $tz   = Tenant::current()?->timezone ?: config('app.timezone');
+        $rows = $query->get()->map(fn (ServiceRequest $sr) => [
+            $sr->sr_number, (string) $sr->title, $sr->client->name ?? '', $sr->site->name ?? '', $sr->category->name ?? '',
+            $sr->priorityLabel(), $sr->statusLabel(), $sr->created_at->copy()->setTimezone($tz)->format('Y-m-d H:i'),
+            $sr->contract?->contract_number ?? '',
+        ])->all();
+
+        return $xlsx->download(
+            'requests-' . now()->format('Y-m-d') . '.xlsx',
+            term_cap('service_request', 'plural'),
+            [term_cap('service_request'), 'Title', term_cap('client'), 'Site', 'Category', 'Priority', 'Status', 'Created', 'Contract'],
+            $rows,
+            ['action' => 'service_requests.exported', 'tenant_id' => auth()->user()->tenant_id, 'new' => [
+                'filters' => $request->only(['stage', 'status', 'priority', 'client_id', 'contract_id', 'q', 'choice', 'overdue']), 'rows' => count($rows),
+            ]],
+        );
     }
 
 
@@ -347,13 +406,7 @@ class ServiceRequestController extends Controller
             ]);
 
             // Start SLA clock at creation for every priority
-            $policy  = $sr->resolveSlaPolicy();
-            $started = now();
-            $sr->update([
-                'sla_clock_started_at'  => $started,
-                'sla_response_due_at'   => $policy ? $started->copy()->addMinutes((int) $policy->response_minutes) : null,
-                'sla_resolution_due_at' => $policy ? $started->copy()->addMinutes((int) $policy->resolution_minutes) : null,
-            ]);
+            app(\App\Services\Sla\SlaClock::class)->startAtCreation($sr);
             \App\Models\SrStatusHistory::log($sr, null, 'pending', 'user', auth()->id());
             // FRM-04 / D4: the request takes the published version of its template now.
             $checklists = app(Checklists::class);
@@ -917,25 +970,11 @@ class ServiceRequestController extends Controller
 
         // Raising to Emergency starts the SLA clock if it hasn't started
         if (!$wasEmergency && $isNowEmergency && !$service_request->sla_clock_started_at) {
-            [$resp, $reso] = $service_request->fresh()->slaMinutes();
-            $started = now();
-
-            $service_request->update([
-                'sla_clock_started_at'  => $started,
-                'sla_response_due_at'   => $resp !== null ? $started->copy()->addMinutes($resp) : null,
-                'sla_resolution_due_at' => $reso !== null ? $started->copy()->addMinutes($reso) : null,
-            ]);
+            app(\App\Services\Sla\SlaClock::class)->start($service_request->fresh());
         }
         // Changing to any non-emergency priority — recalculate due times with the new policy
         elseif ($data['priority'] !== 'emergency' && $service_request->sla_clock_started_at) {
-            [$resp, $reso] = $service_request->fresh()->slaMinutes();
-            if ($resp !== null && $reso !== null) {
-                $started = $service_request->sla_clock_started_at;
-                $service_request->update([
-                    'sla_response_due_at'   => $started->copy()->addMinutes($resp),
-                    'sla_resolution_due_at' => $started->copy()->addMinutes($reso),
-                ]);
-            }
+            app(\App\Services\Sla\SlaClock::class)->recalculate($service_request->fresh());
         }
 
         return back()->with('success', "{$service_request->sr_number} priority changed to " . ucfirst($data['priority']) . '.');

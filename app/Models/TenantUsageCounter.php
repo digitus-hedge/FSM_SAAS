@@ -21,7 +21,7 @@ class TenantUsageCounter extends Model
      * Percent used of a given limit. Returns null when the plan has no limit set
      * for this metric (blueprint: "A plan with no number shows 'No limit'").
      */
-    public function percentOf(?int $limit, int $used): ?float
+    public function percentOf(?int $limit, int|float $used): ?float
     {
         if ($limit === null || $limit <= 0) {
             return null;

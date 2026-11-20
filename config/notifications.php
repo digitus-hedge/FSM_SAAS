@@ -17,6 +17,12 @@ return [
             'body'  => '{client}. {used} of {max} calls used. {sr_number} needs your decision.',
             'email' => true,
         ],
+        // Contracts spec D12 / D19 (CNT-14): sent when a contract renews by itself, in-app only
+        'contract.renewed' => [
+            'title' => 'Contract {contract_number} was renewed',
+            'body'  => '{client}. The new contract {new_number} runs from {start} to {end}.',
+            'email' => false,
+        ],
         'contract.expiring' => [
             'title' => 'Contract {contract_number} ends in {days} days',
             'body'  => '{client}. It ends on {date}. Renew it or let it end.',
@@ -97,7 +103,19 @@ return [
             'body'  => '{site}. {when}',
             'email' => true,
         ],
-        // defined for preferences and the catalogue; nothing in the code detects an SLA breach yet (a follow-up)
+        // Blueprint 9.2 and decision 42: the Company Admin, in-app and by email, once at 80 and once at 100 percent of a plan limit for each month
+        // (Services/Usage/PlanLimitWarnings, called by usage:refresh)
+        'plan.limit_warning' => [
+            'title' => '{headline}',
+            'body'  => '{used} of {limit} {unit} used in {period}. {advice}',
+            'email' => true,
+        ],
+        // fired by `sla:check` (Services/Sla/SlaMonitor), once for each request and target
+        'sla.warning' => [
+            'title' => '{sr_number} used {percent}% of its {kind} time',
+            'body'  => '{client}. The {kind} target is due {due}.',
+            'email' => true,
+        ],
         'sla.breached' => [
             'title' => '{sr_number} missed its SLA',
             'body'  => '{client}. The {kind} time was missed.',

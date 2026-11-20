@@ -78,7 +78,7 @@ The blueprint and the register did not settle these. Each has my recommendation.
 | D7 | **Call cap and periods.** A contract may have a cap (`max_calls`). No cap means unlimited. `call_period` sets what the cap counts over: the whole contract term (never resets), or each month, quarter or year counted from the contract's start date. At the start of each new period a daily job sets the counter to 0 and records the new period start. Calls of earlier periods stay in the call log. **Recommended: approve.** | |
 | D8 | **When a call counts and when it is given back.** A call is counted when a request is approved with coverage In contract under that contract. It is given back if the request is cancelled before the first punch in, or if the manager changes the contract or the coverage before the first punch in. It is not given back after work has started, and rework, reassignment and reopening never count a second time. A request that is approved as In warranty, Goodwill or Out of coverage never counts. Every count and give-back is written to a call log. **Recommended: approve.** | |
 | D9 | **When the cap is reached.** If an approval finds the cap already reached (calls used is at or above the cap), the request stays Pending with `contract_choice_pending` set and the reason "cap reached", and `contract.cap_reached` goes to the Operations Manager. The manager must choose one of three: **Count it anyway** (the call is counted and the contract goes over its cap, shown in red), **Goodwill** (coverage becomes Goodwill, no billing, with a reason) or **Out of coverage** (the quote path of Release A). The choice needs `contract.choose` and is audited. **Recommended: approve.** | |
-| D10 | **Contract SLA targets.** A contract may set a response time and a resolution time in minutes, each optional. When set, they replace the category and company policies for that request, and the order becomes contract, then category and priority policy, then company default (blueprint 7.1). The numbers follow the business-hours setting of the company's default policy. Targets are final at approval, because the contract can be unknown until then. **Recommended: approve.** | |
+| D10 | **Contract SLA targets.** A contract may set a response time and a resolution time in minutes, each optional. When set, they replace the category and company policies for that request, and the order becomes contract, then category and priority policy, then company default (blueprint 7.1). The numbers follow the business-hours setting of the policy that matches the request (category and priority, else the company default), not of the company default alone, so a 24/7 Emergency policy stays 24/7 for contract customers. Targets are final at approval, because the contract can be unknown until then. **Recommended: approve.** | |
 | D11 | **The daily renewal job.** Once a day for each company, in this order: move contracts to Expired where the end date has passed, move Active contracts with 90 days or fewer left to Expiring soon, send `contract.expiring` at 90, 60 and 30 days before the end (once for each threshold), apply auto-renew (D12), and roll call periods (D7). Rerunning the job on the same day changes nothing. **Recommended: approve.** | |
 | D12 | **Auto-renew (open owner question).** If auto-renew is on, the day after the end date the system creates the next term as a new Active contract: the same client, type, sites, categories, SLA, cap, value and payment terms; start the day after the old end; the same length as the old term; a new number; `renewed_from_contract_id` pointing to the old one. The old contract becomes Renewed. `contract.renewed` goes to the Company Admin and Operations Manager (in-app). A manager can edit or cancel the new contract. Finance does not need to confirm. **Recommended: approve. This is the owner's call, because a wrong renewal creates wrong coverage.** | |
 | D13 | **Renewing by hand.** The **Renew** action on an Active, Expiring soon or Expired contract creates a Draft copy with the next term's dates and a new number, ready to edit and activate. When it is activated the old contract becomes Renewed. **Recommended: approve.** | |
@@ -88,7 +88,7 @@ The blueprint and the register did not settle these. Each has my recommendation.
 | D17 | **Where the contract shows.** On the request page (number linking to the contract, coverage with its reason, calls used of the cap), on the asset and maintenance schedule where pinned, and in the request list filter and the Excel export. Not in the Field View. In-contract requests never go on an invoice (Quotes and invoices rules), but their expenses stay for cost reporting. **Recommended: approve.** | |
 | D18 | **Plans and downgrades.** Contracts are for Professional and above (`contracts`). Starter gets FEATURE_NOT_IN_PLAN. On a downgrade, contracts and call logs are kept and become read-only, matching stops, and new requests go back to the Release A manual coverage choice. Requests already approved keep their coverage. **Recommended: approve.** | |
 | D19 | **The events.** `sr.contract_choice_needed` and `contract.cap_reached` go to the Operations Manager by in-app and push with an email fallback. `contract.expiring` goes to the Company Admin and Operations Manager by email and in-app, with no fallback. `contract.renewed` goes to both by in-app. None goes to WhatsApp, so no new WhatsApp template is needed. **Recommended: approve.** | |
-| D20 | **Numbers and audit.** Contract numbers come from the company sequence (`tenant_sequences`) with the default pattern CON-YYYY-000001. Every create, edit, activate, renew, cancel, choose and override writes an audit row. **Recommended: approve.** | |
+| D20 | **Numbers and audit.** Contract numbers come from the company sequence (`tenant_sequences`) with the default pattern CT-YYYY-000001 (prefix CT, blueprint decision D23). Every create, edit, activate, renew, cancel, choose and override writes an audit row. **Recommended: approve.** | |
 | D21 | **Maintenance and approval modes.** A request made by a maintenance schedule uses the schedule's pinned contract (slice B4). Automatic approval if in contract (slice B3) applies only when the request has exactly one contract, the cap is not reached and no choice is pending. Otherwise it waits for a manager. **Recommended: approve.** | |
 | D22 | **Keeping records.** Contracts and the call log are kept for the life of the company. Contracts are soft deleted only when they are Draft. **Recommended: approve.** | |
 
@@ -207,14 +207,14 @@ A header with number, client, type, status and the main dates, then tabs:
 
 ### 5.4 Coverage on the request page
 
-On the request page of a Pending request the approval area shows the **suggested coverage** with its reason, for example "In contract CON-2026-000012 (AMC). Call 5 of 12.", "In warranty. The asset's warranty ends on 30 Nov 2026." or "Out of coverage. No contract matches and the asset is not under warranty." The manager can accept it or **Change coverage**, which asks for a reason (D4). After approval the request shows the contract number, the coverage and the calls used of the cap.
+On the request page of a Pending request the approval area shows the **suggested coverage** with its reason, for example "In contract CT-2026-000012 (AMC). Call 5 of 12.", "In warranty. The asset's warranty ends on 30 Nov 2026." or "Out of coverage. No contract matches and the asset is not under warranty." The manager can accept it or **Change coverage**, which asks for a reason (D4). After approval the request shows the contract number, the coverage and the calls used of the cap.
 
 ### 5.5 Choose a contract, and the cap decision (CNT-04, CNT-06)
 
 When a choice is pending, the Pending request shows a banner "Choose a contract before you approve" and the Approve button is disabled.
 
 - **Several contracts (D5).** A dialog lists each matching contract with number, type, end date, calls used of the cap, SLA targets and a short reason it matches. The manager picks one and confirms. A contract that is over its cap is shown with a warning.
-- **Cap reached (D9).** A dialog states "Contract CON-2026-000012 has used 12 of 12 calls." with three choices: **Count it anyway**, **Goodwill** (a reason is required) and **Out of coverage** (continues to a quote). Each choice is confirmed.
+- **Cap reached (D9).** A dialog states "Contract CT-2026-000012 has used 12 of 12 calls." with three choices: **Count it anyway**, **Goodwill** (a reason is required) and **Out of coverage** (continues to a quote). Each choice is confirmed.
 
 A list **Needs a contract choice** (Pending requests with the flag) is a filter of the request list, and the Operations queue of the Dashboards spec shows its count as a fourth counter.
 
@@ -238,7 +238,7 @@ The picture shows the whole matching flow. The rules in 6.2 to 6.8 are the detai
 
 ### 6.1 Creating and keeping a contract (CNT-01, CNT-02, D2, D14, D20, D22)
 
-- **Creating.** A contract is saved as a Draft. It needs a client, a type, a start date and an end date. The end date is on or after the start date. The number is taken from the company sequence at save, pattern CON-YYYY-000001 (D20).
+- **Creating.** A contract is saved as a Draft. It needs a client, a type, a start date and an end date. The end date is on or after the start date. The number is taken from the company sequence at save, pattern CT-YYYY-000001 (D20).
 - **Activating.** Activate moves a Draft to Active. A contract that starts in the future is Active but only matches from its start date (6.3).
 - **Editing.** A Draft can be edited freely or deleted. After activation the client and type are locked (`CONTRACT_LOCKED`). Other fields and the coverage rows can change. A change affects only requests approved after it. Each edit writes an audit row with the old and new values.
 - **Cancelling.** A Draft, Active or Expiring soon contract can be cancelled with a reason. A cancelled contract stops matching at once. Requests already approved under it keep their contract and coverage.
@@ -302,7 +302,7 @@ A pinned contract is valid for a request when it is Active or Expiring soon, tod
 
 - The order is contract, then category and priority policy, then company default (blueprint 7.1).
 - If the contract has a response time, it replaces the response target. If it has a resolution time, it replaces the resolution target. A target the contract does not set comes from the next policy.
-- The contract numbers are in minutes and follow the business-hours setting of the company's default policy.
+- The contract numbers are in minutes and follow the business-hours setting of the policy that matches the request (not the company default alone). A 24/7 Emergency policy stays 24/7 for a contract customer. A contract has no coverage-hours field of its own.
 - The SLA clock starts at approval as in Release A. The due times are worked out at approval, after the contract is known. If the contract is changed before approval they are worked out again.
 - An Emergency request that starts its clock at creation uses the contract known at that moment. If the contract is chosen later, the due times are recalculated and the clock start does not move.
 
@@ -459,7 +459,7 @@ Each test becomes an automated test. Names in the test files start with the ID. 
 | CC-001 | A Company Admin opens Contracts with no contracts | "No contracts yet." and a New contract button |
 | CC-002 | Create a contract with no client, no type, no dates | Each field shows its message and nothing is saved |
 | CC-003 | An end date before the start date | The end date message is shown |
-| CC-004 | Save a valid contract | It is saved as Draft with the next number CON-YYYY-000001 and the audit row contract.created |
+| CC-004 | Save a valid contract | It is saved as Draft with the next number CT-YYYY-000001 and the audit row contract.created |
 | CC-005 | Two contracts saved in the same moment | Each gets a different number |
 | CC-006 | Pick three sites and two categories | The coverage line says Covers 3 sites. They are saved in the coverage rows |
 | CC-007 | Leave the sites and categories empty | The line says Covers all of this client's sites and the contract matches every site and category |
@@ -560,7 +560,7 @@ Each test becomes an automated test. Names in the test files start with the ID. 
 | CC-077 | A contract with both SLA times | The request's response and resolution targets come from the contract |
 | CC-078 | A contract with only a resolution time | Response comes from the category policy and resolution from the contract |
 | CC-079 | A contract with no SLA times | The category and company policies apply |
-| CC-080 | The SLA times | Follow the business-hours setting of the company's default policy |
+| CC-080 | The SLA times | Follow the business-hours setting of the policy that matches the request, so a 24/7 Emergency policy stays 24/7 for contract customers |
 | CC-081 | The contract is changed before approval | The due times are worked out again |
 | CC-082 | An Emergency request whose contract is chosen later | The due times are recalculated and the clock start does not move |
 | CC-083 | A request approved under a contract and later contract SLA edited | Already approved requests keep their due times |

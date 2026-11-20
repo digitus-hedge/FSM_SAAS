@@ -22,8 +22,8 @@ Labels such as "service request", "client" and "quote" can be renamed per compan
 - B6 built (docs/specs/Multi-Trade-Vendors-Depot.md): multi-trade masters, vendor technicians, workshops and depot stages. The API and the depot screens of the Field View are not built.
 - B8 built (docs/specs/Reports-Summaries-Preferences.md, no WhatsApp): reports with PDF and Excel, dashboard figures, daily summaries, notification preferences and digests.
   The reports API is not built.
-- Follow-ups from B8: real Web Push (VAPID, blueprint section 3; today push is a browser notification while the app is open) and firing `sla.breached` (defined and critical,
-  but no code detects an SLA breach).
+- Follow-up from B8: real Web Push (VAPID, blueprint section 3; today push is a browser notification while the app is open).
+- SLA clock and `sla:check` built (blueprint 7.1 and 9.2, no separate spec): business hours, holidays and holds in the due times, `sla.warning` and `sla.breached` fired.
 - B9 checkout and billing: payment gateway on hold until last.
 
 ## Tenancy
@@ -127,6 +127,37 @@ Labels such as "service request", "client" and "quote" can be renamed per compan
 - A route parameter named `{role}` is bound to the Role model (AppServiceProvider): use another name for a plain string.
 - Memory: the full suite needs more than the 128M of the CLI php.ini. `phpunit.xml` sets `memory_limit` to 1024M, so `php artisan test` works as it is.
 
+## SLA clock and checks
+- `Services/Sla/SlaClock` is the one place that works out due times: `start()` (every place that starts a clock calls it, never `addMinutes`), `dueTimes()`, `recalculate()`,
+  `pause()` / `resume()` (JobsController hold and resume; only a hold reason with `pauses_sla` pauses), `recalculateOpen()` (after the business hours or a holiday is saved, and `sla:recalculate`).
+  A policy with `uses_business_hours` counts only the open minutes of `tenant_business_hours` (company zone, `tenant_holidays` skipped, defaults when a company has no rows);
+  the contract's targets replace the policy's, the flag always comes from the policy. Due times are returned in the application time zone (Eloquent writes a Carbon in its own zone).
+  Resume moves a due time out by the time that was left at the pause and adds the paused clock minutes to `sla_paused_minutes`.
+- `Services/Sla/SlaMonitor` (`sla:check`, every minute, `withoutOverlapping`): `sla.warning` once at 80 percent of the target (due time minus the last 20 percent, in open minutes) and
+  `sla.breached` once when the due time passes, for each request and target. The flags are `sla_response_warned_at`, `sla_resolution_warned_at`, `sla_response_breached`,
+  `sla_resolution_breached`, set with a guarded update. A breach also marks the warning as handled. The response target stops at `first_punch_in_at`. Not checked: quoted, completed,
+  awaiting invoice, cancelled, master requests, paused, reopened (`reopened_count`), or no clock. A message goes out only when the point passed within 120 minutes; an older one sets
+  the flag and writes the audit row (`notified` false) with no message. Recipients: warning = Operations Manager and the request's Team Lead; breach = Operations Manager and Company Admin.
+- The clock starts at approval (blueprint 7.1). Creation paths call `startAtCreation()`, which starts it only for an Emergency request or one created already approved; `RequestApprover::complete()`
+  starts it otherwise (an Emergency request keeps its creation start), `startOnApproval()` covers the quote acceptances (portal and `/q/`) and the trades of an approved master. A pending request has no clock and `sla:check` ignores it.
+- `slaState()` and the response SLA read `first_punch_in_at` (not `tech_accepted_at`).
+- Contracts have no coverage-hours or 24/7 field. Contract SLA targets follow the business-hours flag of the MATCHED policy (Contracts spec D10 and CC-080 say so since the owner's decision), so a 24/7 Emergency policy stays 24/7 for contract customers.
+
+## Contracts, assets, dispatch, usage and the request list (Release B follow-up)
+- Contracts: `contract.renewed` (in-app, Company Admin and Operations Manager) is sent by `ContractDailyJob` on auto-renew only. The client's own page is `portal.contracts.*` (`ClientContractsController`):
+  Client Admin only, plan and `contracts` feature, no value, terms, notes or documents, drafts and cancelled hidden; its route parameter is `{clientContract}` because `{contract}` is the office binder.
+  The request list filters by `contract_id` (and `?choice=1`).
+- Assets: the form has the photo (attachment kind `asset_photo`, public disk), the specifications (`specifications_json`, a list of name and value) and the meter (`tracks_meter`, unit, reading; the fields show and count only while it is on).
+  `{asset}` is bound by the signed-in user's company in AppServiceProvider (a deleted asset is a 404).
+- Dispatch: the workload colour limits are `dispatch_settings.workload_green_below` / `workload_amber_up_to` (defaults 60 and 90; `TechnicianSuggester::band($pct, $settings)`).
+  A drag and drop that really changes the time emails the client's primary active contact through `JobRescheduledMail` (else the first active contact with an email). Emergency jobs come first in each calendar day.
+- Usage: `usage:refresh` also recomputes `requests_count` (created in the month, children included, not those cancelled while Pending) and `storage_bytes`, then `Services/Usage/PlanLimitWarnings` sends `plan.limit_warning`
+  to the Company Admin once at 80 and once at 100 percent for each limit and month (`warnings_json` on the counter).
+- Request list and export: `ServiceRequestAccess::narrowVisible()` is the one place that narrows the list, its counts and `service-requests.export` (sr.view `record_level` and `view_own`: Team Lead = their team, Field Technician = assigned
+  to them, anyone else = raised by them). Both routes are behind `level:sr.view`, which never lets `view_own` through (as everywhere); the export holds at most 5,000 rows and writes the audit row `service_requests.exported`.
+- Gotchas found on the way: Eloquent writes a Carbon in ITS OWN zone, so convert to `config('app.timezone')` before saving or binding (the SLA clock, the reschedule time and the usage month all needed it);
+  public properties of a Mailable override the view data of the same name; a Blade `@php(...)` line pairs with the next `@endphp`, so use `@php ... @endphp` blocks.
+
 ## Conventions
 - Every company table has `tenant_id`. Many models have the global scope (trait `App\Models\Concerns\BelongsToTenant`: Client,
   ClientContact, Contract, ServiceRequest, Vendor, Invoice, Quote, Payment, ServiceRequestExpense, GeofenceOverrideRequest,
@@ -162,6 +193,7 @@ Labels such as "service request", "client" and "quote" can be renamed per compan
 - `usage:refresh` daily: recompute each company's usage counters.
 - `contracts:daily` hourly: acts at 02:00 company time. Expire, expiring soon, alerts, auto-renew, roll call periods.
 - `rates:fetch` at 00:30, 06:00, 12:00, 18:00: stores today's rate for turned-on currencies. Only missing pairs are fetched.
+- `sla:check` every minute: SLA warnings and breaches. `sla:recalculate` is a one-time command (open requests on a business-hours policy).
 - `invoices:overdue-daily` hourly: acts at 09:00 company time. Marks invoices overdue, sends reminders once for each number.
 
 ## Tests

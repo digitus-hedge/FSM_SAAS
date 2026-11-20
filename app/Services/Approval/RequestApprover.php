@@ -21,7 +21,8 @@ class RequestApprover
     public function complete(ServiceRequest $sr, string $coverage, ?Contract $contract, ?string $note, bool $override, ?int $userId, ?string $autoMode = null): void
     {
         $fromStatus = $sr->status;
-        $started    = now();
+        // blueprint 7.1: the clock starts now, except for an Emergency request that started it at creation
+        $started    = ($sr->priority === 'emergency' && $sr->sla_clock_started_at) ? $sr->sla_clock_started_at : now();
 
         $sr->fill([
             'status'                       => 'approved',
@@ -40,11 +41,7 @@ class RequestApprover
 
         // D10: a contract's response and resolution times replace the policy's.
         $sr->unsetRelation('contract');
-        [$resp, $reso] = $sr->slaMinutes();
-        $sr->fill([
-            'sla_response_due_at'   => $resp !== null ? $started->copy()->addMinutes($resp) : null,
-            'sla_resolution_due_at' => $reso !== null ? $started->copy()->addMinutes($reso) : null,
-        ])->save();
+        $sr->fill(app(\App\Services\Sla\SlaClock::class)->dueTimes($sr, $started))->save();
 
         // MTR / D5: one approval covers every trade of a multi-trade job
         if ($sr->is_master_sr) {

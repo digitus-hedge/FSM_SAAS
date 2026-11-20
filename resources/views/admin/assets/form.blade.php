@@ -78,7 +78,7 @@
 
 <form method="POST"
       action="{{ $mode === 'create' ? route('admin.assets.store') : route('admin.assets.update', $asset) }}"
-      id="asset-form" novalidate>
+      id="asset-form" enctype="multipart/form-data" novalidate>
   @csrf
   @if ($mode === 'edit') @method('PUT') @endif
 
@@ -133,7 +133,9 @@
         </div>
       </div>
 
-      @php($formsOn = app(\App\Services\Forms\FormTemplates::class)->enabled(\App\Models\Tenant::current()))
+      @php
+        $formsOn = app(\App\Services\Forms\FormTemplates::class)->enabled(\App\Models\Tenant::current());
+      @endphp
       @if ($formsOn)
       <div class="two">
         <div class="fld">
@@ -233,6 +235,70 @@
         </div>
       @endif
 
+      {{-- AST-02: photo, meter settings and specifications --}}
+      @php
+        $photo    = $asset->photo_attachment_id ? \App\Models\Attachment::find($asset->photo_attachment_id) : null;
+        $tracks   = session()->hasOldInput() ? (bool) old('tracks_meter') : (bool) $asset->tracks_meter;
+        $specRows = session()->hasOldInput()
+            ? (array) old('specs', [])
+            : collect($asset->specifications_json ?? [])->map(fn ($r) => ['name' => $r['name'] ?? '', 'value' => $r['value'] ?? ''])->all();
+        if (! $specRows) { $specRows = [['name' => '', 'value' => '']]; }
+      @endphp
+
+      <div class="fld">
+        <label for="photo">Photo</label>
+        @if ($photo)
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:8px">
+            <img src="{{ $photo->url }}" alt="Photo of {{ $asset->name }}" style="width:96px;height:72px;object-fit:cover;border-radius:10px;border:1px solid #E5E4EC">
+            <label style="font-weight:500"><input type="checkbox" name="remove_photo" value="1" @checked(old('remove_photo'))> Remove this photo</label>
+          </div>
+        @endif
+        <input type="file" id="photo" name="photo" accept="image/jpeg,image/png,image/webp" class="inp @error('photo') err @enderror">
+        @error('photo')<div class="errtxt">{{ $message }}</div>@else
+          <div class="hint">JPG, PNG or WebP, up to 5 MB. {{ $photo ? 'A new photo replaces the current one.' : '' }}</div>
+        @enderror
+      </div>
+
+      <div class="fld">
+        <label style="display:flex;align-items:center;gap:8px;font-weight:600">
+          <input type="checkbox" id="tracks_meter" name="tracks_meter" value="1" @checked($tracks)> Track a meter reading
+        </label>
+        <div class="hint">For equipment that is serviced by use, such as running hours or kilometres.</div>
+      </div>
+
+      <div class="two" id="meter-fields" @if (! $tracks) hidden @endif>
+        <div class="fld">
+          <label for="meter_unit">Meter unit <span class="req">*</span></label>
+          <input id="meter_unit" name="meter_unit" value="{{ old('meter_unit', $asset->meter_unit) }}" maxlength="30" placeholder="e.g. hours, km" class="inp @error('meter_unit') err @enderror" @disabled(! $tracks)>
+          @error('meter_unit')<div class="errtxt">{{ $message }}</div>@enderror
+        </div>
+        <div class="fld">
+          <label for="current_meter_reading">Current reading</label>
+          <input type="number" step="0.01" min="0" id="current_meter_reading" name="current_meter_reading" value="{{ old('current_meter_reading', $asset->exists ? $asset->current_meter_reading : '') }}" class="inp @error('current_meter_reading') err @enderror" @disabled(! $tracks)>
+          @error('current_meter_reading')<div class="errtxt">{{ $message }}</div>@enderror
+        </div>
+      </div>
+
+      <div class="fld" id="specs-box">
+        <label>Specifications</label>
+        <div id="spec-rows">
+          @foreach ($specRows as $i => $row)
+            <div class="two spec-row" style="margin-bottom:8px;align-items:center">
+              <div>
+                <input name="specs[{{ $i }}][name]" value="{{ $row['name'] ?? '' }}" maxlength="60" placeholder="Name, e.g. Capacity" class="inp @error('specs.' . $i . '.name') err @enderror">
+                @error('specs.' . $i . '.name')<div class="errtxt">{{ $message }}</div>@enderror
+              </div>
+              <div style="display:flex;gap:8px">
+                <input name="specs[{{ $i }}][value]" value="{{ $row['value'] ?? '' }}" maxlength="255" placeholder="Value, e.g. 500 kW" class="inp @error('specs.' . $i . '.value') err @enderror">
+                <button type="button" class="btn btn-ghost spec-remove" aria-label="Remove this specification">Remove</button>
+              </div>
+            </div>
+          @endforeach
+        </div>
+        <button type="button" class="btn btn-ghost" id="spec-add">+ Add a specification</button>
+        <div class="hint">Free-form name and value pairs, up to 30.</div>
+      </div>
+
       <div class="fld">
         <label for="notes">Notes</label>
         <textarea id="notes" name="notes" rows="4" maxlength="5000" class="txt @error('notes') err @enderror">{{ old('notes', $asset->notes) }}</textarea>
@@ -252,6 +318,46 @@
     </div>
   </div>
 </form>
+
+<script>
+(function () {
+  const box = document.getElementById('tracks_meter');
+  const fields = document.getElementById('meter-fields');
+  function meter() {
+    if (!box || !fields) return;
+    fields.hidden = !box.checked;
+    fields.querySelectorAll('input').forEach(i => { i.disabled = !box.checked; });
+  }
+  if (box) { box.addEventListener('change', meter); meter(); }
+
+  const rows = document.getElementById('spec-rows');
+  const add = document.getElementById('spec-add');
+  if (!rows || !add) return;
+  function reindex() {
+    rows.querySelectorAll('.spec-row').forEach((row, i) => {
+      const inputs = row.querySelectorAll('input');
+      inputs[0].name = 'specs[' + i + '][name]';
+      inputs[1].name = 'specs[' + i + '][value]';
+    });
+  }
+  add.addEventListener('click', () => {
+    if (rows.querySelectorAll('.spec-row').length >= 30) return;
+    const first = rows.querySelector('.spec-row');
+    const copy = first.cloneNode(true);
+    copy.querySelectorAll('input').forEach(i => { i.value = ''; i.classList.remove('err'); });
+    copy.querySelectorAll('.errtxt').forEach(e => e.remove());
+    rows.appendChild(copy);
+    reindex();
+  });
+  rows.addEventListener('click', e => {
+    if (!e.target.classList.contains('spec-remove')) return;
+    const all = rows.querySelectorAll('.spec-row');
+    if (all.length === 1) { all[0].querySelectorAll('input').forEach(i => { i.value = ''; }); return; }
+    e.target.closest('.spec-row').remove();
+    reindex();
+  });
+})();
+</script>
 
 @if ($mode === 'edit' && ! $locked)
   {{-- Kept outside the main form: forms cannot be nested. --}}

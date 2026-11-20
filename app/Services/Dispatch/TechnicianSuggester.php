@@ -19,7 +19,7 @@ class TechnicianSuggester
     /** Statuses in which a technician is still holding the job. */
     public const OPEN_STATUSES = ['assigned', 'in_progress', 'rework'];
 
-    /** Workload colours: green below 60 percent, amber 60 to 90, red above 90. */
+    /** Workload colours: green below 60 percent, amber 60 to 90, red above 90. These are the defaults; each company can change them (DSP-06). */
     public const GREEN_BELOW = 60;
     public const AMBER_UP_TO = 90;
 
@@ -29,9 +29,12 @@ class TechnicianSuggester
     /** Fewer completed jobs than this means "not enough history" for first-time fix. */
     private const MIN_HISTORY = 3;
 
-    public static function band(float $pct): string
+    public static function band(float $pct, ?DispatchSetting $s = null): string
     {
-        return $pct < self::GREEN_BELOW ? 'green' : ($pct <= self::AMBER_UP_TO ? 'amber' : 'red');
+        $green = (int) ($s?->workload_green_below ?? self::GREEN_BELOW);
+        $amber = (int) ($s?->workload_amber_up_to ?? self::AMBER_UP_TO);
+
+        return $pct < $green ? 'green' : ($pct <= $amber ? 'amber' : 'red');
     }
 
     /** Active field technicians and team leads of the company (same pool the assign form has always used). */
@@ -257,7 +260,7 @@ class TechnicianSuggester
                 'parts'         => array_map(fn ($v) => (int) round($v * 100), $parts),
                 'reasons'       => $reasons,
                 'workload_pct'  => $pct,
-                'workload_band' => self::band($pct),
+                'workload_band' => self::band($pct, $s),
             ];
         }
 

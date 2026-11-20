@@ -189,13 +189,7 @@ class PmGenerator
             ],
         ]);
 
-        $policy  = $sr->resolveSlaPolicy();
-        $started = now();
-        $sr->update([
-            'sla_clock_started_at'  => $started,
-            'sla_response_due_at'   => $policy ? $started->copy()->addMinutes((int) $policy->response_minutes) : null,
-            'sla_resolution_due_at' => $policy ? $started->copy()->addMinutes((int) $policy->resolution_minutes) : null,
-        ]);
+        app(\App\Services\Sla\SlaClock::class)->startAtCreation($sr);
         SrStatusHistory::log($sr, null, 'pending', 'system', null, 'Created by maintenance schedule ' . $s->name);
 
         // D19 / B3: the schedule's template wins; a batch gets a row for each asset

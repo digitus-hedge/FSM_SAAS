@@ -66,7 +66,8 @@ class AssetsController extends Controller
 
     public function store(AssetRequest $request)
     {
-        $asset = $this->createWithRetry($request->validated());
+        $asset = $this->createWithRetry($this->payload($request));
+        $this->applyPhoto($asset, $request);
 
         return redirect()->route('admin.assets.index')
             ->with('success', "{$asset->asset_code} created.");
@@ -84,7 +85,8 @@ class AssetsController extends Controller
             return back()->with('error', 'A decommissioned asset is read-only.');
         }
 
-        $asset->update($request->validated());   // asset_code and qr_hash never change
+        $asset->update($this->payload($request, $asset));   // asset_code and qr_hash never change
+        $this->applyPhoto($asset, $request);
 
         return redirect()->route('admin.assets.index')
             ->with('success', "{$asset->asset_code} updated.");
@@ -111,6 +113,62 @@ class AssetsController extends Controller
 
         return redirect()->route('admin.assets.index')
             ->with('success', "{$asset->asset_code} decommissioned. Its history is kept.");
+    }
+
+    /**
+     * The columns to save (AST-02). The photo and the specification rows are not columns:
+     * the photo is stored by applyPhoto(), the rows become specifications_json (a list of name and value, empty names dropped).
+     * The meter fields count only while "Track a meter reading" is on: switched off, what is stored stays as it is.
+     */
+    protected function payload(AssetRequest $request, ?Asset $asset = null): array
+    {
+        $data  = $request->validated();
+        $specs = (array) ($data['specs'] ?? []);
+        unset($data['photo'], $data['remove_photo'], $data['specs']);
+
+        $tracks = (bool) ($data['tracks_meter'] ?? false);
+        $data['tracks_meter'] = $tracks;
+        if (! $tracks) {
+            unset($data['meter_unit'], $data['current_meter_reading']);
+        } elseif (($data['current_meter_reading'] ?? null) === null) {
+            unset($data['current_meter_reading']);
+        } elseif (! $asset || ! $asset->tracks_meter || (float) $asset->current_meter_reading !== (float) $data['current_meter_reading']) {
+            $data['last_meter_recorded_at'] = now();
+        }
+
+        $rows = collect($specs)
+            ->map(fn ($r) => ['name' => trim((string) ($r['name'] ?? '')), 'value' => trim((string) ($r['value'] ?? ''))])
+            ->filter(fn ($r) => $r['name'] !== '')->values()->all();
+        $data['specifications_json'] = $rows ?: null;
+
+        return $data;
+    }
+
+    /** A new photo replaces the old one (file and row); "Remove photo" clears it. The photo is an attachment of kind asset_photo on the public disk. */
+    protected function applyPhoto(Asset $asset, AssetRequest $request): void
+    {
+        $file   = $request->file('photo');
+        $remove = $request->boolean('remove_photo');
+        if (! $file && ! $remove) {
+            return;
+        }
+
+        $old = $asset->photo_attachment_id ? \App\Models\Attachment::find($asset->photo_attachment_id) : null;
+
+        if ($file) {
+            $path = $file->storeAs("assets/{$asset->id}", \Illuminate\Support\Str::uuid() . '.' . $file->extension(), 'public');
+            $att  = \App\Models\Attachment::create([
+                'tenant_id' => $asset->tenant_id, 'attachable_type' => Asset::class, 'attachable_id' => $asset->id, 'kind' => 'asset_photo',
+                'storage_path' => $path, 'original_name' => $file->getClientOriginalName(), 'mime_type' => $file->getMimeType(),
+                'size_bytes' => $file->getSize(), 'sha256' => hash_file('sha256', $file->getRealPath()),
+                'uploaded_by_user_id' => auth()->id(), 'client_event_uuid' => (string) \Illuminate\Support\Str::uuid(),
+            ]);
+            $asset->update(['photo_attachment_id' => $att->id]);
+        } else {
+            $asset->update(['photo_attachment_id' => null]);
+        }
+
+        $old?->deleteWithFile();
     }
 
     protected function createWithRetry(array $data, int $attempts = 3): Asset

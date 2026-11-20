@@ -217,6 +217,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/quotes/{quote}/reject', [ClientPortalController::class, 'quoteReject'])->name('quotes.reject');
 
         Route::get('/maintenance',            [ClientPortalController::class, 'maintenance'])->name('maintenance');
+        Route::get('/contracts',              [\App\Http\Controllers\Client\ClientContractsController::class, 'index'])->name('contracts.index');
+        Route::get('/contracts/{clientContract}', [\App\Http\Controllers\Client\ClientContractsController::class, 'show'])->whereNumber('clientContract')->name('contracts.show');
         Route::get('/requests/{serviceRequest}/certificate', [ClientPortalController::class, 'certificate'])->name('requests.certificate');
         Route::get('/invoices',               [ClientPortalController::class, 'invoices'])->name('invoices.index');
         Route::get('/invoices/{invoice}',     [ClientPortalController::class, 'invoiceShow'])->name('invoices.show');
@@ -591,7 +593,8 @@ Route::prefix('admin/approval-rules')->middleware(['auth', DenyClientRole::class
 
 // Service Requests
     Route::prefix('service-requests')->middleware(['auth', DenyClientRole::class])->name('service-requests.')->group(function () {
-    Route::get('/',                       [ServiceRequestController::class, 'index'])->name('index');
+    Route::get('/',                       [ServiceRequestController::class, 'index'])->middleware('level:sr.view')->name('index');
+    Route::get('/export',                 [ServiceRequestController::class, 'export'])->middleware('level:sr.view')->name('export');
     Route::get('/create',                 [ServiceRequestController::class, 'create'])->name('create');
     Route::post('/',                      [ServiceRequestController::class, 'store'])->name('store');
 

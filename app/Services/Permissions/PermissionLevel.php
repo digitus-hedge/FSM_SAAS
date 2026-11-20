@@ -39,26 +39,29 @@ class PermissionLevel
         return self::any($user, ['full', 'grantable'], $keys);
     }
 
-    private static function any(?User $user, array $levels, array $keys): bool
+    /** The user's level on one permission (a personal override wins), or null when there is none. */
+    public static function levelOf(?User $user, string $key): ?string
     {
         if (! $user || ! $user->role_id || ! $user->tenant_id) {
-            return false;
+            return null;
+        }
+        $permission = Permission::where('key', $key)->first();
+        if (! $permission) {
+            return null;
         }
 
+        $override = UserPermissionOverride::where('user_id', $user->id)->where('permission_id', $permission->id)
+            ->where(fn ($q) => $q->whereNull('ends_at')->orWhere('ends_at', '>', now()))->first();
+
+        return $override
+            ? $override->level
+            : RolePermission::where('tenant_id', $user->tenant_id)->where('role_id', $user->role_id)->where('permission_id', $permission->id)->value('level');
+    }
+
+    private static function any(?User $user, array $levels, array $keys): bool
+    {
         foreach ($keys as $key) {
-            $permission = Permission::where('key', $key)->first();
-            if (! $permission) {
-                continue;
-            }
-
-            $override = UserPermissionOverride::where('user_id', $user->id)->where('permission_id', $permission->id)
-                ->where(fn ($q) => $q->whereNull('ends_at')->orWhere('ends_at', '>', now()))->first();
-
-            $level = $override
-                ? $override->level
-                : RolePermission::where('tenant_id', $user->tenant_id)->where('role_id', $user->role_id)->where('permission_id', $permission->id)->value('level');
-
-            if (in_array($level, $levels, true)) {
+            if (in_array(self::levelOf($user, $key), $levels, true)) {
                 return true;
             }
         }

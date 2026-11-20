@@ -62,5 +62,5 @@
   </table>
   @endif
 </div>
-<div class="dsp-key">Green below 60 percent, amber 60 to 90, red above 90. Capacity is daily capacity times 7.</div>
+<div class="dsp-key">Green below {{ $settings->workload_green_below ?? 60 }} percent, amber {{ $settings->workload_green_below ?? 60 }} to {{ $settings->workload_amber_up_to ?? 90 }}, red above {{ $settings->workload_amber_up_to ?? 90 }}. Capacity is daily capacity times 7.</div>
 @endsection

@@ -55,6 +55,9 @@ class TenantBusinessHourController extends Controller
             }
         });
 
+        // open requests on a business-hours policy get new due times from the new hours
+        app(\App\Services\Sla\SlaClock::class)->recalculateOpen($tenantId);
+
         return redirect()->route('admin.tenant-business-hours.index')
             ->with('success', 'Business hours updated.');
     }

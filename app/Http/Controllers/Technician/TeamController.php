@@ -257,13 +257,7 @@ class TeamController extends Controller
             'team_lead_user_id'      => auth()->id(),
         ]);
 
-        $policy  = $sr->resolveSlaPolicy();
-        $started = now();
-        $sr->update([
-            'sla_clock_started_at'  => $started,
-            'sla_response_due_at'   => $policy ? $started->copy()->addMinutes((int) $policy->response_minutes) : null,
-            'sla_resolution_due_at' => $policy ? $started->copy()->addMinutes((int) $policy->resolution_minutes) : null,
-        ]);
+        app(\App\Services\Sla\SlaClock::class)->startAtCreation($sr);
 
         // Blueprint 7.1: every transition writes sr_status_history.
         \App\Models\SrStatusHistory::log($sr, null, 'pending', 'user', auth()->id());

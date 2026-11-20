@@ -18,6 +18,34 @@ class ServiceRequestAccess
 {
     private const URGENT = ['critical', 'emergency'];
 
+    /**
+     * Which requests the request list (and its Excel export) shows: sr.view `full`, `grantable` and `view_only` see every request of the company;
+     * `record_level` and `view_own` see their own records. "Own" is worked out by the role, here in one place:
+     *   - a Team Lead: the requests of their team (their own team_lead_user_id, a technician of theirs, or one they raised);
+     *   - a Field Technician: the requests assigned to them;
+     *   - anyone else, for example a Front Desk user with a personal override: the requests they raised.
+     * No level at all sees nothing.
+     */
+    public static function narrowVisible(\Illuminate\Database\Eloquent\Builder $query, ?User $user): \Illuminate\Database\Eloquent\Builder
+    {
+        $level = PermissionLevel::levelOf($user, 'sr.view');
+
+        if (in_array($level, ['full', 'grantable', 'view_only'], true)) {
+            return $query;
+        }
+        if (! in_array($level, ['record_level', 'view_own'], true)) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return match ($user->role?->code) {
+            'team_lead' => $query->where(fn ($q) => $q->where('team_lead_user_id', $user->id)
+                ->orWhere('created_by_user_id', $user->id)
+                ->orWhereIn('assigned_tech_user_id', User::withoutGlobalScopes()->where('tenant_id', $user->tenant_id)->where('team_lead_id', $user->id)->select('id'))),
+            'field_technician' => $query->where('assigned_tech_user_id', $user->id),
+            default => $query->where('created_by_user_id', $user->id),
+        };
+    }
+
     public static function mayApprove(?User $user): bool
     {
         return PermissionLevel::isFull($user, 'sr.approve');

@@ -75,6 +75,7 @@ class TenantHolidayController extends Controller
         $data['tenant_id'] = auth()->user()->tenant_id;
 
         TenantHoliday::create($data);
+        app(\App\Services\Sla\SlaClock::class)->recalculateOpen((int) $data['tenant_id']);
 
          return back()->withFragment('holidays')->with('success', 'Holiday added.');
     }
@@ -99,6 +100,7 @@ class TenantHolidayController extends Controller
     public function update(TenantHolidayRequest $request, TenantHoliday $tenant_holiday)
     {
         $tenant_holiday->update($request->validated());
+        app(\App\Services\Sla\SlaClock::class)->recalculateOpen((int) $tenant_holiday->tenant_id);
 
         return back()->withFragment('holidays')->with('success', 'Holiday updated.');
 
@@ -115,6 +117,7 @@ class TenantHolidayController extends Controller
     public function destroy(TenantHoliday $tenant_holiday)
     {
         $tenant_holiday->delete();
+        app(\App\Services\Sla\SlaClock::class)->recalculateOpen((int) $tenant_holiday->tenant_id);
 
         return back()->withFragment('holidays')->with('success', 'Holiday removed.');
 

@@ -418,6 +418,11 @@ class JobsController extends Controller
             'hold_started_at'         => now(),
         ]);
 
+        // blueprint 7.1: the SLA pauses only for a hold reason that says so
+        if ($reason->pauses_sla) {
+            app(\App\Services\Sla\SlaClock::class)->pause($serviceRequest);
+        }
+
         return back()->with('success', 'Job put on hold.');
     }
 
@@ -454,6 +459,9 @@ class JobsController extends Controller
             'hold_started_at'         => null,
             'total_hold_minutes'      => $serviceRequest->total_hold_minutes + $holdMinutes,
         ]);
+
+        // the due times move out by the time that was left when the SLA paused (does nothing when the hold did not pause it)
+        app(\App\Services\Sla\SlaClock::class)->resume($serviceRequest->fresh());
 
         return back()->with('success', 'Resumed.');
     }

@@ -102,13 +102,7 @@ class MasterRequests
             ],
         ], $over));
 
-        $policy  = $sr->resolveSlaPolicy();
-        $started = now();
-        $sr->update([
-            'sla_clock_started_at'  => $started,
-            'sla_response_due_at'   => $policy ? $started->copy()->addMinutes((int) $policy->response_minutes) : null,
-            'sla_resolution_due_at' => $policy ? $started->copy()->addMinutes((int) $policy->resolution_minutes) : null,
-        ]);
+        app(\App\Services\Sla\SlaClock::class)->startAtCreation($sr);
         SrStatusHistory::log($sr, null, 'pending', 'user', $creator->id);
 
         return $sr;
@@ -171,6 +165,7 @@ class MasterRequests
                 'contract_id' => $master->contract_id, 'auto_approved_mode' => $master->auto_approved_mode,
             ])->save();
             SrStatusHistory::log($child, 'pending', 'approved', 'system', null, 'Approved with ' . $master->sr_number);
+            app(\App\Services\Sla\SlaClock::class)->startOnApproval($child->fresh());   // each trade has its own clock, from the master's approval
 
             $tech = $child->planned_tech_user_id ? User::withoutGlobalScopes()->find($child->planned_tech_user_id) : null;
             if ($tech && $tech->deactivated_at === null) {

@@ -178,6 +178,16 @@ class ContractDailyJob
             'start' => $newStart->toDateString(), 'end' => $newEnd->toDateString(),
         ]);
 
+        // D12 / CNT-14: contract.renewed goes to the Company Admin and the Operations Manager, in-app
+        $svc = app(NotificationService::class);
+        $svc->notify('contract.renewed', $svc->usersWithRole('company_admin', $tid)->merge($svc->usersWithRole('operations_manager', $tid)), [
+            'contract_number' => $old->contract_number,
+            'client'          => $old->client?->name ?? '',
+            'new_number'      => (string) DB::table('contracts')->where('id', $newId)->value('contract_number'),
+            'start'           => $newStart->format('d M Y'),
+            'end'             => $newEnd->format('d M Y'),
+        ], route('admin.contracts.show', $newId, false), ['contract_id' => $newId, 'renewed_contract_id' => $old->id]);
+
         return true;
     }
 

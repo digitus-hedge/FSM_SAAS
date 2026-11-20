@@ -38,6 +38,15 @@ class AssetRequest extends FormRequest
             'notes'                => ['nullable', 'string', 'max:5000'],
             // FRM-04: the asset's checklist template (an active one of this company)
             'form_template_id'     => ['nullable', Rule::exists('form_templates', 'id')->where('tenant_id', $tid)->where('status', 'active')],
+            // AST-02: meter settings, photo and specifications
+            'tracks_meter'          => ['nullable', 'boolean'],
+            'meter_unit'            => [Rule::requiredIf(fn () => $this->boolean('tracks_meter')), 'nullable', 'string', 'max:30'],
+            'current_meter_reading' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
+            'photo'                 => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'remove_photo'          => ['nullable', 'boolean'],
+            'specs'                 => ['nullable', 'array', 'max:30'],
+            'specs.*.name'          => ['nullable', 'string', 'max:60'],
+            'specs.*.value'         => ['nullable', 'string', 'max:255'],
         ];
     }
 
@@ -53,12 +62,23 @@ class AssetRequest extends FormRequest
             'warranty_expiry_date' => 'warranty expiry',
             'serial_number'        => 'serial number',
             'default_contract_id'  => 'default contract',
+            'meter_unit'            => 'meter unit',
+            'current_meter_reading' => 'meter reading',
+            'specs.*.name'          => 'specification name',
+            'specs.*.value'         => 'specification value',
         ];
     }
 
     public function withValidator($validator): void
     {
         $validator->after(function ($v) {
+            // AST-02: a specification with a value needs a name
+            foreach ((array) $this->input('specs', []) as $i => $row) {
+                if (filled($row['value'] ?? null) && blank($row['name'] ?? null)) {
+                    $v->errors()->add("specs.{$i}.name", 'Give this specification a name.');
+                }
+            }
+
             if ($v->errors()->isNotEmpty()) {
                 return;
             }

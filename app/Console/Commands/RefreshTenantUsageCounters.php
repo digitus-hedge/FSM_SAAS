@@ -2,9 +2,12 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Attachment;
+use App\Models\ServiceRequest;
 use App\Models\Tenant;
 use App\Models\TenantUsageCounter;
 use App\Models\User;
+use App\Services\Usage\PlanLimitWarnings;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -51,13 +54,29 @@ class RefreshTenantUsageCounters extends Command
                 ->count()
             : 0;
 
-        TenantUsageCounter::updateOrCreate(
+        // Blueprint 6 "At a plan limit": every request created in the month counts, including maintenance jobs and child requests;
+        // a request cancelled while still Pending does not. Storage is the size of the company's files.
+        $requests = ServiceRequest::withoutGlobalScopes()->where('tenant_id', $tenant->id)
+            ->whereBetween('created_at', [$monthStart->copy()->setTimezone(config('app.timezone')), $monthEnd->copy()->setTimezone(config('app.timezone'))])
+            ->whereNotExists(fn ($q) => $q->select(DB::raw(1))->from('sr_status_history as h')
+                ->whereColumn('h.service_request_id', 'service_requests.id')->where('h.from_status', 'pending')->where('h.to_status', 'cancelled'))
+            ->count();
+        $storage = (int) Attachment::withoutGlobalScopes()->where('tenant_id', $tenant->id)->whereNull('deleted_at')->sum('size_bytes');
+
+        $counter = TenantUsageCounter::updateOrCreate(
             ['tenant_id' => $tenant->id, 'year' => $year, 'month' => $month],
             [
                 'user_count' => $userCount,
+                'requests_count' => $requests,
+                'storage_bytes' => $storage,
                 'whatsapp_message_count' => $messages('whatsapp'),
                 'email_message_count' => $messages('email'),
             ]
         );
+
+        // plan.limit_warning: the Company Admin of an active company is told at 80 and at 100 percent, once for each limit and month
+        if ($tenant->isActive()) {
+            app(PlanLimitWarnings::class)->check($tenant, $counter);
+        }
     }
 }

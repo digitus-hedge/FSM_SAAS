@@ -54,6 +54,17 @@
     </div>
     @error('job_minutes')<div class="dsp-err">{{ $message }}</div>@enderror
 
+    <div class="dsp-row">
+      <label for="workload_green_below">Green below<small>Percent of the week's capacity. Default 60.</small></label>
+      <input class="dsp-in" type="number" min="1" max="100" id="workload_green_below" name="workload_green_below" value="{{ old('workload_green_below', $s->workload_green_below ?? 60) }}" required>
+    </div>
+    @error('workload_green_below')<div class="dsp-err">{{ $message }}</div>@enderror
+    <div class="dsp-row">
+      <label for="workload_amber_up_to">Amber up to<small>Above this the technician shows red. Default 90.</small></label>
+      <input class="dsp-in" type="number" min="2" max="200" id="workload_amber_up_to" name="workload_amber_up_to" value="{{ old('workload_amber_up_to', $s->workload_amber_up_to ?? 90) }}" required>
+    </div>
+    @error('workload_amber_up_to')<div class="dsp-err">{{ $message }}</div>@enderror
+
     <button class="dsp-btn" type="submit">Save settings</button>
   </form>
 </div>

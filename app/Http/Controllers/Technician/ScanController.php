@@ -160,13 +160,7 @@ class ScanController extends Controller
             'team_lead_user_id'      => $teamLeadId,
         ]);
 
-        $policy  = $sr->resolveSlaPolicy();
-        $started = now();
-        $sr->update([
-            'sla_clock_started_at'  => $started,
-            'sla_response_due_at'   => $policy ? $started->copy()->addMinutes((int) $policy->response_minutes) : null,
-            'sla_resolution_due_at' => $policy ? $started->copy()->addMinutes((int) $policy->resolution_minutes) : null,
-        ]);
+        app(\App\Services\Sla\SlaClock::class)->startAtCreation($sr);
 
         SrStatusHistory::log($sr, null, 'pending', 'user', $me->id);
 

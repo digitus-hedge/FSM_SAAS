@@ -407,7 +407,7 @@ class ServiceRequest extends Model
         if ($this->sla_resolution_due_at && $now->greaterThan($this->sla_resolution_due_at)) {
             return 'resolution_breached';
         }
-        if ($this->sla_response_due_at && !$this->tech_accepted_at && $now->greaterThan($this->sla_response_due_at)) {
+        if ($this->sla_response_due_at && !$this->first_punch_in_at &&$now->greaterThan($this->sla_response_due_at)) {
             return 'response_breached';
         }
         // "At risk" = within 20% of resolution window

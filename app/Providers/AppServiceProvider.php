@@ -105,5 +105,13 @@ class AppServiceProvider extends ServiceProvider
                 return $model::withoutGlobalScopes()->where('tenant_id', $tenantId)->findOrFail($value);
             });
         }
+
+        // {asset}: the same company rule, and a deleted asset stays a 404 (the soft delete scope is not applied here)
+        \Illuminate\Support\Facades\Route::bind('asset', function ($value) {
+            $tenantId = auth()->user()?->tenant_id ?? \App\Models\Tenant::current()?->id;
+            abort_unless($tenantId, 404);
+
+            return \App\Models\Asset::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereNull('deleted_at')->findOrFail($value);
+        });
     }
 }

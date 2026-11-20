@@ -31,7 +31,7 @@ class DispatchController extends Controller
         $load   = $techs->isEmpty() ? [] : $this->suggester->weekLoad($tenantId, $ids, $s);
         $punch  = $techs->isEmpty() ? [] : $this->suggester->lastPunches($ids);
 
-        $rows = $techs->map(function ($t) use ($load, $punch) {
+        $rows = $techs->map(function ($t) use ($load, $punch, $s) {
             $cap = max(1, (int) ($t->daily_capacity_minutes ?: 480)) * 7;
             $min = $load[$t->id]['minutes'] ?? 0;
             $pct = round($min / $cap * 100, 1);
@@ -43,7 +43,7 @@ class DispatchController extends Controller
                 'minutes'  => $min,
                 'capacity' => $cap,
                 'pct'      => $pct,
-                'band'     => TechnicianSuggester::band($pct),
+                'band'     => TechnicianSuggester::band($pct, $s),
                 'next'     => $load[$t->id]['next'] ?? null,
                 'location' => isset($punch[$t->id])
                     ? 'Last punch ' . $punch[$t->id]['at']->diffForHumans()
@@ -63,7 +63,7 @@ class DispatchController extends Controller
         $arrival = null;
         if ($request->filled('arrival')) {
             try {
-                $arrival = Carbon::parse($request->query('arrival'));
+                $arrival = Carbon::parse($request->query('arrival'))->setTimezone(config('app.timezone'));
             } catch (\Throwable $e) {
                 $arrival = null;
             }
@@ -99,6 +99,7 @@ class DispatchController extends Controller
             ->whereNotNull('scheduled_eta_at')
             ->where('scheduled_eta_at', '>=', $start)
             ->where('scheduled_eta_at', '<', $end)
+            ->orderByRaw("CASE WHEN priority = 'emergency' THEN 0 ELSE 1 END")   // DSP-08: Emergency jobs sit at the top of their day
             ->orderBy('scheduled_eta_at')
             ->get(['id', 'sr_number', 'title', 'priority', 'status', 'assigned_tech_user_id', 'scheduled_eta_at', 'project_site_id']);
 
@@ -162,7 +163,7 @@ class DispatchController extends Controller
 
         $tenantId = (int) $user->tenant_id;
         $techId   = (int) $service_request->assigned_tech_user_id;
-        $new      = Carbon::parse($data['new_eta']);
+        $new      = Carbon::parse($data['new_eta'])->setTimezone(config('app.timezone'));
         $jobMin   = max(1, (int) DispatchSetting::forTenant($tenantId)->job_minutes);
 
         // Time off blocks the move.
@@ -194,6 +195,11 @@ class DispatchController extends Controller
 
         $previous = $service_request->scheduled_eta_at;
 
+        // DSP-08: dropping a job on the time it already has changes nothing: no row, no audit, no email
+        if ($previous && $previous->equalTo($new)) {
+            return response()->json(['ok' => true, 'unchanged' => true, 'message' => $service_request->sr_number . ' stays at ' . $new->format('D d M, H:i') . '.']);
+        }
+
         DB::transaction(function () use ($service_request, $new, $previous, $data, $user, $tenantId) {
             $row = [
                 'tenant_id'              => $tenantId,
@@ -221,7 +227,36 @@ class DispatchController extends Controller
             ]);
         });
 
-        return response()->json(['ok' => true, 'message' => $service_request->sr_number . ' moved to ' . $new->format('D d M, H:i') . '.']);
+        $emailed = $this->tellClient($service_request->fresh(), $previous, $new, $data['reason'] ?? null);
+
+        return response()->json(['ok' => true, 'client_emailed' => $emailed, 'message' => $service_request->sr_number . ' moved to ' . $new->format('D d M, H:i') . '.' . ($emailed ? ' The client was emailed.' : '')]);
+    }
+
+    /**
+     * Email the client contact that the visit moved (DSP-08). The contact is the client's primary active contact with an email,
+     * else the first active contact with one. A failed email never undoes the move. Returns true when an email was sent.
+     */
+    private function tellClient(ServiceRequest $sr, ?Carbon $previous, Carbon $new, ?string $reason): bool
+    {
+        $contact = \App\Models\ClientContact::query()->where('client_id', $sr->client_id)->where('is_active', true)
+            ->whereNotNull('email')->where('email', '!=', '')
+            ->orderByDesc('is_primary')->orderBy('id')->first();
+        if (! $contact) {
+            return false;
+        }
+
+        try {
+            $tz = \App\Models\Tenant::query()->whereKey($sr->tenant_id)->value('timezone') ?: config('app.timezone');
+            \Illuminate\Support\Facades\Mail::to($contact->email)->send(new \App\Mail\JobRescheduledMail(
+                $sr, $contact->name, $previous?->copy()->setTimezone($tz), $new->copy()->setTimezone($tz), $reason,
+            ));
+
+            return true;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Reschedule email failed', ['sr' => $sr->id, 'error' => $e->getMessage()]);
+
+            return false;
+        }
     }
 
     public function settings()
@@ -241,7 +276,11 @@ class DispatchController extends Controller
             'w_proximity'    => ['required', 'integer', 'between:0,100'],
             'w_first_fix'    => ['required', 'integer', 'between:0,100'],
             'job_minutes'    => ['required', 'integer', 'between:15,1440'],
+            // DSP-06: the workload colours (percent of the week's capacity), green below the first, amber up to the second, red above
+            'workload_green_below' => ['required', 'integer', 'between:1,100', 'lt:workload_amber_up_to'],
+            'workload_amber_up_to' => ['required', 'integer', 'between:2,200'],
         ], [
+            'workload_green_below.lt' => 'Green must end below the amber limit.',
             'job_minutes.between' => 'Enter between 15 and 1440 minutes.',
             'w_skill.between'     => 'Each weight must be between 0 and 100.',
         ]);

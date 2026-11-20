@@ -312,6 +312,7 @@ public function quoteAccept(Quote $quote)
         'responded_ip'      => request()->ip(),
     ]);
     $quote->serviceRequest->update(['status' => 'approved']);
+    app(\App\Services\Sla\SlaClock::class)->startOnApproval($quote->serviceRequest->fresh());   // blueprint 7.1: acceptance starts the clock
 
     QuoteEvent::create([
         'tenant_id'   => $quote->tenant_id,
