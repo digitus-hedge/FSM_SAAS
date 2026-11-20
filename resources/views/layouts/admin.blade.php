@@ -134,8 +134,12 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
 @include('layouts._brand_font', ['withLink' => false])
 @else
 {{-- platform console: the same theme and dock as a company, with mint as its colour and the default font --}}
-@include('layouts._theme', ['ctx' => 'admin', 'dock' => true, 'brandOverride' => '#4FC9A0'])
-@include('layouts._brand_font', ['withLink' => false])
+@php $pu = auth('platform')->user(); @endphp
+@include('layouts._theme', ['ctx' => 'admin', 'dock' => true, 'brandOverride' => $pu?->brand_color ?: '#4FC9A0', 'brandEdit' => $pu ? [
+    'action' => route('admin.platform.branding.update'), 'color' => $pu->brand_color ?: '#4FC9A0', 'font' => $pu->font_key ?: 'dm_sans',
+    'fonts' => \App\Models\BrandFont::where('is_active', true)->orWhere('key', $pu->font_key)->orderBy('name')->get(['key', 'name'])->map(fn ($f) => [$f->key, $f->name])->all(),
+] : null])
+@include('layouts._brand_font', ['withLink' => true, 'fontKey' => $pu?->font_key ?: 'dm_sans'])
 @endif
 </head>
 <body>

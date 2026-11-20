@@ -217,11 +217,13 @@ body form button[type=submit]{background:var(--btn);color:var(--btntx);box-shado
 .aw-dock button.on{background:var(--acct);color:var(--acc);box-shadow:inset 0 0 0 1.5px var(--btn)}
 .aw-dock .sw2{width:22px;height:22px;border-radius:50%;box-shadow:0 0 0 2px var(--surface),0 0 0 3px rgba(31,41,80,.14);flex:none;position:relative;overflow:hidden}
 .aw-dock .sw2:after{content:"";position:absolute;inset:0;background:linear-gradient(135deg,transparent 50%,rgba(255,255,255,.55) 50%)}
+.aw-dock button.lb-edit{padding:7px 12px 7px 8px;margin-right:2px}
 .aw-dock .sep{width:1px;height:22px;background:var(--ln);margin:0 4px;flex:none}
 .aw-dock .ck{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;display:none;flex:none}
 .aw-dock button.on .ck{display:block}
 .aw-dock .sw2.dk{background:linear-gradient(135deg,#1B2127 50%,#E9EFE4 50%)}
-@media(max-width:640px){.aw-dock{bottom:14px;padding:5px 5px 5px 12px}.aw-dock .lb span{display:none}.aw-dock button{padding:7px 8px}.aw-dock button span{display:none}.aw-dock button.on span{display:inline}.aw-dock .sep{display:none}}
+@media(max-width:640px){.aw-dock{bottom:14px;padding:5px 5px 5px 12px}.aw-dock .lb span{display:none}.aw-dock button{padding:7px 8px}.aw-dock button span{display:none}.aw-dock button.on span{display:inline}.aw-dock button.lb-edit{padding:7px 12px 7px 8px;margin-right:2px}
+.aw-dock .sep{display:none}}
 
 /* ============ 5b. Theme choices inside a menu (mobile) ============ */
 .aw-slot{padding:8px 4px 10px;border-bottom:1px solid var(--ln);margin-bottom:6px}
@@ -241,6 +243,7 @@ document.addEventListener('DOMContentLoaded',function(){
   var inSlot={{ $dockSlot ? 'true' : 'false' }};
   var colours=[['brand',{{ \Illuminate\Support\Js::from($firstName) }},{{ \Illuminate\Support\Js::from($firstDot) }}],['mint','Mint','#9DD9CE']];
   var darkReady={{ $darkReady ? 'true' : 'false' }};
+  var brandEdit={{ ! empty($brandEdit) ? 'true' : 'false' }};
   var d;
   if(inSlot){d=document.getElementById('aw-theme-slot');if(!d)return;d.className='aw-slot';}
   else{d=document.createElement('div');d.className='aw-dock';d.setAttribute('aria-label','Theme');}
@@ -254,13 +257,15 @@ document.addEventListener('DOMContentLoaded',function(){
     if(inSlot){
       d.innerHTML='<div class="slb">Theme</div><div class="slrow" role="group" aria-label="Theme">'+colours.map(function(i){return cbtn(i,c);}).join('')+dbtn(k)+'</div>';
     }else{
-      d.innerHTML='<div class="lb"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg><span>Theme</span></div>'+
+      var lbIn='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg><span>Theme</span>';
+      d.innerHTML=(brandEdit?'<button type="button" class="lb lb-edit" data-edit="1" title="Colour and font" aria-haspopup="dialog">'+lbIn+'</button>':'<div class="lb">'+lbIn+'</div>')+
         '<div role="radiogroup" aria-label="Colour" style="display:flex;gap:6px">'+colours.map(function(i){return cbtn(i,c);}).join('')+'</div>'+
         (darkReady?'<i class="sep"></i>'+dbtn(k):'');
     }
     meta();}
   d.addEventListener('click',function(e){
     var b=e.target.closest('button');if(!b)return;
+    if(b.dataset.edit){var m=document.getElementById('aw-brand-modal');if(m){m.hidden=false;}return;}
     if(b.dataset.c){
       if(b.dataset.c==='mint')h.setAttribute('data-theme','mint');else h.removeAttribute('data-theme');
       try{localStorage.setItem('fsmTheme',b.dataset.c)}catch(x){}
@@ -309,5 +314,52 @@ document.addEventListener('DOMContentLoaded',function(){
   }).observe(document.body,{childList:true,subtree:true});
   setTimeout(fixAll,0);
 });
+</script>
+@endif
+@if ($dock && ! empty($brandEdit))
+<style>
+#aw-brand-modal{position:fixed;inset:0;z-index:80;background:rgba(15,18,20,.45);display:flex;align-items:center;justify-content:center;padding:16px}
+#aw-brand-modal[hidden]{display:none}
+#aw-brand-modal .bm-card{background:var(--surface,#fff);color:var(--ink,#1B1A24);border-radius:20px;padding:24px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+#aw-brand-modal h3{font-size:17px;margin:0 0 4px}
+#aw-brand-modal p.bm-sub{font-size:13px;color:var(--muted,#5F5D6E);margin:0 0 16px}
+#aw-brand-modal label{display:block;font-weight:700;font-size:13px;margin:0 0 6px}
+#aw-brand-modal .bm-row{display:flex;gap:10px;align-items:center;margin-bottom:16px}
+#aw-brand-modal input[type=color]{width:52px;height:44px;padding:0;border:1px solid var(--ln,#E6E8EC);border-radius:10px;background:none}
+#aw-brand-modal input[type=text],#aw-brand-modal select{flex:1;width:100%;height:44px;padding:0 14px;border:1px solid var(--ln,#E6E8EC);border-radius:12px;font:inherit;font-size:14px;background:var(--field,#F3F4F6);color:inherit}
+#aw-brand-modal .bm-foot{display:flex;gap:10px;justify-content:flex-end;margin-top:6px}
+#aw-brand-modal .bm-foot button{border:0;border-radius:999px;padding:11px 22px;font:700 14px inherit;cursor:pointer}
+#aw-brand-modal .bm-save{background:var(--btn);color:var(--btntx)}
+#aw-brand-modal .bm-cancel{background:var(--fill,#F1F3F5);color:inherit}
+</style>
+<div id="aw-brand-modal" hidden role="dialog" aria-modal="true" aria-labelledby="bm-title">
+  <form class="bm-card" method="POST" action="{{ $brandEdit['action'] }}">
+    @csrf
+    @method('PUT')
+    <h3 id="bm-title">Colour and font</h3>
+    <p class="bm-sub">Choose the colour and font of the platform console.</p>
+    <label for="bm-color">Primary colour</label>
+    <div class="bm-row">
+      <input type="color" id="bm-picker" value="{{ $brandEdit['color'] }}" oninput="document.getElementById('bm-color').value=this.value">
+      <input type="text" id="bm-color" name="brand_color" value="{{ $brandEdit['color'] }}" maxlength="7" pattern="#[0-9A-Fa-f]{6}" oninput="if(/^#[0-9A-Fa-f]{6}$/.test(this.value))document.getElementById('bm-picker').value=this.value">
+    </div>
+    <label for="bm-font">Font</label>
+    <div class="bm-row">
+      <select id="bm-font" name="font_key">
+        @foreach ($brandEdit['fonts'] as [$fk, $fn])
+          <option value="{{ $fk }}" @selected($brandEdit['font'] === $fk)>{{ $fn }}</option>
+        @endforeach
+      </select>
+    </div>
+    <div class="bm-foot">
+      <button type="button" class="bm-cancel" onclick="document.getElementById('aw-brand-modal').hidden=true">Cancel</button>
+      <button type="submit" class="bm-save">Save</button>
+    </div>
+  </form>
+</div>
+<script>
+(function(){var m=document.getElementById('aw-brand-modal');if(!m)return;
+  m.addEventListener('click',function(e){if(e.target===m)m.hidden=true;});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')m.hidden=true;});})();
 </script>
 @endif

@@ -17,7 +17,7 @@ class PlatformUser extends Authenticatable
         'name', 'email', 'password', 'platform_role',
         'failed_login_count', 'locked_until',
         'two_factor_secret', 'two_factor_confirmed_at',
-        'last_sign_in_at', 'deactivated_at',
+        'last_sign_in_at', 'deactivated_at', 'brand_color', 'font_key',
     ];
 
     protected $hidden = ['password', 'remember_token', 'two_factor_secret'];

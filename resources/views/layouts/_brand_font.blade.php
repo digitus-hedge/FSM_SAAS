@@ -14,7 +14,7 @@
     $applyBody = $applyBody ?? false;
 
     $bfTenant  = \App\Models\Tenant::current();
-    $bfFont    = \App\Models\BrandFont::where('key', $bfTenant?->font_key ?? 'dm_sans')->first();
+    $bfFont    = \App\Models\BrandFont::where('key', $fontKey ?? $bfTenant?->font_key ?? 'dm_sans')->first();
     $bfParam   = $bfFont->google_param ?? 'DM+Sans:wght@400;500;700&family=Figtree:wght@600;700';
     $bfSafe    = fn ($f) => preg_replace('/[^A-Za-z0-9 ,\'"\-]/', '', (string) $f);   // only safe characters in a CSS font list
     $bfBody    = $bfSafe($bfFont->body_family ?? "'DM Sans'");

@@ -113,6 +113,7 @@ Route::middleware(['platform.host', 'auth:platform', 'platform.2fa'])->prefix('a
     Route::get('/',                              [TenantController::class, 'index'])->name('dashboard');
     Route::get('/tenants/create',                [TenantController::class, 'create'])->name('tenants.create');
     Route::post('/tenants',                      [TenantController::class, 'store'])->name('tenants.store');
+    Route::put('/platform/branding',             [\App\Http\Controllers\Platform\BrandingController::class, 'update'])->name('platform.branding.update');
     Route::post('/tenants/{tenant}/suspend',     [TenantController::class, 'suspend'])->name('tenants.suspend');
     Route::post('/tenants/{tenant}/reactivate',  [TenantController::class, 'reactivate'])->name('tenants.reactivate');
     Route::post('/tenants/{tenant}/resend-invitation', [TenantController::class, 'resendInvitation'])->name('tenants.resend-invitation');
