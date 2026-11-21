@@ -16,9 +16,11 @@ return new class extends Migration {
             $table->foreignId('tenant_id')->constrained()->cascadeOnDelete();
             $table->unsignedBigInteger('target_user_id');
             $table->string('reason', 255);
-            $table->timestamp('started_at');
-            $table->timestamp('expires_at');
-            $table->timestamp('ended_at')->nullable();
+            // dateTime, not timestamp: avoids MariaDB's implicit defaults (1067 zero-date error,
+            // and ON UPDATE CURRENT_TIMESTAMP silently rewriting started_at)
+            $table->dateTime('started_at');
+            $table->dateTime('expires_at');
+            $table->dateTime('ended_at')->nullable();
             $table->string('ip_address', 45)->nullable();
             $table->string('end_reason', 20)->nullable();                 // ended, expired, signed_out
             $table->unsignedInteger('actions_count')->default(0);
