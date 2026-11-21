@@ -16,6 +16,20 @@ class CompanySettingsController extends Controller
         abort_unless(\App\Services\Permissions\PermissionLevel::canChange(auth()->user(), 'settings.manage'), 403);
     }
 
+    /**
+     * The base currency locks once the company has SENT a quote or an invoice (owner's go-live rule; drafts do not lock it).
+     * sent_at is the sending mark; the status list also catches older rows sent before sent_at was written.
+     */
+    private function currencyLocked(\App\Models\Tenant $tenant): bool
+    {
+        return Quote::where('tenant_id', $tenant->id)
+                ->where(fn ($q) => $q->whereNotNull('sent_at')->orWhereIn('status', ['sent', 'accepted', 'rejected', 'expired', 'superseded']))
+                ->exists()
+            || Invoice::where('tenant_id', $tenant->id)
+                ->where(fn ($q) => $q->whereNotNull('sent_at')->orWhereIn('status', ['sent', 'partially_paid', 'paid', 'overdue', 'written_off']))
+                ->exists();
+    }
+
     private function viewGuard(): void
     {
         abort_unless(\App\Services\Permissions\PermissionLevel::canView(auth()->user(), 'settings.manage'), 403);
@@ -30,8 +44,7 @@ class CompanySettingsController extends Controller
 
         $setting = $tenant->setting ?? new TenantSetting(['tenant_id' => $tenant->id]);
 
-        $currencyLocked = Quote::where('tenant_id', $tenant->id)->exists()
-            || Invoice::where('tenant_id', $tenant->id)->exists();
+        $currencyLocked = $this->currencyLocked($tenant);
 
         return view('admin.company-settings.index', [
             'tenant'         => $tenant,
@@ -47,10 +60,9 @@ class CompanySettingsController extends Controller
         $tenant = Tenant::current();
         abort_unless($tenant, 404);
 
-        $currencyLocked = Quote::where('tenant_id', $tenant->id)->exists()
-            || Invoice::where('tenant_id', $tenant->id)->exists();
+        $currencyLocked = $this->currencyLocked($tenant);
 
-        $data = $request->validate([
+        $data =$request->validate([
             'base_currency'             => [$currencyLocked ? 'nullable' : 'required', 'string', 'size:3'],
             'reopen_window_days'        => ['required', 'integer', 'min:0', 'max:365'],
             'feedback_link_days'        => ['nullable', 'integer', 'min:1', 'max:90'],

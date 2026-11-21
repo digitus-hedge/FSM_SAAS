@@ -316,9 +316,6 @@
       </div>
     </div>
 
-    @if ($mode === 'create')
-      <div class="proto-note">Design prototype. Names and numbers are examples.</div>
-    @endif
   </form>
 
   {{-- RIGHT: People for this site --}}

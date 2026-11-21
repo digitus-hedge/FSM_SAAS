@@ -330,6 +330,8 @@ class TeamController extends Controller
             'quote_requested_at' => now(),
         ]);
 
+        \App\Models\SrStatusHistory::event($serviceRequest, 'quote_requested', null, ['coverage' => 'out_of_coverage']);
+
         return back()->with('success', "{$serviceRequest->sr_number} is out of coverage — sent to the office to quote.");
     }
 

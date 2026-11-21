@@ -666,13 +666,15 @@ class ServiceRequestController extends Controller
     ]);
 
     // Blueprint 7.1 "Send for quote": the request stays Pending with
-    // quote_requested_at set. No status change, so no history row.
+    // quote_requested_at set (shown as "Waiting for quote"). No status change; the history records the decision.
     if ($data['coverage'] === 'needs_quote') {
+        abort_unless($service_request->status === 'pending', 422, 'Only a pending request can be sent for quoting.');
         $service_request->update([
             'coverage_type'            => 'out_of_coverage',
             'quote_requested_at'       => now(),
             'coverage_override_reason' => $data['note'] ?? null,
         ]);
+        \App\Models\SrStatusHistory::event($service_request, 'quote_requested', $data['note'] ?? null, ['coverage' => 'out_of_coverage']);
         return back()->with('success', "{$service_request->sr_number} sent for quoting.");
     }
 
@@ -907,6 +909,9 @@ class ServiceRequestController extends Controller
         $modes = app(ApprovalModes::class);
         $both  = $modes->approveSide($sr, $side, auth()->user(), $coverage ?? $sr->coverage_type, $note ?? $sr->coverage_override_reason);
         if (! $both) {
+            \App\Models\SrStatusHistory::event($sr->fresh(), 'approval_partial',
+                ($side === 'ops' ? 'Operations Manager approved, waiting for Finance' : 'Finance approved, waiting for the Operations Manager') . ($note ? ' — ' . $note : ''),
+                ['side' => $side, 'coverage' => $coverage]);
             return back()->with('success', "{$sr->sr_number}: your approval is recorded. Waiting for the other approval.");
         }
 
@@ -953,6 +958,7 @@ class ServiceRequestController extends Controller
             'coverage_type'      => 'out_of_coverage',
             'quote_requested_at' => now(),
         ]);
+        \App\Models\SrStatusHistory::event($service_request, 'quote_requested', null, ['coverage' => 'out_of_coverage']);
         return back()->with('success', "{$service_request->sr_number} sent for quoting.");
     }
 
@@ -966,7 +972,13 @@ class ServiceRequestController extends Controller
         $wasEmergency   = $service_request->priority === 'emergency';
         $isNowEmergency = $data['priority'] === 'emergency';
 
+        $oldPriority = $service_request->priority;
         $service_request->update(['priority' => $data['priority']]);
+        if ($oldPriority !== $data['priority']) {
+            \App\Models\SrStatusHistory::event($service_request, 'priority_changed',
+                (ServiceRequest::PRIORITIES[$oldPriority] ?? $oldPriority) . ' → ' . (ServiceRequest::PRIORITIES[$data['priority']] ?? $data['priority']),
+                ['from' => $oldPriority, 'to' => $data['priority']]);
+        }
 
         // Raising to Emergency starts the SLA clock if it hasn't started
         if (!$wasEmergency && $isNowEmergency && !$service_request->sla_clock_started_at) {

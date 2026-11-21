@@ -41,11 +41,8 @@ class TenantController extends Controller
     {
         $data = $request->validate([
             'name'              => ['required', 'string', 'min:2', 'max:160'],
-            'slug'              => [
-                'required', 'string', 'min:3', 'max:40',
-                'regex:/^[a-z][a-z0-9-]*$/', 'not_regex:/--/',
-                'unique:tenants,slug',
-            ],
+            // Format, reserved addresses and "already taken" in one rule (shown under the address field).
+            'slug'              => ['required', 'string', new \App\Rules\CompanyAddress()],
             'plan_id'           => ['required', 'exists:plans,id'],
             'country'           => ['nullable', 'string', 'size:2'],
             'timezone'          => ['nullable', 'timezone'],
@@ -56,10 +53,6 @@ class TenantController extends Controller
             'primary_color'     => ['nullable', 'string', 'size:7'],
             'first_admin_name'  => ['required', 'string', 'min:2', 'max:150'],
             'first_admin_email' => ['required', 'email', 'max:190'],
-        ], [
-            'slug.regex'     => 'Use 3 to 40 lowercase letters, numbers or hyphens, starting with a letter.',
-            'slug.not_regex' => 'The address must not contain double hyphens.',
-            'slug.unique'    => 'That address is already taken.',
         ]);
 
         $job = new ProvisionCompany($data + ['source' => 'platform_admin']);

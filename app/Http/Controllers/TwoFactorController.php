@@ -34,12 +34,42 @@ class TwoFactorController extends Controller
             : 'web';
     }
 
-    public function setup()
+    /** Session key for a reset in progress: the new secret waits here until it is confirmed, the old one stays active. */
+    private const RESET_KEY = 'two_factor_reset';
+
+    /** The pending reset secret, only when it belongs to the signed-in user and guard. */
+    private function pendingReset(Request $request, mixed $user): ?string
+    {
+        $p = $request->session()->get(self::RESET_KEY);
+        if (! is_array($p) || ($p['guard'] ?? null) !== $this->activeGuard() || (int) ($p['user_id'] ?? 0) !== (int) $user->id) {
+            return null;
+        }
+        try {
+            return \Illuminate\Support\Facades\Crypt::decryptString($p['secret']);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    public function setup(Request $request)
     {
         $user = $this->activeUser();
         abort_unless($user, 403);
 
-        $secret = $user->two_factor_secret ?: $this->tfa->startSetup($user);
+        $pending = $user->two_factor_confirmed_at ? $this->pendingReset($request, $user) : null;
+
+        // Two-factor is on and no reset was verified: show the status only, never the QR code or the secret.
+        if ($user->two_factor_confirmed_at && ! $pending) {
+            return view('auth.two-factor-setup', [
+                'confirmed'   => true,
+                'confirmedAt' => $user->two_factor_confirmed_at,
+                'secret'      => null,
+                'qrSvg'       => null,
+                'resetting'   => false,
+            ]);
+        }
+
+        $secret = $pending ?: ($user->two_factor_secret ?: $this->tfa->startSetup($user));
         $qr     = $this->tfa->qrCodeInline(
             config('app.name') . ' · ' . ($user->tenant?->name ?? 'Aiywah FSM'),
             $user->email,
@@ -47,10 +77,42 @@ class TwoFactorController extends Controller
         );
 
         return view('auth.two-factor-setup', [
-            'secret'    => $secret,
-            'qrSvg'     => $qr,
-            'confirmed' => (bool) $user->two_factor_confirmed_at,
+            'secret'      => $secret,
+            'qrSvg'       => $qr,
+            'confirmed'   => false,
+            'confirmedAt' => null,
+            'resetting'   => (bool) $pending,
         ]);
+    }
+
+    /** Start a reset: the current password and a current code first, then a new setup is shown. */
+    public function reset(Request $request)
+    {
+        $user = $this->activeUser();
+        abort_unless($user, 403);
+        if (! $user->two_factor_confirmed_at) {
+            return redirect()->route('two-factor.setup');
+        }
+
+        $data = $request->validate([
+            'current' => ['required', 'string'],
+            'code'    => ['required', 'string', 'digits:6'],
+        ], ['code.digits' => 'Enter the 6-digit code from your app.']);
+
+        if (! Hash::check($data['current'], $user->password)) {
+            return back()->withErrors(['current' => 'Your current password is incorrect.']);
+        }
+        if (! $this->tfa->verify($user->two_factor_secret, $data['code'])) {
+            return back()->withErrors(['code' => 'That code is not right. Try the next code from your app.']);
+        }
+
+        $request->session()->put(self::RESET_KEY, [
+            'guard'   => $this->activeGuard(),
+            'user_id' => $user->id,
+            'secret'  => \Illuminate\Support\Facades\Crypt::encryptString($this->tfa->generateSecret()),
+        ]);
+
+        return redirect()->route('two-factor.setup');
     }
 
     public function confirm(Request $request)
@@ -61,6 +123,25 @@ class TwoFactorController extends Controller
         $data = $request->validate([
             'code' => ['required', 'string', 'digits:6'],
         ], ['code.digits' => 'Enter the 6-digit code from your app.']);
+
+        // A verified reset: the new secret replaces the old one only once its code is right.
+        if ($user->two_factor_confirmed_at) {
+            $pending = $this->pendingReset($request, $user);
+            if (! $pending) {
+                return redirect()->route('two-factor.setup');
+            }
+            if (! $this->tfa->verify($pending, $data['code'])) {
+                return back()->withErrors(['code' => 'That code is not right. Try the next code from your app.']);
+            }
+            $user->update(['two_factor_secret' => $pending, 'two_factor_confirmed_at' => now()]);
+            $request->session()->forget(self::RESET_KEY);
+            $this->audit->log('auth.two_factor_reset', [
+                'item_type' => $user::class,
+                'item_id'   => $user->id,
+            ]);
+
+            return redirect()->route('two-factor.setup')->with('success', 'Two-factor sign-in is on with your new app.');
+        }
 
         if (! $this->tfa->confirm($user, $data['code'])) {
             return back()->withErrors(['code' => 'That code is not right. Try the next code from your app.']);

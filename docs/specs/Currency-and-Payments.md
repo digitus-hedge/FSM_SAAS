@@ -19,7 +19,7 @@ In Release A every quote and invoice is in the company's one base currency (Quot
 
 - Online payment of invoices by clients through a payment gateway. Not in Phase 1.
 - Exchange gains and losses. The rate fixed on the document is used for the payment (D7).
-- Changing the company's base currency after its first quote or invoice. It stays locked (blueprint 7.7).
+- Changing the company's base currency after its first sent quote or invoice. It stays locked (blueprint 7.7).
 - Accounting sync by webhook: Release C.
 - Digests and personal notification preferences for the reminder messages: slice B8.
 - Statements of account sent to clients. Not in the register.

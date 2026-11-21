@@ -287,8 +287,24 @@ class ServiceRequest extends Model
         return sprintf('SR-%d-%06d', $year, $n);
     }
 
+    /** Blueprint 7.1 "Send for quote": Pending with quote_requested_at set is shown as "Waiting for quote" (it is not its own status). */
+    public function isWaitingForQuote(): bool
+    {
+        return $this->status === 'pending' && $this->quote_requested_at !== null;
+    }
+
+    /** The status key the office screens show: 'waiting_for_quote' for a Pending request sent for quoting, else the status. */
+    public function displayStatus(): string
+    {
+        return $this->isWaitingForQuote() ? 'waiting_for_quote' : (string) $this->status;
+    }
+
     public function statusLabel(): string
     {
+        if ($this->isWaitingForQuote()) {
+            return 'Waiting for quote';
+        }
+
         return self::STATUSES[$this->status] ?? $this->status;
     }
     public function priorityLabel(): string
@@ -452,7 +468,8 @@ class ServiceRequest extends Model
     /** Client portal only — rework is hidden per blueprint §7.7b; shown as In Progress. */
     public function clientStatusLabel(): string
     {
-        return $this->status === 'rework' ? 'In Progress' : $this->statusLabel();
+        // The client keeps seeing Pending while the office prepares the quote.
+        return $this->status === 'rework' ? 'In Progress' : (self::STATUSES[$this->status] ?? $this->status);
     }
 
     public function clientStatusKey(): string

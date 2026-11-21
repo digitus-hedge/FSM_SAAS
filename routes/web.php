@@ -422,6 +422,7 @@ Route::middleware('auth:platform,web')->group(function () {
     Route::get('/two-factor/setup',    [\App\Http\Controllers\TwoFactorController::class, 'setup'])->name('two-factor.setup');
     Route::post('/two-factor/setup',   [\App\Http\Controllers\TwoFactorController::class, 'confirm'])->name('two-factor.confirm');
     Route::post('/two-factor/disable', [\App\Http\Controllers\TwoFactorController::class, 'disable'])->name('two-factor.disable');
+    Route::post('/two-factor/reset',   [\App\Http\Controllers\TwoFactorController::class, 'reset'])->middleware('throttle:6,1')->name('two-factor.reset');
 });
 
 // Challenge after password — session-protected, not guard-protected.

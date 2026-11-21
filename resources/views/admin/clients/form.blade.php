@@ -389,7 +389,6 @@
     </div>
   </div>
 
-  <div style="color:#5F5D6E;font-size:12.5px;margin-top:16px">Design prototype. Names and numbers are examples.</div>
 </div>
 
 

@@ -82,11 +82,17 @@ class QuotesController extends Controller
         $this->guard();
         $sr->load(['client', 'site']);
 
-        // Reuse an open draft if one exists for this SR, else create one
-        $quote = Quote::where('service_request_id', $sr->id)
-            ->where('status', 'draft')
-            ->where('source', 'builder')
+        // One live quote per request: open the existing draft (builder) or the existing draft upload / sent quote, never a second one.
+        $existing = Quote::where('service_request_id', $sr->id)
+            ->where('tenant_id', $sr->tenant_id)
+            ->whereIn('status', ['draft', 'sent', 'accepted'])
+            ->orderByDesc('id')
             ->first();
+        if ($existing && ! ($existing->status === 'draft' && $existing->source === 'builder')) {
+            return redirect()->route('admin.quotes.show', $existing)
+                ->with('success', $existing->status === 'draft' ? 'This request already has a draft quote.' : 'This request already has a quote. Revise it to make changes.');
+        }
+        $quote = $existing;
 
         if (! $quote) {
             $quote = DB::transaction(function () use ($sr) {
@@ -104,6 +110,7 @@ class QuotesController extends Controller
                     'created_by_user_id'   => auth()->id(),
                 ]);
                 QuoteEvent::log($q->id, 'draft_made');
+                \App\Models\SrStatusHistory::event($sr, 'quote_created', $q->quote_number, ['quote_id' => $q->id]);
                 return $q;
             });
         }
@@ -241,9 +248,7 @@ class QuotesController extends Controller
                 'base_total'     => DocumentCurrency::baseTotal($calc['total'], $cur['exchange_rate'], $tenant),
             ]);
 
-            ServiceRequest::where('id', $quote->service_request_id)
-                ->where('tenant_id', $quote->tenant_id)
-                ->update(['status' => 'quoted']);
+            // Saving a draft never changes the request: it moves to Quoted only when the quote is sent (blueprint 7.1).
 
             QuoteItem::where('quote_id', $quote->id)->delete();
             foreach ($built as $row) {
@@ -326,12 +331,9 @@ class QuotesController extends Controller
 
         $att->update(['attachable_id' => $quote->id]);
 
-
-        $sr->update([
-            'status' => 'quoted',
-        ]);
-
+        // An uploaded quote is a draft too: the request moves to Quoted only when it is sent (blueprint 7.1).
         QuoteEvent::log($quote->id, 'draft_made', 'Uploaded ' . $file->getClientOriginalName());
+        \App\Models\SrStatusHistory::event($sr, 'quote_created', $quote->quote_number . ' (uploaded PDF)', ['quote_id' => $quote->id]);
 
         if (! empty($data['and_send'])) {
             return redirect()->route('admin.quotes.show', $quote)->with('open_send', 1);
@@ -412,10 +414,16 @@ class QuotesController extends Controller
         }
 
         $quote->update(['status' => 'sent', 'sent_at' => now()]);
-        $quote->serviceRequest->update([
-            'status'         => 'quoted',
-            
-        ]);
+
+        // Blueprint 7.1: Pending → Quoted when the quote is sent. A revision sent while already Quoted is a history event only.
+        $sr   = $quote->serviceRequest;
+        $line = $quote->quote_number . ' sent to ' . implode(', ', $request->recipients);
+        if ($sr && $sr->status === 'pending') {
+            $sr->update(['status' => 'quoted']);
+            \App\Models\SrStatusHistory::log($sr, 'pending', 'quoted', 'user', auth()->id(), $line, ['event' => 'quote_sent', 'quote_id' => $quote->id]);
+        } elseif ($sr) {
+            \App\Models\SrStatusHistory::event($sr, 'quote_sent', $line, ['quote_id' => $quote->id]);
+        }
 
         \App\Models\QuoteEvent::log($quote->id, 'sent', 'Sent to ' . implode(', ', $request->recipients));
 
@@ -457,6 +465,9 @@ class QuotesController extends Controller
 
             $quote->update(['status' => 'superseded']);
             QuoteEvent::log($new->id, 'draft_made', 'Revised from ' . $quote->quote_number);
+            if ($quote->serviceRequest) {
+                \App\Models\SrStatusHistory::event($quote->serviceRequest, 'quote_created', $new->quote_number . ' (revision of ' . $quote->quote_number . ')', ['quote_id' => $new->id]);
+            }
             return $new;
         });
 

@@ -41,9 +41,11 @@ class OperationsQueueController extends Controller
             ->count();
 
         // ─── Section 1: Pending approval ────────────────────────────────
-        $pendingApprovalTotal = ServiceRequest::where('status', 'pending')->count();
+        // A request sent for quoting (Pending with quote_requested_at) waits for Finance, not for approval (blueprint 7.1 "Send for quote").
+        $pendingApprovalTotal = ServiceRequest::where('status', 'pending')->whereNull('quote_requested_at')->count();
         $pendingApproval = ServiceRequest::with(['client:id,name', 'site:id,name'])
             ->where('status', 'pending')
+            ->whereNull('quote_requested_at')
             ->orderBy('created_at')
             ->get();
 
@@ -68,9 +70,10 @@ class OperationsQueueController extends Controller
     ->get();
 
         // ─── Section 4: Awaiting invoice ────────────────────────────────
-        $awaitingInvoiceTotal = ServiceRequest::where('billing_status', 'awaiting_invoice')->count();
+        // Blueprint 7.1: the job waits in the Awaiting Invoice STATUS (nothing writes billing_status 'awaiting_invoice', so the old filter was always empty).
+        $awaitingInvoiceTotal = ServiceRequest::where('status', 'awaiting_invoice')->count();
         $awaitingInvoice = ServiceRequest::with(['client:id,name', 'site:id,name'])
-            ->where('billing_status', 'awaiting_invoice')
+            ->where('status', 'awaiting_invoice')
             ->orderBy('updated_at')
        
             ->get();

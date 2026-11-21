@@ -7,8 +7,11 @@ use Illuminate\Contracts\Validation\ValidationRule;
 
 class CompanyAddress implements ValidationRule
 {
-    private const RESERVED = ['www','app','api','admin','platform','support','mail',
-                              'status','docs','help','login','static','cdn','aiywah'];
+    // Owner's go-live list, plus the earlier TEN-D2 extras (platform, login, aiywah).
+    public const RESERVED = ['admin','www','api','app','mail','webmail','smtp','ftp','cpanel','portal',
+                             'support','help','docs','status','static','assets','cdn','dev','staging',
+                             'test','localhost','ns1','ns2',
+                             'platform','login','aiywah'];
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {

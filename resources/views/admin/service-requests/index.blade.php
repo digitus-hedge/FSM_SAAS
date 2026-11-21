@@ -334,7 +334,7 @@
 
           <td>
             <a href="{{ route('service-requests.show', $sr) }}" style="text-decoration:none;color:inherit;display:block">
-              <span class="pill pill-{{ $statusPill[$sr->status] ?? 'gray' }}">
+              <span class="pill pill-{{ $statusPill[$sr->displayStatus()] ?? 'gray' }}">
                 <span class="pill-dot"></span>{{ $sr->statusLabel() }}
               </span>
             </a>

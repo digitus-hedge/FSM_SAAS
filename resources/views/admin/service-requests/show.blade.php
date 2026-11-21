@@ -151,8 +151,18 @@
   $statusPill = [
     'pending' => 'gray', 'quoted' => 'blue', 'approved' => 'green', 'assigned' => 'blue',
     'in_progress' => 'amber', 'pending_review' => 'orange', 'awaiting_invoice' => 'orange',
-    'rework' => 'red', 'completed' => 'green', 'cancelled' => 'gray',
+    'rework' => 'red', 'completed' => 'green', 'cancelled' => 'gray', 'waiting_for_quote' => 'blue',
   ];
+  // The request's live quote (draft or sent): Build quote opens it instead of making a second one.
+  $openQuote = \App\Models\Quote::where('service_request_id', $sr->id)
+      ->whereIn('status', ['draft', 'sent', 'accepted'])
+      ->orderByDesc('id')->first();
+  // Billing line: a request on the quote path is not "Not applicable".
+  $billingLabel = match (true) {
+      $sr->isWaitingForQuote() => $openQuote?->status === 'draft' ? 'Waiting for quote (draft ' . $openQuote->quote_number . ')' : 'Waiting for quote',
+      $sr->status === 'quoted' => 'Quote sent, waiting for the client',
+      default                  => ucwords(str_replace('_', ' ', (string) $sr->billing_status)),
+  };
   $contractsOn    = $contractsOn ?? false;
   $coverage       = $coverage ?? null;
   $canSeeContract = $canSeeContract ?? false;
@@ -215,7 +225,7 @@
         </svg>
         <h3>Overview</h3>
         <div class="right">
-          <span class="pill pill-{{ $statusPill[$sr->status] ?? 'gray' }}">
+          <span class="pill pill-{{ $statusPill[$sr->displayStatus()] ?? 'gray' }}">
             <span class="pill-dot"></span>{{ $sr->statusLabel() }}
           </span>
         </div>
@@ -481,11 +491,7 @@
             <li>
               <div class="hist-dot"></div>
               <div class="hist-body">
-                <div class="hist-title">
-                  {{ $event->from_status ? ucwords(str_replace('_',' ',$event->from_status)) : 'Created' }}
-                  →
-                  {{ ucwords(str_replace('_',' ',$event->to_status)) }}
-                </div>
+                <div class="hist-title">{{ $event->title() }}</div>
                 <div class="hist-sub">
                   @if ($event->actor_type === 'client')
                     Client
@@ -549,7 +555,8 @@
       </div>
       <div class="card-body" style="padding:16px 20px;display:flex;flex-direction:column;gap:10px">
 
-        @if ($sr->status === 'pending' && \App\Services\Permissions\ServiceRequestAccess::mayApprove(auth()->user()))
+        {{-- A request sent for quoting waits for Finance: no Approve (it moves on when the quote is sent and accepted). --}}
+        @if ($sr->status === 'pending' && ! $sr->isWaitingForQuote() && \App\Services\Permissions\ServiceRequestAccess::mayApprove(auth()->user()))
           @if ($choicePending)
             <button type="button" class="act-btn act-primary" disabled title="Choose a contract before you approve.">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -618,7 +625,14 @@
             Review quality check
           </a>
         @endif
-        @if ($sr->status === 'quoted' && \App\Services\Permissions\PermissionLevel::canChange(auth()->user(), 'quote.manage'))
+        @if (($sr->isWaitingForQuote() || $sr->status === 'quoted') && \App\Services\Permissions\PermissionLevel::canChange(auth()->user(), 'quote.manage'))
+          @if ($openQuote)
+    {{-- One live quote per request: open the draft, or the sent quote (revise it from there), never start a second one. --}}
+    <a href="{{ $openQuote->status === 'draft' && $openQuote->source === 'builder' ? route('admin.quotes.edit', $openQuote) : route('admin.quotes.show', $openQuote) }}" class="act-btn act-primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        {{ $openQuote->status === 'draft' ? 'Open draft quote' : 'View quote' }} {{ $openQuote->quote_number }}
+    </a>
+          @else
     <a href="{{ route('admin.quotes.build', $sr) }}" class="act-btn act-primary">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
         Build quote
@@ -627,6 +641,7 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         Upload quote PDF instead
     </a>
+          @endif
 @endif
 
         @if (!in_array($sr->status, ['completed', 'cancelled']) && \App\Services\Permissions\ServiceRequestAccess::mayCancel(auth()->user(), $sr))
@@ -755,7 +770,7 @@
       </div>
       <div class="card-body">
         <dl class="kv">
-          <dt>Status</dt><dd>{{ ucwords(str_replace('_', ' ', $sr->billing_status)) }}</dd>
+          <dt>Status</dt><dd>{{ $billingLabel }}</dd>
           <dt>Coverage</dt><dd>{{ ucwords(str_replace('_', ' ', $sr->coverage_type)) }}</dd>
           @if ($sr->coverage_override_reason)
             <dt>Reason</dt><dd>{{ $sr->coverage_override_reason }}</dd>

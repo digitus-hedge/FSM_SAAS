@@ -84,7 +84,7 @@
 
     <button type="submit" class="btn">Sign in</button>
 
-    @if (app()->environment('local', 'staging'))
+    @if (app()->environment('local'))
         <div class="demo">
             Demo for {{ $tenant->name }}:<br>
             <code>{{ 'admin@' . $tenant->slug . '.test' }}</code> &middot; <code>Aiywah#2026</code>
