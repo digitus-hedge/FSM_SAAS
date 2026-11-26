@@ -123,7 +123,7 @@ class SlaMonitor
             // blueprint 9.2: Ops Manager and Company Admin
             $svc->notify('sla.breached', $svc->usersWithRole('operations_manager', $tenant->id)->merge($svc->usersWithRole('company_admin', $tenant->id)), [
                 'sr_number' => $sr->sr_number, 'client' => $sr->client?->name ?? '', 'kind' => $kind,
-            ], route('service-requests.show', $sr, false), ['service_request_id' => $sr->id, 'kind' => $kind]);
+            ], \App\Support\TenantUrl::route($sr->tenant_id, 'service-requests.show', $sr), ['service_request_id' => $sr->id, 'kind' => $kind]);
             $out['breaches']++;
         } else {
             $out['silent']++;
@@ -152,7 +152,7 @@ class SlaMonitor
             $svc->notify('sla.warning', $to, [
                 'sr_number' => $sr->sr_number, 'client' => $sr->client?->name ?? '', 'kind' => $kind, 'percent' => SlaClock::WARN_PERCENT,
                 'due' => $due->copy()->setTimezone($tz)->format('d M Y H:i'),
-            ], route('service-requests.show', $sr, false), ['service_request_id' => $sr->id, 'kind' => $kind]);
+            ], \App\Support\TenantUrl::route($sr->tenant_id, 'service-requests.show', $sr), ['service_request_id' => $sr->id, 'kind' => $kind]);
             $out['warnings']++;
         } else {
             $out['silent']++;

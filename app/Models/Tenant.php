@@ -62,5 +62,16 @@ class Tenant extends Model
     protected static ?Tenant $current = null;
 
     public static function current(): ?Tenant { return static::$current; }
-    public static function setCurrent(?Tenant $tenant): void { static::$current = $tenant; }
+    /**
+     * A company also becomes the path-mode URL default, so route() builds its links (App\Support\Tenancy). Setting null leaves the
+     * URL default alone: code that sets a company for a moment and puts null back (EmailContent, SlaMonitor, PmGenerator) must not
+     * take away the links of a job that set them with Tenancy::withUrlsFor(). Clear it with Tenancy::applyUrlDefaults(null).
+     */
+    public static function setCurrent(?Tenant $tenant): void
+    {
+        static::$current = $tenant;
+        if ($tenant) {
+            \App\Support\Tenancy::applyUrlDefaults($tenant);
+        }
+    }
 }

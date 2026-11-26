@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use App\Models\{Tenant, User};
 use App\Services\Audit\AuditLogger;
 use App\Services\Auth\DeviceService;
+use App\Support\TenantUrl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{Auth, Cache, RateLimiter};
@@ -17,7 +18,7 @@ use Illuminate\Support\Str;
  *   3. handoff()  — one-time token (60 s) → redirect to the company's own address.
  *   4. consume()  — runs on the company address: token → signed-in session there.
  *
- * Sessions stay per company address (host-only cookies), so two companies never mix.
+ * Sessions stay per company: a cookie per company path (path mode) or per company host (subdomain mode), so two companies never mix.
  */
 class CentralLoginController extends Controller
 {
@@ -143,7 +144,7 @@ class CentralLoginController extends Controller
         if (! $pending || ($pending['expires'] ?? 0) < now()->timestamp
             || ! in_array((int) $data['user_id'], $pending['user_ids'], true)) {
             $request->session()->forget('central_login_pending');
-            return redirect()->route('login')->withErrors(['identifier' => 'Please sign in again.']);
+            return redirect()->route('central.login')->withErrors(['identifier' => 'Please sign in again.']);
         }
 
         $request->session()->forget('central_login_pending');
@@ -163,7 +164,7 @@ class CentralLoginController extends Controller
                 'remember' => $remember,
                 'attempts' => 0,
             ]);
-            return redirect()->route('two-factor.challenge');
+            return redirect()->route('central.two-factor.challenge');
         }
 
         return $this->handoff($user, $remember);
@@ -183,7 +184,8 @@ class CentralLoginController extends Controller
 
         $user->loadMissing('tenant');
 
-        return redirect()->away($this->tenantUrl($user->tenant, '/auth/handoff/' . $token));
+        // The company's own address (path mode /{slug}/..., subdomain mode {slug}.host/...)
+        return redirect()->away(TenantUrl::for($user->tenant, '/auth/handoff/' . $token));
     }
 
     /** Runs on the company's own address. */
@@ -244,15 +246,5 @@ class CentralLoginController extends Controller
         }
 
         return redirect()->intended(route('tenant.dashboard'));
-    }
-
-    private function tenantUrl(Tenant $tenant, string $path): string
-    {
-        $host     = parse_url(config('app.url'), PHP_URL_HOST);
-        $port     = parse_url(config('app.url'), PHP_URL_PORT);
-        $scheme   = parse_url(config('app.url'), PHP_URL_SCHEME) ?: 'http';
-        $portPart = $port ? ":{$port}" : '';
-
-        return "{$scheme}://{$tenant->slug}.{$host}{$portPart}{$path}";
     }
 }

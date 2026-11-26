@@ -365,7 +365,7 @@ function simClose() { document.getElementById('sim-panel').classList.remove('ope
 function simLoad() {
   const token = document.getElementById('sim-pick').value;
   if (! token) return;
-  document.getElementById('sim-iframe').src = @json(url('/q/')) + '/' + token + '?r=' + Date.now();
+  document.getElementById('sim-iframe').src = @json(\App\Support\Tenancy::url('/q')) + '/' + token + '?r=' + Date.now();
 }
 </script>
 @endif

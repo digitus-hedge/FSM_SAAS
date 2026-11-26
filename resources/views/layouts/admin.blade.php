@@ -498,11 +498,11 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body),system-u
         </div>
 
         <div class="foot-row">
-            <a href="{{ route('two-factor.setup') }}" class="foot-link {{ ($u->two_factor_confirmed_at ?? false) ? 'tfa-on' : '' }}">
+            <a href="{{ route($isPlatform ? 'platform.two-factor.setup' : 'two-factor.setup') }}" class="foot-link {{ ($u->two_factor_confirmed_at ?? false) ? 'tfa-on' : '' }}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                 {{ ($u->two_factor_confirmed_at ?? false) ? '2FA on' : '2FA off' }}
             </a>
-            <a href="{{ route('profile.devices.index') }}" class="foot-link">
+            <a href="{{ route($isPlatform ? 'platform.profile.devices.index' : 'profile.devices.index') }}" class="foot-link">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
                 Devices
             </a>

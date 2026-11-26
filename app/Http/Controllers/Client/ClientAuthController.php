@@ -215,10 +215,6 @@ class ClientAuthController extends Controller
 
     private function buildPortalUrl(Tenant $tenant, string $path): string
     {
-        $host   = parse_url(config('app.url'), PHP_URL_HOST);
-        $port   = parse_url(config('app.url'), PHP_URL_PORT);
-        $scheme = parse_url(config('app.url'), PHP_URL_SCHEME) ?: 'http';
-        $portPart = $port ? ":{$port}" : '';
-        return "{$scheme}://{$tenant->slug}.{$host}{$portPart}{$path}";
+        return \App\Support\TenantUrl::for($tenant, $path);   // path or subdomain mode
     }
 }

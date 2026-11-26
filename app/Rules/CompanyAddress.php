@@ -7,12 +7,7 @@ use Illuminate\Contracts\Validation\ValidationRule;
 
 class CompanyAddress implements ValidationRule
 {
-    // Owner's go-live list, plus the earlier TEN-D2 extras (platform, login, aiywah).
-    public const RESERVED = ['admin','www','api','app','mail','webmail','smtp','ftp','cpanel','portal',
-                             'support','help','docs','status','static','assets','cdn','dev','staging',
-                             'test','localhost','ns1','ns2',
-                             'platform','login','aiywah'];
-
+    // The reserved list lives in config/tenancy.php (go-live list, TEN-D2 extras and every first path segment outside the company group).
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
         if (! preg_match('/^[a-z][a-z0-9-]{2,39}$/', $value)) {
@@ -23,7 +18,7 @@ class CompanyAddress implements ValidationRule
             $fail(__('Use 3 to 40 lowercase letters, numbers or hyphens, starting with a letter.'));
             return;
         }
-        if (in_array($value, self::RESERVED, true)) {
+        if (\App\Support\Tenancy::isReserved($value)) {
             $fail(__('That address is reserved.'));
             return;
         }

@@ -137,6 +137,6 @@ class FeedbackLinks
             'client'    => $sr->client?->name ?? '',
             'stars'     => $stars,
             'score'     => $score,
-        ], route('service-requests.show', $sr, false), ['service_request_id' => $sr->id, 'stars' => $stars, 'score' => $score, 'priority' => $urgent ? 'urgent' : 'normal']);
+        ], \App\Support\TenantUrl::route($sr->tenant_id, 'service-requests.show', $sr), ['service_request_id' => $sr->id, 'stars' => $stars, 'score' => $score, 'priority' => $urgent ? 'urgent' : 'normal']);
     }
 }

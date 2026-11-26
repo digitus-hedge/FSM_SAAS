@@ -94,7 +94,7 @@ class AppServiceProvider extends ServiceProvider
                     app(\App\Services\Notifications\NotificationService::class)->notify('sr.assigned', [$tech], [
                         'sr_number' => $sr->sr_number, 'site' => $sr->site?->name,
                         'when' => $sr->scheduled_eta_at ? 'Due ' . $sr->scheduled_eta_at->format('j M Y H:i') . '.' : '',
-                    ], route('technician.jobs.show', $sr, false));
+                    ], \App\Support\TenantUrl::route($sr->tenant_id, 'technician.jobs.show', $sr));
                 }
             }
         });
@@ -109,7 +109,7 @@ class AppServiceProvider extends ServiceProvider
                         $svc = app(\App\Services\Notifications\NotificationService::class);
                         $svc->notify('master.child_completed', $svc->usersWithRole('operations_manager', $sr->tenant_id), [
                             'sr_number' => $sr->sr_number, 'trade' => $sr->category?->name, 'master_number' => $master->sr_number,
-                        ], route('service-requests.show', $master, false));
+                        ], \App\Support\TenantUrl::route($master->tenant_id, 'service-requests.show', $master));
                     }
                 }
             }

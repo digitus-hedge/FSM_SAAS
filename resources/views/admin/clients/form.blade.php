@@ -476,7 +476,7 @@ document.addEventListener('DOMContentLoaded', () => {
 @if ($mode === 'edit')
 const CONTACT_URLS = {
   store: @json(route('admin.clients.contacts.store', $client)),
-  base:  @json(url('/admin/clients/'.$client->id.'/contacts')),
+  base:  @json(route('admin.clients.contacts.store', $client)),
 };
 const CSRF = @json(csrf_token());
 

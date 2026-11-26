@@ -198,6 +198,6 @@ class OverdueReminderService
             'balance'        => $inv->currency_code . ' ' . Money::format($inv->balance, $inv->currency_code),
             'days'           => $days,
             'recipients'     => $recipients ? implode(', ', $recipients) : 'no client contact',
-        ], route('admin.invoices.show', $inv, false), ['invoice_id' => $inv->id, 'reminder' => $n]);
+        ], \App\Support\TenantUrl::route($inv->tenant_id, 'admin.invoices.show', $inv), ['invoice_id' => $inv->id, 'reminder' => $n]);
     }
 }

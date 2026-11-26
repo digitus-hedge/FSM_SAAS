@@ -240,7 +240,7 @@ class PmGenerator
         $svc->notify('pm.generated', $to, [
             'sr_number' => $sr->sr_number, 'what' => $count > 1 ? "{$count} assets" : ($sr->primaryAsset?->name ?? 'the asset'),
             'site' => $sr->site?->name, 'date' => Carbon::parse($sr->pm_due_date)->format('j M Y'), 'note' => $note,
-        ], route('service-requests.show', $sr, false));
+        ], \App\Support\TenantUrl::route($sr->tenant_id, 'service-requests.show', $sr));
     }
 
     /** The same writes as the office "Assign" action, for an approved request. */
@@ -274,7 +274,7 @@ class PmGenerator
             $sr->forceFill([$col => now(), ...($col === 'pm_overdue_second_at' && ! $sr->pm_overdue_first_at ? ['pm_overdue_first_at' => now()] : [])])->save();
             $svc->notify('pm.overdue', $svc->usersWithRole('operations_manager', $tenant->id), [
                 'sr_number' => $sr->sr_number, 'site' => $sr->site?->name, 'date' => Carbon::parse($sr->pm_due_date)->format('j M Y'),
-            ], route('service-requests.show', $sr, false));
+            ], \App\Support\TenantUrl::route($sr->tenant_id, 'service-requests.show', $sr));
             $sent++;
         }
 

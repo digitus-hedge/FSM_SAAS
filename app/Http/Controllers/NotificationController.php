@@ -13,7 +13,7 @@ class NotificationController extends Controller
         $user  = auth()->user();
         $items = UserNotification::where('user_id', $user->id)->where('id', '>', (int) $request->input('after'))->orderBy('id')->limit(20)->get()
             ->filter(fn ($n) => $prefs->frequency($user, $n->event_key, 'push') === 'instant')
-            ->map(fn ($n) => ['id' => $n->id, 'title' => $n->title, 'body' => $n->body, 'url' => $n->url])->values();
+            ->map(fn ($n) => ['id' => $n->id, 'title' => $n->title, 'body' => $n->body, 'url' => \App\Support\TenantUrl::open((int) $n->tenant_id, $n->url)])->values();
 
         return response()->json(['items' => $items, 'last' => (int) (UserNotification::where('user_id', $user->id)->max('id') ?? 0)]);
     }
@@ -38,7 +38,8 @@ class NotificationController extends Controller
             $notification->forceFill(['read_at' => now()])->save();
         }
 
-        return redirect($notification->url ?: route('notifications.index'));
+        // Rows keep company-relative links: add the company address (path mode /{slug}/...)
+        return redirect($notification->url ? \App\Support\TenantUrl::open((int) $notification->tenant_id, $notification->url) : route('notifications.index'));
     }
 
     public function read(UserNotification $notification)

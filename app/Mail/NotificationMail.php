@@ -34,7 +34,7 @@ class NotificationMail extends Mailable
             ? EmailContent::contextFor($sr)
             : ['company' => EmailContent::company((int) $n->tenant_id), 'labels' => EmailContent::labels((int) $n->tenant_id), 'extra' => []];
 
-        $url = $n->url ? (str_starts_with($n->url, '/') ? TenantUrl::for((int) $n->tenant_id, $n->url) : $n->url) : null;
+        $url = $n->url ? TenantUrl::open((int) $n->tenant_id, $n->url) : null;
 
         return EmailContent::staff((string) $n->event_key, (string) $n->title, $n->body, $ctx, $url);
     }

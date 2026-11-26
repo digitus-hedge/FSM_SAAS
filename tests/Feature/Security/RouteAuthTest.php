@@ -14,13 +14,25 @@ use Tests\TestCase;
  */
 class RouteAuthTest extends TestCase
 {
-    /** The only routes that may be reached without signing in, as URI patterns. Add to this list only on purpose. */
-    private const PUBLIC_ROUTES = [
+    /** Open routes on the root address and the console (no company). Add to these lists only on purpose. */
+    private const PUBLIC_ROOT_ROUTES = [
         'up',                              // health check
-        '/',                               // redirects to sign-in or the right dashboard
+        '/',                               // redirects to the central sign-in (or the console)
         'sanctum/csrf-cookie',
         'admin/login',                     // platform owner sign-in
-        'login', 'login/choose',           // central and company sign-in
+        'admin/two-factor/challenge',      // second step of the platform owner sign-in
+        'login', 'login/choose',           // central sign-in and its workspace picker
+        'two-factor/challenge',            // second step of the central sign-in
+        'storage/{path}',                  // public files
+    ];
+
+    /** Path mode only: old root invoice and quote links, sent on to the company address (LegacyLinkController). */
+    private const PUBLIC_LEGACY_ROUTES = ['i/{token}', 'i/{token}/pdf', 'q/{token}', 'q/{token}/pdf'];
+
+    /** Open routes on a company address (path mode: under {tenant}/). */
+    private const PUBLIC_COMPANY_ROUTES = [
+        '/',                               // redirects to sign-in or the right dashboard
+        'login',                           // company sign-in
         'auth/handoff/{token}',            // one-time hand-off after the central sign-in
         'login/technician', 'login/team-lead', 'field/login', 'field/login/team-lead',
         'invitation/{token}',              // accept an invitation
@@ -29,8 +41,19 @@ class RouteAuthTest extends TestCase
         'i/{token}', 'i/{token}/pdf',      // client invoice link
         'client/sign-in', 'client/sign-in/sent', 'client/sign-in/{token}',      // client sign-in by link
         'two-factor/challenge',            // second step of a sign-in that is already under way
-        'storage/{path}',                  // public files
     ];
+
+    /** @return list<string> every open route as route:list prints its URI, for the current tenancy mode */
+    private function publicRoutes(): array
+    {
+        if (! \App\Support\Tenancy::isPath()) {
+            return array_values(array_unique(array_merge(self::PUBLIC_ROOT_ROUTES, self::PUBLIC_COMPANY_ROUTES)));
+        }
+
+        $company = array_map(fn ($u) => $u === '/' ? '{tenant}' : '{tenant}/' . $u, self::PUBLIC_COMPANY_ROUTES);
+
+        return array_merge(self::PUBLIC_ROOT_ROUTES, self::PUBLIC_LEGACY_ROUTES, $company);
+    }
 
     private function behindSignIn(Route $route): bool
     {
@@ -48,7 +71,7 @@ class RouteAuthTest extends TestCase
     {
         $open = [];
         foreach (RouteFacade::getRoutes() as $route) {
-            if (! $this->behindSignIn($route) && ! in_array($route->uri(), self::PUBLIC_ROUTES, true)) {
+            if (! $this->behindSignIn($route) && ! in_array($route->uri(), $this->publicRoutes(), true)) {
                 $open[] = implode('|', $route->methods()) . ' ' . $route->uri();
             }
         }
@@ -61,7 +84,7 @@ class RouteAuthTest extends TestCase
     {
         $uris = collect(RouteFacade::getRoutes())->map->uri()->all();
 
-        foreach (self::PUBLIC_ROUTES as $uri) {
+        foreach ($this->publicRoutes() as $uri) {
             $this->assertContains($uri, $uris, "{$uri} is on the public list but is not a route");
         }
     }
@@ -76,7 +99,8 @@ class RouteAuthTest extends TestCase
             if (! $this->behindSignIn($route) || ! in_array('GET', $route->methods(), true)) {
                 continue;
             }
-            $uri = '/' . ltrim(preg_replace('/\{[^}]+\}/', '1', $route->uri()), '/');
+            // {tenant} gets a company-shaped address: the sign-in check comes before the company is looked up
+            $uri = '/' . ltrim(preg_replace('/\{[^}]+\}/', '1', str_replace('{tenant}', 'acme', $route->uri())), '/');
             $res = $this->get('http://localhost' . $uri);
             $count++;
 
@@ -94,7 +118,7 @@ class RouteAuthTest extends TestCase
     {
         foreach (['/admin/invoices/1/approve', '/admin/quotes/1/send', '/admin/vendors', '/admin/hold-reasons', '/admin/expenses-review/1/approve',
                   '/manage/users', '/manage/roles', '/notifications/read-all'] as $uri) {
-            $status = $this->post('http://localhost' . $uri)->getStatusCode();
+            $status = $this->post('http://localhost' . (\App\Support\Tenancy::isPath() ? '/acme' : '') . $uri)->getStatusCode();
             $this->assertContains($status, [302, 419], "POST {$uri} gave {$status}"); // redirect to sign-in, or the CSRF check first
         }
     }

@@ -62,7 +62,7 @@
         </form>
     @endforeach
 
-    <a class="back" href="{{ route('login') }}">Use a different email</a>
+    <a class="back" href="{{ route('central.login') }}">Use a different email</a>
 </div>
 </body>
 </html>

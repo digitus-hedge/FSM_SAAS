@@ -91,8 +91,9 @@ h1{font-family:'Figtree';font-size:32px;font-weight:700;letter-spacing:-.6px}
                         </div>
                     </td>
                     <td>
-                        <a href="http://{{ $tenant->slug }}.{{ $host }}{{ $portPart }}/dashboard" target="_blank" class="slug">
-                            {{ $tenant->slug }}.{{ $host }}{{ $portPart }}
+                        @php $companyUrl = \App\Support\TenantUrl::for($tenant); @endphp
+                        <a href="{{ \App\Support\TenantUrl::for($tenant, '/dashboard') }}" target="_blank" class="slug">
+                            {{ preg_replace('#^https?://#', '', rtrim($companyUrl, '/')) }}
                         </a>
                     </td>
                     <td>

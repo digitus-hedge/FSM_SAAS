@@ -11,12 +11,11 @@ class RouteTechnicianMobile
         $u = $request->user();
         $fieldCodes = ['field_technician', 'team_lead'];
 
+        // The path inside the company (path mode: without "{slug}/"), so these checks work in both tenancy modes.
+        $path = \App\Support\Tenancy::companyPath($request);
+
         if ($u && in_array($u->role?->code, $fieldCodes, true)
-            && ! $request->is('technician*')
-            && ! $request->is('logout')
-            && ! $request->is('field/logout')
-            && ! $request->is('two-factor*')
-            && ! $request->is('profile/devices*')
+            && ! \Illuminate\Support\Str::is(['technician*', 'logout', 'field/logout', 'two-factor*', 'profile/devices*'], $path)
             // Let ForcePasswordChange finish its job first — without this, a field
             // user who must change their password gets bounced forever between
             // /change-password (sent here) and /technician/jobs (sent back there).

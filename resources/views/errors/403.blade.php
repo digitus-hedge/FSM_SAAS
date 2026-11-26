@@ -26,9 +26,9 @@ p{color:#5F5D6E;font-size:14px;line-height:1.55;margin-bottom:24px}
     <h1>You don't have access to this</h1>
     <p>Your account isn't permitted to view this page. If this looks wrong, ask a Company Admin to check your role.</p>
     @auth
-        <a href="{{ Illuminate\Support\Facades\Auth::guard('platform')->check() ? route('admin.dashboard') : route('tenant.dashboard') }}" class="btn">Back to dashboard</a>
+        <a href="{{ \App\Support\Tenancy::dashboardUrl(Illuminate\Support\Facades\Auth::guard('platform')->check()) }}" class="btn">Back to dashboard</a>
     @else
-        <a href="{{ route('login') }}" class="btn">Back to sign in</a>
+        <a href="{{ \App\Support\Tenancy::signInUrl() }}" class="btn">Back to sign in</a>
     @endauth
 </div>
 </body>

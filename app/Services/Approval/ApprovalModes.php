@@ -79,7 +79,7 @@ class ApprovalModes
             $sr->forceFill(['approval_state' => 'awaiting_both'])->save();
             $notify->notify('sr.approval_needed', $this->approvers($sr), [
                 'sr_number' => $sr->sr_number, 'client' => $sr->client?->name, 'waiting_for' => 'The Operations Manager and Finance',
-            ], route('service-requests.show', $sr, false));
+            ], \App\Support\TenantUrl::route($sr->tenant_id, 'service-requests.show', $sr));
 
             return;
         }
@@ -118,7 +118,7 @@ class ApprovalModes
         if ($done) {
             $notify->notify('sr.auto_approved', $this->approvers($sr), [
                 'sr_number' => $sr->sr_number, 'client' => $sr->client?->name, 'mode' => $mode,
-            ], route('service-requests.show', $sr, false));
+            ], \App\Support\TenantUrl::route($sr->tenant_id, 'service-requests.show', $sr));
         }
     }
 
@@ -160,7 +160,7 @@ class ApprovalModes
             app(NotificationService::class)->notify('sr.approval_needed', $this->approvers($sr), [
                 'sr_number' => $sr->sr_number, 'client' => $sr->client?->name,
                 'waiting_for' => $side === 'ops' ? 'Finance' : 'The Operations Manager',
-            ], route('service-requests.show', $sr, false));
+            ], \App\Support\TenantUrl::route($sr->tenant_id, 'service-requests.show', $sr));
         }
 
         return (bool) $both;
@@ -171,7 +171,7 @@ class ApprovalModes
     {
         $sr->forceFill(['approval_state' => null, 'approved_by_ops_user_id' => null, 'approved_by_finance_user_id' => null])->save();
         $requester = $sr->created_by_user_id ? User::withoutGlobalScopes()->find($sr->created_by_user_id) : null;
-        app(NotificationService::class)->notify('sr.approval_rejected', [$requester], ['sr_number' => $sr->sr_number, 'reason' => $reason], route('service-requests.show', $sr, false));
+        app(NotificationService::class)->notify('sr.approval_rejected', [$requester], ['sr_number' => $sr->sr_number, 'reason' => $reason], \App\Support\TenantUrl::route($sr->tenant_id, 'service-requests.show', $sr));
     }
 
     /** People who may give an approval: sr.approve or expense.approve at full. */

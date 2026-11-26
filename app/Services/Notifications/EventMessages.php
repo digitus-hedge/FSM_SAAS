@@ -148,7 +148,7 @@ class EventMessages
         }
         app(NotificationService::class)->notify($event, [$tech], array_merge([
             'sr_number' => $sr->sr_number, 'site' => $sr->site?->name, 'when' => '', 'reason' => '', 'detail' => '', 'headline' => '',
-        ], $vars), route('technician.jobs.show', $sr, false), ['sr_id' => $sr->id]);
+        ], $vars), \App\Support\TenantUrl::route($sr->tenant_id, 'technician.jobs.show', $sr), ['sr_id' => $sr->id]);
     }
 
     private function safely(\Closure $fn): void

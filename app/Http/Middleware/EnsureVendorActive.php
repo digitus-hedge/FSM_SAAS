@@ -25,7 +25,7 @@ class EnsureVendorActive
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
 
-                return redirect('/login')->withErrors(['email' => 'This vendor is suspended.']);
+                return redirect()->route('login')->withErrors(['email' => 'This vendor is suspended.']);
             }
         }
 

@@ -12,10 +12,10 @@ class EnsurePlatformTwoFactor
         $user = Auth::guard('platform')->user();
 
         if ($user && ! $user->two_factor_confirmed_at) {
-            if ($request->routeIs('two-factor.setup', 'two-factor.confirm', 'platform.logout')) {
+            if ($request->routeIs('platform.two-factor.setup', 'platform.two-factor.confirm', 'platform.logout')) {
                 return $next($request);
             }
-            return redirect()->route('two-factor.setup')
+            return redirect()->route('platform.two-factor.setup')
                              ->with('warning', 'Set up two-factor sign-in to continue.');
         }
 

@@ -39,7 +39,10 @@ class EmailContent
         if ($t->logo_path) {
             try {
                 if (Storage::disk('public')->exists($t->logo_path)) {
-                    $logo = TenantUrl::for($t, 'storage/' . ltrim($t->logo_path, '/'));
+                    // Public files live at /storage on the root in path mode; on the company host in subdomain mode.
+                    $logo = \App\Support\Tenancy::isPath()
+                        ? \App\Support\Tenancy::rootUrl() . '/storage/' . ltrim($t->logo_path, '/')
+                        : TenantUrl::for($t, 'storage/' . ltrim($t->logo_path, '/'));
                 }
             } catch (\Throwable $e) {
                 $logo = null;

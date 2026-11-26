@@ -60,11 +60,11 @@ class AssetLabelsController extends Controller
 
     private function render($assets, $overLimitTotal)
     {
-        $base = request()->getSchemeAndHttpHost();
         $writer = new Writer(new ImageRenderer(new RendererStyle(220, 0), new SvgImageBackEnd()));
 
-        $labels = $assets->map(function (Asset $a) use ($writer, $base) {
-            $svg = $writer->writeString($base . '/q/' . $a->qr_hash);
+        // The company's own /q/{hash} address (path mode: /{slug}/q/..., from the URL default)
+        $labels = $assets->map(function (Asset $a) use ($writer) {
+            $svg = $writer->writeString(route('public.quote.show', $a->qr_hash));
             return [
                 'code' => $a->asset_code,
                 'name' => $a->name,

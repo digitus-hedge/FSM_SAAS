@@ -28,17 +28,37 @@ Labels such as "service request", "client" and "quote" can be renamed per compan
 - B9 checkout and billing: payment gateway on hold until last.
 
 ## Tenancy
-- `TenantResolver` (global web middleware) reads the host. Host equal to the APP_URL host, or not a subdomain of it, is the
-  root (no tenant). `{slug}.{APP_URL host}` is a company: it loads the active Tenant (else 404) and calls `Tenant::setCurrent()`.
-  Reserved subdomains www/admin/api/app are the root. A signed-in user from another company gets 403.
-- `Tenant::current()` is null on the root and on the console. Production wildcard (*.fsm.aiywah.com) is DNS and APP_URL
-  config, not code: company URLs are always built as `{slug}.{APP_URL host}[:port]` (CentralLoginController::tenantUrl, ProvisionCompany).
+- `TENANCY_MODE` (`config/tenancy.php`, `App\Support\Tenancy`): `path` (default) = `fsm.aiywah.com/{slug}/...`, console `/admin`, central login `/login`;
+  `subdomain` = the earlier `{slug}.fsm.aiywah.com`. Only path mode is tested (phpunit.xml).
+- Routes: `routes/web.php` loads `central.php` (root: `home`, `central.login`, `central.two-factor.*`, `login.choose`, legacy `/i` `/q`, `/dev/emails`),
+  then `platform.php` (console, `platform.*` incl. its own two-factor and devices pages under `/admin`), then `tenant.php` (every company page, same
+  names as before) under `Route::prefix('{tenant}')` with `Tenancy::routePattern()` (never a reserved word). Subdomain mode loads tenant.php unprefixed.
+  Company home is `tenant.home`. The console's tenant parameter is `{company}` (`Route::model`), because `{tenant}` is the company prefix.
+- `TenantResolver` (path mode) takes the `{tenant}` parameter, 404 for an unknown or suspended company, `Tenant::setCurrent()` (which also sets
+  `URL::defaults(['tenant' => slug])`, so plain `route()` calls work) and `forgetParameter('tenant')` (controller arguments never see it).
+  A signed-in web user of another company (or turned off) is signed out and sent to this company's `login` with "Please sign in to {company name}." (both modes).
+  The sign-in check runs BEFORE the resolver: `redirectGuestsTo` reads the `{tenant}` route parameter, not `Tenant::current()`.
+- `Tenant::setCurrent(null)` does NOT clear the URL default (code that sets a company for a moment puts null back); clear with `Tenancy::applyUrlDefaults(null)`.
+- Links outside a request: `TenantUrl::for($tenant, '/path')` (absolute, both modes; never build hosts by hand), `TenantUrl::route($tenant, $name, $params)`
+  (company-relative, for notification links; works in commands), `Tenancy::withUrlsFor($tenant, fn)` (URL default for one call; `SendLoggedMail`
+  uses it with the log row's company, so every queued mail can call `route()`). Any new job or command that builds links must do the same.
+  Notification rows keep company-relative links ("/service-requests/12"; `NotificationService` normalises), opened through `TenantUrl::open()`.
+  JS bases in Blade: `Tenancy::url('/admin/...')`. Path checks: `Tenancy::companyPath()` or `routeIs()`, never `$request->is('technician*')`.
+  Pages shown anywhere (errors) use `Tenancy::signInUrl()` / `dashboardUrl()`.
+- Sessions (path mode): `ConfigureSessionCookie` (first in the web group, before StartSession) picks `fsm_co_{slug}` path `/{slug}`, `fsm_console`
+  path `/admin`, or `fsm_central` path `/`; the remember-me cookie follows. So everything the console needs lives under `/admin`.
+- Reserved first segments: `config/tenancy.reserved` (also the `CompanyAddress` rule). `Tenancy/PathTenancyTest` fails when a route outside the
+  company group or a `public/` entry is missing from it: add the word there.
+- `RedirectLegacyTenantUrls` (global, path mode): `{slug}.{root host}/x` → `/{slug}/x` (301, 308 for POST), `www/admin/api/app.` → root,
+  `/Skyline/...` → lowercase. Only works while wildcard DNS points here (not kept for now). Root `/i/{token}` and `/q/{token}` (queued mails before
+  the switch) go to the company through `LegacyLinkController`.
+- `Tenant::current()` is null on the root and on the console.
 - Central login (root only): `CentralLoginController`. `attempt` checks email+password across all companies, `choose` is the
   workspace picker, `handoff` stores a 60 s one-time token in Cache and redirects to the company address, `consume`
-  (`/auth/handoff/{token}`, company address) signs the user in. Sessions are host-only, one per company address.
+  (`/{slug}/auth/handoff/{token}`) signs the user in.
 - Platform owner console: `/admin` (`admin.dashboard`, tenants create, suspend, reactivate). Middleware `platform.host`
-  (404 if a tenant is resolved), `auth:platform`, `platform.2fa`. Sign in at `/admin/login`.
-  Careful: company office pages ALSO live under `/admin/...` and `admin.*` route names, on company hosts.
+  (subdomain mode: 404 on a company host), `auth:platform`, `platform.2fa`. Sign in at `/admin/login`.
+  Careful: company office pages ALSO use `/admin/...` paths (under `/{slug}`) and `admin.*` route names.
 - A company has a plan (`plans.features` JSON). `ProvisionCompany` (queued) creates a company, so a queue worker must run.
 
 ## Auth
@@ -92,7 +112,7 @@ Labels such as "service request", "client" and "quote" can be renamed per compan
 - Approval: `ApprovalModes` (effective mode = stored mode, or manual when the plan lacks it), `RequestApprover::complete()` writes any approval
   (a person's or automatic, `approved_by_user_id` null). `finance_and_manager` keeps `approval_state` and the two approvers on the request;
   Finance uses `service-requests.approve-finance` (expense.approve full). Automatic modes run after the request is created, on the company
-  host only when contracts are on (`ContractCoverage::enabled()` needs `Tenant::current()`, so tests that need it post to `onHost()`).
+  address only when contracts are on (`ContractCoverage::enabled()` needs `Tenant::current()`, set on every company page; tests reach it through `route()` or `onHost()`).
 - A batch has `primary_asset_id` null and one `service_request_assets` row for each asset (2 to 200, one site, one category as the request).
   A request counts for an asset as primary asset or as a batch row (Asset 360 reads both). `ServiceRequest::updated` (AppServiceProvider) gives
   finished rows their `completed_at` when the request becomes Completed.
@@ -183,8 +203,9 @@ Labels such as "service request", "client" and "quote" can be renamed per compan
   links look up by token: they work on the link's own company address and on the root address, and 404 on another company's.
 - Middleware order: `TenantResolver` runs BEFORE `SubstituteBindings` on every web route (`prependToPriorityList` in `bootstrap/app.php`; order: session, sign-in check, resolver, bindings),
   so every BelongsToTenant model loaded from the URL is scoped by company. With no company on the host (root address) nothing is narrowed: only platform and central routes live there.
-  Unscoped models loaded from a URL: `{device}` (checked against the caller), `{tenant}` (platform console), `{user}`, `{role}`, `{teamLead}` (explicit tenant binders). Check this after adding a model to a route.
-  Guests who open `/portal/*` are sent to `client.sign-in` (the intended address is kept); everyone else to `login` (`redirectGuestsTo`, `bootstrap/app.php`).
+  Unscoped models loaded from a URL: `{device}` (checked against the caller), `{company}` (platform console), `{user}`, `{role}`, `{teamLead}` (explicit tenant binders). Check this after adding a model to a route.
+  Guests who open a portal page are sent to the company's `client.sign-in` (the intended address is kept); other company pages to the company's `login`,
+  `/admin` to `platform.login`, the root to `central.login` (`redirectGuestsTo`, `bootstrap/app.php`).
 - Audit: only `AuditLogger::log($action, ['tenant_id' =>, 'item_type' =>, 'item_id' =>, 'old' =>, 'new' =>])`. Append only, hash chained.
   Never write `activity_logs` directly and never log passwords, codes or tokens.
 - Staff messages (in-app and email) go through `NotificationService::notify()`, events defined in `config/notifications.php`.
@@ -237,12 +258,16 @@ Labels such as "service request", "client" and "quote" can be renamed per compan
 - Existing migrations do not run on SQLite, so `phpunit.xml` uses the MySQL database `fsm_saas_test` (create it once). Run `php artisan test`
   (add a path to run part of it). `Tests\TestCase` and `BillingTestCase` skip any database whose name does not end in `_test`,
   because RefreshDatabase drops every table.
+- Path mode in tests: `actingAs()` (Tests\TestCase) makes `route()` build the signed-in user's company URLs, `BillingTestCase::makeTenant()` does it for the
+  first company, `forTenant($t)` switches; `onHost($t, '/path')` is `TenantUrl::for()`. A test that calls `route()` for a company page with none of
+  these gets a UrlGenerationException. `Tenancy/PathTenancyTest` covers the tenancy itself.
 - Set `MAIL_MAILER=log` locally before running reminders or invoice emails, so no real email is sent.
 - The full suite (212 tests, about 9 minutes) passes. `Security/RouteAuthTest` fails when a route is outside sign-in and not on its short
   public list: add to that list only on purpose. `Security/ScreenPermissionsTest` checks every gated screen against the signed matrix;
   `Security/UserAdminScopeTest` and `Security/ServiceRequestActionsTest` check the record_level narrowing.
 - Images: `php artisan storage:link` must exist (on Windows it is a junction). The public disk `url` in `config/filesystems.php` is the relative `/storage`, so images load from the page's own host and port.
-- Addresses: local dev port is 8000 (`APP_URL`, `AIYWAH_ROOT_HOST`, `AIYWAH_PLATFORM_HOST`). Production: `APP_URL=https://<root host>` with companies at `{slug}.{root host}`, wildcard DNS and certificate, no port.
+- Addresses: local dev port is 8000 (`APP_URL`). Path mode: `http://localhost:8000/{slug}/...`, console `/admin`, central login `/login`, no hosts-file entries.
+  Production: `APP_URL=https://<root host>`, `TENANCY_MODE=path`, no port (subdomain mode needs wildcard DNS and certificate).
 - On Windows, composer install can fail with a file lock in phpspreadsheet. Exclude the project folder from Windows Defender and run it again.
 
 ## Known issues, not yet fixed
@@ -255,6 +280,4 @@ Labels such as "service request", "client" and "quote" can be renamed per compan
   the normal path.
 - Uploaded-PDF quotes and invoices are always in the base currency (the spec only covers the builders).
 - `resources/views/admin/invoices/invoice.blade.php` is not used by anything and still formats money with the company currency.
-- `/login/technician` and `/login/team-lead` are registered twice in routes/web.php (harmless: route:cache still works).
 - `app/Models/ContractRequest.php` is a stray, unused copy of the contract form request (composer warns about its namespace).
-- `TenantResolver` still tests `$user->is_platform_admin`, an attribute that no longer exists (always false).

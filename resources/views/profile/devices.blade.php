@@ -1,11 +1,12 @@
 @extends('layouts.admin')
 @section('title', 'Devices')
 @section('content')
+    @php $devPrefix = \App\Models\Tenant::current() ? 'profile.devices.' : 'platform.profile.devices.'; @endphp
     <h1 style="font:700 24px 'Figtree';letter-spacing:-.3px;margin-bottom:6px">Devices</h1>
     <p style="color:#5F5D6E;margin-bottom:20px">Every browser signed into your account.</p>
 
     @if ($devices->count() > 1)
-        <form method="POST" action="{{ route('profile.devices.revoke-others') }}" style="margin-bottom:16px"
+        <form method="POST" action="{{ route($devPrefix . 'revoke-others') }}" style="margin-bottom:16px"
               class="needs-confirm" data-confirm-title="Sign out everywhere?"
               data-confirm-text="You'll stay signed in on this device. All other devices will be signed out immediately."
               data-confirm-ok="Sign out everywhere" data-confirm-ok-color="red">
@@ -41,7 +42,7 @@
                         <td style="padding:12px 16px;color:#5F5D6E;font-size:12px">{{ $d->trusted_until->diffForHumans() }}</td>
                         <td style="padding:12px 16px;text-align:right">
                             @if ($d->session_id !== $currentSessionId)
-                                <form method="POST" action="{{ route('profile.devices.revoke', $d) }}" style="display:inline"
+                                <form method="POST" action="{{ route($devPrefix . 'revoke', $d) }}" style="display:inline"
                                       class="needs-confirm" data-confirm-title="Sign out {{ $d->label }}?"
                                       data-confirm-ok="Sign out" data-confirm-ok-color="red">
                                     @csrf

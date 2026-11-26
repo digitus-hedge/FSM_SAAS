@@ -64,7 +64,7 @@ class ContractDailyJob
                     'days'            => $days,
                     'client'          => $c->client?->name ?? '',
                     'date'            => $c->end_date->format('d M Y'),
-                ], route('admin.contracts.show', $c, false), ['contract_id' => $c->id, 'threshold' => $days]);
+                ], \App\Support\TenantUrl::route($c->tenant_id, 'admin.contracts.show', $c), ['contract_id' => $c->id, 'threshold' => $days]);
                 $out['alerts']++;
             }
         }
@@ -186,7 +186,7 @@ class ContractDailyJob
             'new_number'      => (string) DB::table('contracts')->where('id', $newId)->value('contract_number'),
             'start'           => $newStart->format('d M Y'),
             'end'             => $newEnd->format('d M Y'),
-        ], route('admin.contracts.show', $newId, false), ['contract_id' => $newId, 'renewed_contract_id' => $old->id]);
+        ], \App\Support\TenantUrl::route((int) $tid, 'admin.contracts.show', $newId), ['contract_id' => $newId, 'renewed_contract_id' => $old->id]);
 
         return true;
     }

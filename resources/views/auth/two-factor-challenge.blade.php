@@ -17,7 +17,7 @@
 </style>
 </head>
 <body>
-<form method="POST" action="{{ route('two-factor.verify') }}" class="card" autocomplete="on">
+<form method="POST" action="{{ route($verifyRoute ?? 'two-factor.verify') }}" class="card" autocomplete="on">
     @csrf
     <h1>Enter your 6-digit code</h1>
     <p class="lede">From your authenticator app.</p>

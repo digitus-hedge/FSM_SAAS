@@ -144,6 +144,6 @@ class BatchService
         $svc = app(NotificationService::class);
         $svc->notify('batch.unsafe_asset', $svc->usersWithRole('operations_manager', $sr->tenant_id), [
             'sr_number' => $sr->sr_number, 'count' => $failed,
-        ], route('service-requests.show', $sr, false));
+        ], \App\Support\TenantUrl::route($sr->tenant_id, 'service-requests.show', $sr));
     }
 }

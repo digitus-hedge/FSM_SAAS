@@ -50,7 +50,7 @@ class EmailPreviewController extends Controller
     {
         $this->guard();
         $row = $this->catalogue()[$key] ?? abort(404);
-        $m   = $this->frameOf($row['build']());
+        $m   = $this->framed($row);
 
         return view('dev.emails', [
             'groups' => null, 'key' => $key, 'label' => $row['label'], 'frame' => $m,
@@ -65,7 +65,13 @@ class EmailPreviewController extends Controller
         $this->guard();
         $row = $this->catalogue()[$key] ?? abort(404);
 
-        return response(view('emails.base', ['m' => $this->frameOf($row['build']())])->render());
+        return response(view('emails.base', ['m' => $this->framed($row)])->render());
+    }
+
+    /** Build the sample with the sample company's URL defaults (path mode: links on /{slug}/...). */
+    private function framed(array $row): array
+    {
+        return \App\Support\Tenancy::withUrlsFor(Tenant::query()->orderBy('id')->first(), fn () => $this->frameOf($row['build']()));
     }
 
     private function frameOf(Mailable $mail): array
@@ -100,6 +106,7 @@ class EmailPreviewController extends Controller
     {
         $s = $this->sample();
         $sr = $s['sr'];
+        $tenant = $s['tenant'];
         $out = [];
 
         // client contact: the WhatsApp events, now email
@@ -122,7 +129,7 @@ class EmailPreviewController extends Controller
         }
 
         // client contact: messages that were already email (now in the shared layout)
-        $out['sr.completed'] = ['group' => 'Client contact', 'label' => 'sr.completed: feedback link', 'build' => fn () => new FeedbackRequestMail($sr, 'Anita', url('/feedback/sample-token'), now()->addDays(7))];
+        $out['sr.completed'] = ['group' => 'Client contact', 'label' => 'sr.completed: feedback link', 'build' => fn () => new FeedbackRequestMail($sr, 'Anita', ($tenant ? \App\Support\TenantUrl::for($tenant, '/feedback/sample-token') : url('/feedback/sample-token')), now()->addDays(7))];
 
         $tid = $s['tid'];
         $inv = (new Invoice())->forceFill(['id' => 0, 'tenant_id' => $tid, 'invoice_number' => 'INV-2026-0107', 'currency_code' => 'INR', 'total' => 18500, 'balance' => 18500, 'due_date' => now()->subDays(8)]);

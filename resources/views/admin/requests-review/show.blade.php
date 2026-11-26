@@ -450,8 +450,8 @@ function openMakeQuote(srId) {
     preConfirm: () => document.querySelector('input[name="mq"]:checked').value
   }).then(function (r) {
     if (r.isConfirmed) {
-      var buildUrl  = "{{ url('/admin/quotes/build') }}";
-      var uploadUrl = "{{ url('/admin/quotes/upload') }}";
+      var buildUrl  = "{{ \App\Support\Tenancy::url('/admin/quotes/build') }}";
+      var uploadUrl = "{{ \App\Support\Tenancy::url('/admin/quotes/upload') }}";
       window.location = (r.value === 'build' ? buildUrl : uploadUrl) + '/' + srId;
     }
   });

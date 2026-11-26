@@ -30,9 +30,9 @@ p{color:#5F5D6E;font-size:14px;line-height:1.55;margin-bottom:24px}
         $isTenant   = \Illuminate\Support\Facades\Auth::check();
     @endphp
     @if ($isPlatform || $isTenant)
-        <a href="{{ $isPlatform ? route('admin.dashboard') : route('tenant.dashboard') }}" class="btn">Back to dashboard</a>
+        <a href="{{ \App\Support\Tenancy::dashboardUrl($isPlatform) }}" class="btn">Back to dashboard</a>
     @else
-        <a href="{{ route('login') }}" class="btn">Back to sign in</a>
+        <a href="{{ \App\Support\Tenancy::signInUrl() }}" class="btn">Back to sign in</a>
     @endif
 </div>
 </body>

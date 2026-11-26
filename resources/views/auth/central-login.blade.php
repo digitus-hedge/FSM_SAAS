@@ -46,7 +46,7 @@
 @include('layouts._brand_font', ['applyBody' => true])
 </head>
 <body>
-<form method="POST" action="{{ route('login.attempt') }}" class="card" autocomplete="on">
+<form method="POST" action="{{ route('central.login.attempt') }}" class="card" autocomplete="on">
     @csrf
     <div class="brand">
         <span class="logo">A</span>

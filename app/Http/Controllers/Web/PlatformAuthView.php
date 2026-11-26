@@ -51,7 +51,7 @@ class PlatformAuthView extends Controller
                     'guard'   => 'platform',
                     'user_id' => $pu->id,
                 ]);
-                return redirect()->route('two-factor.challenge');
+                return redirect()->route('platform.two-factor.challenge');
             }
 
             // No 2FA (D8 mandatory for platform admins — EnsurePlatformTwoFactor

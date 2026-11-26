@@ -152,7 +152,7 @@ class MasterRequests
 
         if (in_array($new, ['completed', 'awaiting_invoice'], true)) {
             $svc = app(NotificationService::class);
-            $svc->notify('master.ready_to_invoice', $svc->usersWithRole('finance', $master->tenant_id), ['sr_number' => $master->sr_number], route('service-requests.show', $master, false));
+            $svc->notify('master.ready_to_invoice', $svc->usersWithRole('finance', $master->tenant_id), ['sr_number' => $master->sr_number], \App\Support\TenantUrl::route($master->tenant_id, 'service-requests.show', $master));
         }
     }
 
@@ -177,7 +177,7 @@ class MasterRequests
                 SrStatusHistory::log($child, 'approved', 'assigned', 'system', null, 'Planned technician', ['technician_id' => $tech->id]);
                 if ($tech->vendor_id) {
                     $svc = app(NotificationService::class);
-                    $svc->notify('vendor.assigned', [$tech], ['sr_number' => $child->sr_number, 'site' => $child->site?->name, 'date' => optional($child->planned_at)->format('j M Y')], route('technician.jobs.show', $child, false));
+                    $svc->notify('vendor.assigned', [$tech], ['sr_number' => $child->sr_number, 'site' => $child->site?->name, 'date' => optional($child->planned_at)->format('j M Y')], \App\Support\TenantUrl::route($child->tenant_id, 'technician.jobs.show', $child));
                 }
             }
         }

@@ -79,6 +79,11 @@ abstract class BillingTestCase extends TestCase
         ]);
         app(SeedStandardRoles::class)->handle($tenant);
 
+        // The first company of a test is the one route() builds URLs for until someone signs in (path mode, CLAUDE.md Tenancy)
+        if (! \App\Support\Tenancy::hasCompanyUrls()) {
+            $this->forTenant($tenant);
+        }
+
         return $tenant->fresh();
     }
 
@@ -172,7 +177,7 @@ abstract class BillingTestCase extends TestCase
     /** A request on the company's own address, the way a person uses the product (the tenant scope is then active). */
     protected function onHost(Tenant $tenant, string $path = ''): string
     {
-        return 'http://' . $tenant->slug . '.localhost' . $path;
+        return \App\Support\TenantUrl::for($tenant, $path);   // path mode /{slug}{path}, subdomain mode {slug}.host{path}
     }
 
     protected function enableCurrency(Tenant $tenant, string $code, ?string $rate = '3.67250000', ?string $date = null): void

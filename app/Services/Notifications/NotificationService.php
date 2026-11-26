@@ -44,12 +44,16 @@ class NotificationService
                 }
             }
 
-            $seen = [];
+            $seen  = [];
+            $links = [];   // tenant id => the link as rows keep it
             foreach ($users as $user) {
                 if (! $user || isset($seen[$user->id])) {
                     continue;
                 }
                 $seen[$user->id] = true;
+
+                // Rows keep company-relative links ("/service-requests/12") in both tenancy modes; TenantUrl::open() adds the address.
+                $link = $links[(int) $user->tenant_id] ??= ($user->tenant_id ? \App\Support\TenantUrl::relative((int) $user->tenant_id, $url) : $url);
 
                 $n = UserNotification::create([
                     'tenant_id' => $user->tenant_id,
@@ -57,7 +61,7 @@ class NotificationService
                     'event_key' => $event,
                     'title'     => $title,
                     'body'      => $body ?: null,
-                    'url'       => $url,
+                    'url'       => $link,
                     'data'      => $data ?: null,
                 ]);
 
@@ -66,7 +70,7 @@ class NotificationService
                     // held for the digest (PRF-02): the in-app message above is already written
                     NotificationDigestItem::create([
                         'tenant_id' => $user->tenant_id, 'user_id' => $user->id, 'event_key' => $event, 'channel' => 'email',
-                        'frequency' => $freq, 'title' => $title, 'body' => $body ?: null, 'link' => $url, 'created_at' => now(),
+                        'frequency' => $freq, 'title' => $title, 'body' => $body ?: null, 'link' => $link, 'created_at' => now(),
                     ]);
                 } elseif ($freq === 'instant' && filled($user->email)) {
                     // logged in the message log whether it works or not; a failure never breaks the action that raised the event

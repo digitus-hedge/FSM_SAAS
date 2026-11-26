@@ -288,8 +288,8 @@
         }).then(r => {
             if (r.isConfirmed) {
                 const url = r.value === 'build' ?
-                    @json(url('/admin/quotes/build')) + '/' + srId :
-                    @json(url('/admin/quotes/upload')) + '/' + srId;
+                    @json(\App\Support\Tenancy::url('/admin/quotes/build')) + '/' + srId :
+                    @json(\App\Support\Tenancy::url('/admin/quotes/upload')) + '/' + srId;
                 window.location = url;
             }
         });

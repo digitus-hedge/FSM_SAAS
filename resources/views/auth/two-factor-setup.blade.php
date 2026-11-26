@@ -15,7 +15,7 @@
             <p style="color:#5F5D6E;margin-bottom:16px;font-size:13px">
                 Enter your current password and a code from your current app. Your current app keeps working until the new one is confirmed.
             </p>
-            <form method="POST" action="{{ route('two-factor.reset') }}">
+            <form method="POST" action="{{ route(($tfa ?? 'two-factor.') . 'reset') }}">
                 @csrf
                 <label style="display:block;margin-bottom:14px">
                     <span style="display:block;font-weight:600;font-size:13px;margin-bottom:6px">Current password</span>
@@ -49,7 +49,7 @@
             <p style="font-size:12px;color:#5F5D6E;margin-bottom:8px">Can't scan? Enter this key manually:</p>
             <code style="display:block;background:#F5F4FA;padding:10px 14px;border-radius:8px;font-family:'JetBrains Mono',Consolas,monospace;font-size:13px;margin-bottom:24px;word-break:break-all">{{ $secret }}</code>
 
-            <form method="POST" action="{{ route('two-factor.confirm') }}">
+            <form method="POST" action="{{ route(($tfa ?? 'two-factor.') . 'confirm') }}">
                 @csrf
                 <label style="display:block;margin-bottom:14px">
                     <span style="display:block;font-weight:600;font-size:13px;margin-bottom:6px">6-digit code</span>

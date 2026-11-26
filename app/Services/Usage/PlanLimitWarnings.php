@@ -65,7 +65,7 @@ class PlanLimitWarnings
                 'advice'   => $threshold >= 100
                     ? 'Nothing is blocked and work in progress continues. Contact Aiywah to upgrade.'
                     : 'Nothing is blocked. Contact Aiywah if you need a higher limit.',
-            ], route('admin.usage.index', [], false), ['limit' => $key, 'threshold' => $threshold, 'year' => (int) $counter->year, 'month' => (int) $counter->month]);
+            ], \App\Support\TenantUrl::route($tenant, 'admin.usage.index'), ['limit' => $key, 'threshold' => $threshold, 'year' => (int) $counter->year, 'month' => (int) $counter->month]);
 
             $sent[$key] = $threshold;
         }

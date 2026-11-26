@@ -34,6 +34,22 @@ class TwoFactorController extends Controller
             : 'web';
     }
 
+    /**
+     * Route name of a two-factor page here: the console (platform.two-factor.*), the central sign-in (central.two-factor.challenge|verify,
+     * no company) or the company (two-factor.*). An empty $name gives the prefix, for the views.
+     */
+    private function tfaRoute(string $name, ?string $guard = null): string
+    {
+        $guard ??= $this->activeGuard();
+        $prefix = match (true) {
+            $guard === 'platform' => 'platform.two-factor.',
+            ! \App\Models\Tenant::current() && in_array($name, ['challenge', 'verify'], true) => 'central.two-factor.',
+            default => 'two-factor.',
+        };
+
+        return $prefix . $name;
+    }
+
     /** Session key for a reset in progress: the new secret waits here until it is confirmed, the old one stays active. */
     private const RESET_KEY = 'two_factor_reset';
 
@@ -61,6 +77,7 @@ class TwoFactorController extends Controller
         // Two-factor is on and no reset was verified: show the status only, never the QR code or the secret.
         if ($user->two_factor_confirmed_at && ! $pending) {
             return view('auth.two-factor-setup', [
+                'tfa'         => $this->tfaRoute(''),
                 'confirmed'   => true,
                 'confirmedAt' => $user->two_factor_confirmed_at,
                 'secret'      => null,
@@ -77,6 +94,7 @@ class TwoFactorController extends Controller
         );
 
         return view('auth.two-factor-setup', [
+                'tfa'         => $this->tfaRoute(''),
             'secret'      => $secret,
             'qrSvg'       => $qr,
             'confirmed'   => false,
@@ -91,7 +109,7 @@ class TwoFactorController extends Controller
         $user = $this->activeUser();
         abort_unless($user, 403);
         if (! $user->two_factor_confirmed_at) {
-            return redirect()->route('two-factor.setup');
+            return redirect()->route($this->tfaRoute('setup'));
         }
 
         $data = $request->validate([
@@ -112,7 +130,7 @@ class TwoFactorController extends Controller
             'secret'  => \Illuminate\Support\Facades\Crypt::encryptString($this->tfa->generateSecret()),
         ]);
 
-        return redirect()->route('two-factor.setup');
+        return redirect()->route($this->tfaRoute('setup'));
     }
 
     public function confirm(Request $request)
@@ -128,7 +146,7 @@ class TwoFactorController extends Controller
         if ($user->two_factor_confirmed_at) {
             $pending = $this->pendingReset($request, $user);
             if (! $pending) {
-                return redirect()->route('two-factor.setup');
+                return redirect()->route($this->tfaRoute('setup'));
             }
             if (! $this->tfa->verify($pending, $data['code'])) {
                 return back()->withErrors(['code' => 'That code is not right. Try the next code from your app.']);
@@ -140,7 +158,7 @@ class TwoFactorController extends Controller
                 'item_id'   => $user->id,
             ]);
 
-            return redirect()->route('two-factor.setup')->with('success', 'Two-factor sign-in is on with your new app.');
+            return redirect()->route($this->tfaRoute('setup'))->with('success', 'Two-factor sign-in is on with your new app.');
         }
 
         if (! $this->tfa->confirm($user, $data['code'])) {
@@ -199,7 +217,9 @@ public function challenge(Request $request)
 
     abort_unless($pendingKey, 403);
 
-    return view('auth.two-factor-challenge');
+    $guard = $pendingKey['guard'] ?? 'web';
+
+    return view('auth.two-factor-challenge', ['verifyRoute' => $this->tfaRoute('verify', $guard)]);
 }
 
 
@@ -241,7 +261,7 @@ public function verifyChallenge(Request $request)
             ]);
 
             return redirect()
-                ->route($guard === 'platform' ? 'platform.login' : 'login')
+                ->route($guard === 'platform' ? 'platform.login' : (\App\Models\Tenant::current() ? 'login' : 'central.login'))
                 ->withErrors([
                     'identifier' => 'Too many wrong codes. Sign in again.',
                 ]);

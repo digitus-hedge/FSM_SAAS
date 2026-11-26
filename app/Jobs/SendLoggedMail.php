@@ -32,6 +32,13 @@ class SendLoggedMail implements ShouldQueue
 
     public function handle(MessageLogger $messages): void
     {
-        $messages->deliver($this->logId, $this->to, $this->mailable);
+        // The worker has no company address: links in the message (route() calls while it renders) need the company of the log row.
+        $tenantId = \App\Models\MessageLog::whereKey($this->logId)->value('tenant_id');
+        if (! $tenantId) {
+            $messages->deliver($this->logId, $this->to, $this->mailable);
+            return;
+        }
+
+        \App\Support\Tenancy::withUrlsFor((int) $tenantId, fn () => $messages->deliver($this->logId, $this->to, $this->mailable));
     }
 }

@@ -125,12 +125,7 @@ class UserCsvImporter
         $created = $invited = $skipped = 0;
         $failed  = [];
 
-        $host   = parse_url(config('app.url'), PHP_URL_HOST);
-        $port   = parse_url(config('app.url'), PHP_URL_PORT);
-        $scheme = parse_url(config('app.url'), PHP_URL_SCHEME) ?: 'http';
-        $portPart = $port ? ":{$port}" : '';
-
-        DB::transaction(function () use ($validated, $tenant, $skipErrors, $host, $portPart, $scheme, &$created, &$invited, &$skipped, &$failed) {
+        DB::transaction(function () use ($validated, $tenant, $skipErrors, &$created, &$invited, &$skipped, &$failed) {
             foreach ($validated as $r) {
                 if ($r['errors']) {
                     if ($skipErrors) { $skipped++; continue; }
@@ -153,7 +148,7 @@ class UserCsvImporter
                     $created++;
 
                     $token = $this->links->create($user, 'user_invite', 7 * 24 * 60);
-                    $url   = "{$scheme}://{$tenant->slug}.{$host}{$portPart}/invitation/{$token}";
+                    $url   = \App\Support\TenantUrl::for($tenant, '/invitation/' . $token);   // the company's own address
 
                     try {
                         app(\App\Services\Messaging\MessageLogger::class)->send($user->email, (new InvitationMail($user, $tenant, $url))->afterCommit(), 'user.invitation', ['tenant_id' => $tenant->id, 'user_id' => $user->id]);

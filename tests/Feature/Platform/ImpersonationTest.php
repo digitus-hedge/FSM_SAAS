@@ -254,7 +254,9 @@ class ImpersonationTest extends FormsTestCase
         $res = $this->start()->assertRedirect();
 
         $location = $res->headers->get('Location');
-        $this->assertMatchesRegularExpression('#^https?://fab\.[^/]+/auth/handoff/[A-Za-z0-9]{48}$#', $location);
+        $this->assertMatchesRegularExpression(\App\Support\Tenancy::isPath()
+            ? '#^https?://[^/]+/fab/auth/handoff/[A-Za-z0-9]{48}$#'      // path mode: root/{slug}/...
+            : '#^https?://fab\.[^/]+/auth/handoff/[A-Za-z0-9]{48}$#', $location);
 
         $token = basename($location);
         $this->handoff($token)->assertRedirect();

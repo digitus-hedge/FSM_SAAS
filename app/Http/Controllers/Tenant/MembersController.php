@@ -144,7 +144,7 @@ class MembersController extends Controller
         $token = app(\App\Services\Auth\SecureLinkService::class)
                     ->create($user, 'user_invite', 7 * 24 * 60);
 
-        $url = url("/invitation/{$token}");
+        $url = \App\Support\TenantUrl::for($tenant, '/invitation/' . $token);   // the company's own address
 
         app(\App\Services\Messaging\MessageLogger::class)->send($user->email, (new \App\Mail\InvitationMail($user, $tenant, $url))->afterCommit(), 'user.invitation', [
             'tenant_id' => $tenant->id, 'user_id' => $user->id,

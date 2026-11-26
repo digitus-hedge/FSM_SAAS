@@ -173,7 +173,7 @@ class ContractCoverage
                 'client'    => $sr->client?->name ?? '',
                 'site'      => $sr->site?->name ?? '',
             ],
-            route('service-requests.show', $sr),
+            \App\Support\TenantUrl::route($sr->tenant_id, 'service-requests.show', $sr),
             ['service_request_id' => $sr->id]
         );
     }

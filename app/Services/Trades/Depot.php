@@ -116,7 +116,7 @@ class Depot
             $svc = app(NotificationService::class);
             $svc->notify($event, $svc->usersWithRole('front_desk', $sr->tenant_id), [
                 'sr_number' => $sr->sr_number, 'asset' => $sr->primaryAsset?->name ?? 'equipment',
-            ], route('service-requests.show', $sr, false));
+            ], \App\Support\TenantUrl::route($sr->tenant_id, 'service-requests.show', $sr));
             // blueprint 9.2 (client email while WhatsApp is paused): the client contact gets the same two stages
             if (! $sr->parent_sr_id) {
                 app(\App\Services\Notifications\EventMessages::class)->client($sr, $event);

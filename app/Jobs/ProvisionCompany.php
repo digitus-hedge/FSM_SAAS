@@ -129,12 +129,8 @@ class ProvisionCompany implements ShouldQueue
             // D9: issue a 7-day invitation link (ACC-02 flow).
                 $token = $secureLinks->create($admin, 'user_invite', 7 * 24 * 60);
 
-                // Build URL against the tenant's own subdomain, not APP_URL.
-                $host   = parse_url(config('app.url'), PHP_URL_HOST);
-                $port   = parse_url(config('app.url'), PHP_URL_PORT);
-                $scheme = parse_url(config('app.url'), PHP_URL_SCHEME) ?: 'http';
-                $portPart = $port ? ":{$port}" : '';
-                $invitationUrl = "{$scheme}://{$tenant->slug}.{$host}{$portPart}/invitation/{$token}";
+                // Build the URL on the company's own address (path or subdomain mode), not the bare APP_URL.
+                $invitationUrl = \App\Support\TenantUrl::for($tenant, '/invitation/' . $token);
 
                 $this->invitation = [
                     'user'  => $admin->name,
