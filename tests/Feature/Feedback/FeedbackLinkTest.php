@@ -71,7 +71,9 @@ class FeedbackLinkTest extends FormsTestCase
         Mail::assertSent(FeedbackRequestMail::class, 1);
         Mail::assertSent(FeedbackRequestMail::class, fn ($m) => $m->hasTo('priya@acme.test') && ! $m->hasTo('second@acme.test') && $m->serviceRequest->is($sr));
         $url = Mail::sent(FeedbackRequestMail::class)->first()->feedbackUrl;
-        $this->assertMatchesRegularExpression('#^https?://fab\.[^/]+/feedback/[A-Za-z0-9]{48}$#', $url);
+        $this->assertMatchesRegularExpression(\App\Support\Tenancy::isPath()
+            ? '#^https?://[^/]+/fab/feedback/[A-Za-z0-9]{48}$#'                // path mode: root/{slug}/feedback/...
+            : '#^https?://fab\.[^/]+/feedback/[A-Za-z0-9]{48}$#', $url);
         $this->assertStringContainsString($sr->sr_number, Mail::sent(FeedbackRequestMail::class)->first()->render());
     }
 
@@ -326,8 +328,15 @@ class FeedbackLinkTest extends FormsTestCase
         $this->assertNull($sr->fresh()->client_star_rating);
 
         \App\Models\Tenant::setCurrent(null);                                           // a real request starts without a company; a test process keeps the last one
-        $this->open($token, 'http://localhost')->assertOk();
-        $this->answer($token, [], 'http://localhost')->assertOk();
+        if (\App\Support\Tenancy::isPath()) {
+            // path mode: feedback links were always sent on the company address, so the root has no /feedback page; the company's own works
+            $this->open($token, 'http://localhost')->assertNotFound();
+            $this->open($token)->assertOk();                                            // the request's own company address
+            $this->answer($token)->assertOk();
+        } else {
+            $this->open($token, 'http://localhost')->assertOk();
+            $this->answer($token, [], 'http://localhost')->assertOk();
+        }
         $this->assertSame(5, (int) $sr->fresh()->client_star_rating);
     }
 

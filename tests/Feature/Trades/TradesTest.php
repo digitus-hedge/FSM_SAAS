@@ -283,7 +283,7 @@ class TradesTest extends FormsTestCase
         $this->actingAs($t)->get(route('technician.jobs.index'))->assertOk();
 
         $this->as('company_admin')->post(route('admin.vendors.suspend', $v))->assertRedirect();
-        $this->actingAs($t->fresh())->get(route('technician.jobs.index'))->assertRedirect('/login');
+        $this->actingAs($t->fresh())->get(route('technician.jobs.index'))->assertRedirect(route('login'));   // the company's own sign-in
         $this->assertGuest();
 
         $this->as('company_admin')->post(route('admin.vendors.reactivate', $v))->assertRedirect();

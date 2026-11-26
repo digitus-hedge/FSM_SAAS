@@ -195,8 +195,8 @@ class SlaMonitorTest extends SlaTestCase
 
     public function test_the_job_restores_the_current_company(): void
     {
-        \App\Models\Tenant::setCurrent(null);
-        $this->sr(-5);
+        $this->sr(-5);                                       // raised through a company page, which sets the company in this test process
+        \App\Models\Tenant::setCurrent(null);                // the scheduler starts without a company
 
         $this->run1();
 

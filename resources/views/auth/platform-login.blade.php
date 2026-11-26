@@ -29,8 +29,6 @@
     .btn { display: block; width: 100%; background: var(--accent); color: var(--accent-ink); font: 700 15px inherit; padding: 13px; border-radius: 999px; border: 0; cursor: pointer; }
     .btn:hover { filter: brightness(.96); }
     .err { background: color-mix(in srgb, var(--danger) 15%, var(--surface)); color: var(--danger); padding: 10px 14px; border-radius: 10px; margin-bottom: 16px; font-size: 13px; font-weight: 500; }
-    .demo { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); line-height: 1.6; }
-    .demo code { background: var(--soft); padding: 2px 6px; border-radius: 4px; font-family: "JetBrains Mono", Consolas, monospace; color: var(--ink); }
 </style>
 </head>
 <body>
@@ -55,13 +53,6 @@
     </label>
 
     <button type="submit" class="btn">Continue</button>
-
-    @if (app()->environment('local'))
-        <div class="demo">
-            Demo platform admin:<br>
-            <code>owner@aiywah.app</code> &middot; <code>Aiywah#2026</code>
-        </div>
-    @endif
 </form>
 </body>
 </html>

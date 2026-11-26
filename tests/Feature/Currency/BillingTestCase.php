@@ -177,7 +177,8 @@ abstract class BillingTestCase extends TestCase
     /** A request on the company's own address, the way a person uses the product (the tenant scope is then active). */
     protected function onHost(Tenant $tenant, string $path = ''): string
     {
-        return \App\Support\TenantUrl::for($tenant, $path);   // path mode /{slug}{path}, subdomain mode {slug}.host{path}
+        // path mode /{slug}{path}, subdomain mode {slug}.host{path}. $path may be route(..., false), which already holds "/{slug}" in path mode.
+        return \App\Support\TenantUrl::for($tenant, (string) \App\Support\TenantUrl::relative($tenant, $path));
     }
 
     protected function enableCurrency(Tenant $tenant, string $code, ?string $rate = '3.67250000', ?string $date = null): void

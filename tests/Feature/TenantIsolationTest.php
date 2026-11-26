@@ -50,7 +50,11 @@ class TenantIsolationTest extends BillingTestCase
         $this->assertFalse($outsider->hasAccessToTenant($acme));
         $this->assertTrue($outsider->hasAccessToTenant($wayne));
 
-        $this->actingAs($outsider)->get($this->onHost($acme, '/dashboard'))->assertForbidden();
+        // signed out and sent to this company's own sign-in (both tenancy modes)
+        $this->actingAs($outsider)->get($this->onHost($acme, '/dashboard'))
+            ->assertRedirect($this->onHost($acme, '/login'))
+            ->assertSessionHasErrors(['identifier' => 'Please sign in to ACME Ltd.']);
+        $this->assertGuest('web');
     }
 
     #[Test]

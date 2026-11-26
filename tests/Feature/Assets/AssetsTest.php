@@ -294,7 +294,14 @@ class AssetsTest extends AssetsTestCase
 
         // on their own address and on the root address: always looked up in the signed-in user's own company
         $this->actingAs($theirs->fresh())->get($this->onHost($other, '/q/' . $asset->qr_hash))->assertNotFound();
-        $this->actingAs($theirs->fresh())->get('http://localhost/q/' . $asset->qr_hash)->assertNotFound();
+        if (\App\Support\Tenancy::isPath()) {
+            // path mode: an old root QR link goes on to the asset's own company, which signs a user of another company out
+            $owner = \App\Models\Tenant::find($asset->tenant_id);
+            $this->actingAs($theirs->fresh())->get('http://localhost/q/' . $asset->qr_hash)->assertStatus(301)->assertRedirect($this->onHost($owner, '/q/' . $asset->qr_hash));
+            $this->actingAs($theirs->fresh())->get($this->onHost($owner, '/q/' . $asset->qr_hash))->assertRedirect($this->onHost($owner, '/login'));
+        } else {
+            $this->actingAs($theirs->fresh())->get('http://localhost/q/' . $asset->qr_hash)->assertNotFound();
+        }
     }
 
     public function test_an_unknown_hash_is_a_404(): void

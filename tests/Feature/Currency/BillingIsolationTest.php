@@ -106,12 +106,12 @@ class BillingIsolationTest extends BillingTestCase
     #[Test]
     public function the_lists_and_counts_on_a_company_address_hold_only_that_companys_records(): void
     {
-        $res = $this->as($this->onHost($this->a), fn ($c, $h) => $c->get($h . route('admin.invoices.index', ['tab' => 'all'], false)));
+        $res = $this->as($this->onHost($this->a), fn ($c, $h) => $c->get($h . \App\Support\TenantUrl::route($this->a, 'admin.invoices.index', ['tab' => 'all'])));
 
         $res->assertOk()->assertSee($this->invA->invoice_number)->assertDontSee('INV-B-SECRET');
 
         // Finance may open quotes (quote.manage), and sees only its own company's
-        $this->as($this->onHost($this->a), fn ($c, $h) => $c->get($h . route('admin.quotes.index', ['tab' => 'all'], false)))->assertOk()->assertDontSee($this->quoteB->quote_number);
+        $this->as($this->onHost($this->a), fn ($c, $h) => $c->get($h . \App\Support\TenantUrl::route($this->a, 'admin.quotes.index', ['tab' => 'all'])))->assertOk()->assertDontSee($this->quoteB->quote_number);
     }
 
     #[Test]
@@ -137,7 +137,10 @@ class BillingIsolationTest extends BillingTestCase
         foreach (['/i/' . $it->token, '/i/' . $it->token . '/pdf', '/q/' . $qt->token, '/q/' . $qt->token . '/pdf'] as $path) {
             $this->get($this->onHost($this->b, $path))->assertOk();       // its own company
             Tenant::setCurrent(null);
-            $this->get('http://localhost' . $path)->assertOk();            // the root address: no company chosen
+            // the root address: path mode sends the old root link on to the company it belongs to; subdomain mode shows it
+            \App\Support\Tenancy::isPath()
+                ? $this->get('http://localhost' . $path)->assertStatus(301)->assertRedirect($this->onHost($this->b, $path))
+                : $this->get('http://localhost' . $path)->assertOk();
             Tenant::setCurrent(null);
             $this->get($this->onHost($this->a, $path))->assertNotFound();  // another company
             Tenant::setCurrent(null);
